@@ -1,0 +1,2012 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.Networking;
+using UnityEngine.Rendering.PostProcessing;
+using VRM;
+using DG.Tweening;
+
+
+namespace UserHandleSpace
+{
+    public partial class ManageAnimation
+    {
+//===========================================================================================================================
+//  Analyze and parse functions
+//===========================================================================================================================
+
+        private void SpecialUpdate_body(NativeAnimationFrameActor actor, int frameIndex)
+        { //---Update for NON-DOTween method and object
+
+            if ((actor.targetRole != "") && (actor.avatar != null))
+            {
+                if (frameIndex < actor.frames.Count)
+                {
+                    NativeAnimationFrame avatarFrame = actor.frames[frameIndex];
+                    NativeAnimationAvatar naa = actor.avatar;
+
+                    avatarFrame.movingData.ForEach(movedata =>
+                    {
+                        //---VRM
+                        if (actor.targetType == AF_TARGETTYPE.VRM)
+                        {
+                            OperateLoadedVRM ovrm = naa.avatar.GetComponent<OperateLoadedVRM>();
+                            if (movedata.animationType == AF_MOVETYPE.Equipment)
+                            {
+                                ovrm.SetEquipFlag(movedata.equipType);
+
+                                //---For unequipping
+                                ovrm.equipDestinations.list.ForEach(body =>
+                                {
+                                    AvatarEquipSaveClass equip = movedata.equipDestinations.Find(match =>
+                                    {
+                                        if ((match.bodybonename == body.bodybonename) && (match.equipitem == body.equipitem)) return true;
+                                        return false;
+                                    });
+                                    if (equip == null) //---animation don't has this body equip...UNEQUIP
+                                    {
+                                        NativeAnimationAvatar cast = GetCastInProject(body.equipitem);
+                                        if (cast != null)
+                                        {
+                                            ovrm.UnequipObject((HumanBodyBones)body.bodybonename, cast.roleName);
+                                        }
+
+                                    }
+                                });
+                                //---For equipping
+                                movedata.equipDestinations.ForEach(body =>
+                                {
+                                    AvatarEquipSaveClass equip = ovrm.equipDestinations.list.Find(match =>
+                                    {
+                                        if ((match.bodybonename == body.bodybonename) && (match.equipitem == body.equipitem)) return true;
+                                        return false;
+                                    });
+                                    if (equip == null) //---body don't has this animation equip...EQUIP
+                                    {
+                                        NativeAnimationAvatar cast = GetCastInProject(body.equipitem);
+                                        if (cast != null)
+                                        {
+                                            //ovrm.SetPosition(body.position);
+                                            //ovrm.SetRotation(body.rotation);
+                                            //vi devas sxargi POSITION kaj ROTATION antaux cxi tiu metodo.
+                                            ovrm.EquipObject((HumanBodyBones)body.bodybonename, cast);
+                                        }
+                                    }
+                                });
+                            }
+                            else if (movedata.animationType == AF_MOVETYPE.GravityProperty)
+                            {
+                                movedata.gravityList.ForEach(action =>
+                                {
+                                    ovrm.SetGravityPower(action.comment + "," + action.rootBoneName + "," + action.power.ToString());
+                                    ovrm.SetGravityDir(action.comment + "," + action.rootBoneName + "," + action.dir.x.ToString() + "," + action.dir.y.ToString() + "," + action.dir.z.ToString());
+                                });
+                            }
+                        }
+                        //---OtherObject
+                        else if (actor.targetType == AF_TARGETTYPE.OtherObject)
+                        {
+                            OperateLoadedOther olo = naa.avatar.GetComponent<OperateLoadedOther>();
+                            if (movedata.animationType == AF_MOVETYPE.AnimStart)
+                            {
+                                olo.PlayAnimation();
+                            }
+                            else if (movedata.animationType == AF_MOVETYPE.AnimStop)
+                            {
+                                olo.StopAnimation();
+                            }
+                            else if (movedata.animationType == AF_MOVETYPE.AnimPause)
+                            {
+                                olo.PauseAnimation();
+                            }
+                            else if (movedata.animationType == AF_MOVETYPE.AnimSeek)
+                            {
+                                olo.SeekPlayAnimation();
+                            }
+                        }
+                        else if (actor.targetType == AF_TARGETTYPE.Light)
+                        {
+                            if (movedata.animationType == AF_MOVETYPE.LightProperty)
+                            {
+                                Light lt = naa.avatar.GetComponent<Light>();
+
+                                //---Light type
+                                lt.type = movedata.lightType;
+
+                                //---Light Render Mode
+                                lt.renderMode = movedata.lightRenderMode;
+                            }
+                        }
+                        else if (actor.targetType == AF_TARGETTYPE.Camera)
+                        {
+                            OperateLoadedCamera olc = naa.avatar.GetComponent<OperateLoadedCamera>();
+                            Camera cam = naa.avatar.GetComponent<Camera>();
+                            if (movedata.animationType == AF_MOVETYPE.CameraOn)
+                            {
+                                //olc.SetCameraPlaying(movedata.cameraPlaying);
+                                olc.PreviewCamera();
+                            }
+                            else if (movedata.animationType == AF_MOVETYPE.CameraOff)
+                            {
+                                //olc.SetCameraPlaying(movedata.cameraPlaying);
+                                olc.EndPreview();
+                            }
+                            else if (movedata.animationType == AF_MOVETYPE.CameraProperty)
+                            {
+                                if ((movedata.renderTex.x > 0) && (movedata.renderTex.y > 0)) olc.SetRenderTexture(movedata.renderTex.x + "," + movedata.renderTex.y);
+                                else olc.DestroyRenderTexture();
+
+                                olc.SetClearFlag(movedata.clearFlag);
+                            }
+                        }
+                        else if (actor.targetType == AF_TARGETTYPE.Audio)
+                        {
+                            OperateLoadedAudio ola = naa.avatar.GetComponent<OperateLoadedAudio>();
+
+                            ola.SetAudio(movedata.audioName);
+
+                            if (movedata.animationType == AF_MOVETYPE.AnimStart)
+                            {
+                                if (movedata.isSE == 1)
+                                {
+                                    ola.PlaySe();
+                                }
+                                else
+                                {
+                                    ola.PlayAudio();
+                                }
+                            }
+                            else if (movedata.animationType == AF_MOVETYPE.AnimSeek)
+                            {
+                                if (movedata.seekTime != -1f)
+                                {
+                                    ola.SetSeekSeconds(movedata.seekTime);
+                                }
+                            }
+                            else if (movedata.animationType == AF_MOVETYPE.AnimStop)
+                            {
+                                ola.StopAudio();
+                            }
+                            else if (movedata.animationType == AF_MOVETYPE.AnimPause)
+                            {
+                                ola.PauseAudio();
+                            }
+                            else if (movedata.animationType == AF_MOVETYPE.AudioProperty)
+                            {
+                                ola.SetLoop(movedata.isLoop);
+                                ola.SetMute(movedata.isMute);
+
+                            }
+                        }
+                        else if (actor.targetType == AF_TARGETTYPE.Effect)
+                        {
+                            OperateLoadedEffect ole = naa.avatar.GetComponent<OperateLoadedEffect>();
+
+                            if (movedata.animationType == AF_MOVETYPE.AnimStart)
+                            {
+                                ole.SetEffect(movedata.effectGenre + "," + movedata.effectName);
+                                if (movedata.animLoop == 1)
+                                {
+                                    ole.PlayEffect(1);
+                                    //ole.SetPlayFlagEffect(2);
+                                }
+                                else
+                                {
+                                    ole.PlayEffect();
+                                    //ole.SetPlayFlagEffect(1);
+                                }
+
+                            }
+                            else if (movedata.animationType == AF_MOVETYPE.AnimStop)
+                            {
+                                ole.StopEffect();
+                                //ole.SetPlayFlagEffect(0);
+                            }
+                            else if (movedata.animationType == AF_MOVETYPE.AnimPause)
+                            {
+                                ole.PauseEffect();
+                            }
+                        }
+                        else if (actor.targetType == AF_TARGETTYPE.Stage)
+                        {
+                            OperateStage os = naa.avatar.GetComponent<OperateStage>();
+                            os.SelectStage(movedata.stageType);
+                        }
+
+                    });
+                }
+
+            }
+        }
+        private Sequence ParseForCommon(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationTargetParts pelvisCondition, AnimationParsingOptions options)
+        {
+            NativeAnimationAvatar naa = targetObjects.avatar;
+
+            if (targetObjects.targetType == AF_TARGETTYPE.VRM)
+            {
+                int index = (int)movedata.vrmBone;
+
+                if (movedata.vrmBone == ParseIKBoneType.IKParent)
+                {
+                    if (movedata.animationType == AF_MOVETYPE.Translate)
+                    {
+                        if (targetObjects.compiled == 1)
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOMove(movedata.position, frame.duration));
+                            else naa.avatar.transform.position = movedata.position;
+                        }
+
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(naa.ikparent.transform.DOMove(movedata.position, frame.duration));
+                            else naa.ikparent.transform.position = movedata.position;
+                        }
+                    }
+                    if (movedata.animationType == AF_MOVETYPE.Rotate)
+                    {
+                        if (targetObjects.compiled == 1)
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DORotate(movedata.rotation, frame.duration));
+                            else naa.avatar.transform.rotation = Quaternion.Euler(movedata.rotation);
+
+                        }
+
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(naa.ikparent.transform.DORotate(movedata.rotation, frame.duration));
+                            else naa.ikparent.transform.rotation = Quaternion.Euler(movedata.rotation);
+
+                        }
+                    }
+                    if (movedata.animationType == AF_MOVETYPE.Scale)
+                    {
+                        if (targetObjects.compiled == 1)
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOScale(movedata.scale, frame.duration));
+                            else naa.avatar.transform.localScale = movedata.scale;
+
+                        }
+
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOScale(movedata.scale, frame.duration));
+                            else naa.avatar.transform.localScale = movedata.scale;
+
+                        }
+                    }
+                }
+                else
+                {
+                    if (targetObjects.compiled == 1)
+                    { //---Transform for HumanBodyBones
+                        if (movedata.vrmBone == ParseIKBoneType.UseHumanBodyBones)
+                        {
+                            Transform boneTransform = naa.avatar.GetComponent<Animator>().GetBoneTransform(movedata.vrmHumanBodyBone);
+                            if (movedata.animationType == AF_MOVETYPE.Rotate)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(boneTransform.DOLocalRotate(movedata.rotation, frame.duration));
+                                else boneTransform.localRotation = Quaternion.Euler(movedata.rotation);
+                            }
+                            if (movedata.animationType == AF_MOVETYPE.Scale)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(boneTransform.DOScale(movedata.scale, frame.duration));
+                                else boneTransform.localScale = movedata.scale;
+                            }
+                        }
+                    }
+
+                    { //---Transform for IK
+                        if ((movedata.vrmBone >= ParseIKBoneType.EyeViewHandle) && (movedata.vrmBone <= ParseIKBoneType.RightLeg))
+                        { 
+                            GameObject realObject = naa.ikparent.transform.Find(IKBoneNames[index]).gameObject;
+                            //---Position (absorb a distance of height)
+                            if (movedata.animationType == AF_MOVETYPE.Translate)
+                            {
+                                /*
+                                Vector3 repos = CalculateReposition(
+                                    naa.avatar, naa.ikparent, targetObjects.targetType, 
+                                    targetObjects.bodyHeight, 
+                                    movedata.position, movedata.vrmBone, pelvisCondition.position
+                                );*/
+                                List<Vector3> curList = naa.avatar.GetComponent<OperateLoadedVRM>().GetTPoseBodyList();
+                                int vbone = (int)movedata.vrmBone;
+
+                                Vector3 repos = CalculateDifferenceInHeight(
+                                    curList[vbone],
+                                    frame.useBodyInfo == UseBodyInfoType.TimelineCharacter ? targetObjects.bodyInfoList[vbone] : curList[vbone],
+                                    movedata.position, movedata.vrmBone
+                                );
+                                if (options.isExecuteForDOTween == 1) seq.Join(realObject.transform.DOLocalMove(repos, frame.duration));
+                                else realObject.transform.localPosition = repos;
+                            }
+
+                            //---Rotation
+                            if (movedata.animationType == AF_MOVETYPE.Rotate)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(realObject.transform.DOLocalRotate(movedata.rotation, frame.duration));
+                                else realObject.transform.rotation = Quaternion.Euler(movedata.rotation);
+                            }
+                        }
+
+                    }
+                }
+
+            }
+            else if ((targetObjects.targetType == AF_TARGETTYPE.Text) || (targetObjects.targetType == AF_TARGETTYPE.UImage))
+            {
+                RectTransform rectt = targetObjects.avatar.avatar.GetComponent<RectTransform>();
+                if (movedata.animationType == AF_MOVETYPE.Translate)
+                {
+
+                    Vector2 v2 = new Vector2(movedata.position.x, movedata.position.y);
+                    if (options.isExecuteForDOTween == 1) seq.Join(rectt.DOAnchorPos(v2, frame.duration));
+                    else rectt.anchoredPosition = v2;
+                }
+                else if (movedata.animationType == AF_MOVETYPE.Rotate)
+                {
+                    //---2D object is Z-dimension only.
+                    Vector3 v3 = new Vector3(rectt.rotation.eulerAngles.x, rectt.rotation.eulerAngles.y, movedata.rotation.z);
+                    if (options.isExecuteForDOTween == 1) seq.Join(rectt.DORotate(v3, frame.duration));
+                    else rectt.rotation = Quaternion.Euler(v3);
+                }
+                else if (movedata.animationType == AF_MOVETYPE.Scale)
+                {
+                    Vector2 v2 = new Vector2(movedata.scale.x, movedata.scale.y);
+                    if (options.isExecuteForDOTween == 1) seq.Join(rectt.DOSizeDelta(v2, frame.duration));
+                    else rectt.sizeDelta = v2;
+
+                }
+            }
+            else if (targetObjects.targetType == AF_TARGETTYPE.Stage)
+            {
+                OperateStage os = naa.avatar.GetComponent<OperateStage>();
+
+                if (movedata.animationType == AF_MOVETYPE.Translate)
+                {
+                    if (options.isExecuteForDOTween == 1) seq.Join(os.ActiveStage.transform.DOMove(movedata.position, frame.duration));
+                    else os.ActiveStage.transform.position = movedata.position;
+                }
+                if (movedata.animationType == AF_MOVETYPE.Rotate)
+                {
+                    if (options.isExecuteForDOTween == 1) seq.Join(os.ActiveStage.transform.DORotate(movedata.rotation, frame.duration));
+                    else os.ActiveStage.transform.rotation = Quaternion.Euler(movedata.rotation);
+                }
+                if (movedata.animationType == AF_MOVETYPE.Scale)
+                {
+                    if (options.isExecuteForDOTween == 1) seq.Join(os.ActiveStage.transform.DOScale(movedata.scale, frame.duration));
+                    else os.ActiveStage.transform.localScale = movedata.scale;
+                }
+            }
+            else
+            {
+                if (movedata.animationType == AF_MOVETYPE.Translate)
+                {
+                    if (targetObjects.compiled == 1)
+                    {
+                        if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOMove(movedata.position, frame.duration));
+                        else naa.avatar.transform.position = movedata.position;
+
+                    }
+
+                    {
+                        if (options.isExecuteForDOTween == 1) seq.Join(naa.ikparent.transform.DOMove(movedata.position, frame.duration));
+                        else naa.ikparent.transform.position = movedata.position;
+
+                    }
+                }
+                if (movedata.animationType == AF_MOVETYPE.Rotate)
+                {
+                    if (targetObjects.compiled == 1)
+                    {
+                        if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DORotate(movedata.rotation, frame.duration));
+                        else naa.avatar.transform.rotation = Quaternion.Euler(movedata.rotation);
+
+                    }
+
+                    {
+                        if (options.isExecuteForDOTween == 1) seq.Join(naa.ikparent.transform.DORotate(movedata.rotation, frame.duration));
+                        else naa.ikparent.transform.rotation = Quaternion.Euler(movedata.rotation);
+
+                    }
+                }
+                if (movedata.animationType == AF_MOVETYPE.Scale)
+                {
+                    if (targetObjects.compiled == 1)
+                    {
+                        if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOScale(movedata.scale, frame.duration));
+                        else naa.avatar.transform.localScale = movedata.scale;
+
+                    }
+
+                    {
+                        if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOScale(movedata.scale, frame.duration));
+                        else naa.avatar.transform.localScale = movedata.scale;
+
+                    }
+                }
+            }
+            return seq;
+        }
+
+        private Sequence ParseForVRM(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationParsingOptions options)
+        {
+            NativeAnimationAvatar naa = targetObjects.avatar;
+
+            //---HandPose
+            if (targetObjects.compiled != 1)
+            {
+                if (movedata.animationType == AF_MOVETYPE.NormalTransform)
+                {
+                    if (movedata.vrmBone == ParseIKBoneType.LeftHandPose)
+                    {
+                        LeftHandPoseController lhand = naa.avatar.GetComponent<LeftHandPoseController>();
+                        //---left
+                        if (movedata.handpose.Count > 0) lhand.currentPose = (int)movedata.handpose[0];
+                        if (movedata.handpose.Count > 1)
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => lhand.handPoseValue, x => lhand.handPoseValue = x, (int)movedata.handpose[1], frame.duration));
+                            else lhand.handPoseValue = (int)movedata.handpose[1];
+                        }
+
+                    }
+
+                    if (movedata.vrmBone == ParseIKBoneType.RightHandPose)
+                    {
+                        RightHandPoseController rhand = naa.avatar.GetComponent<RightHandPoseController>();
+                        //---right
+                        if (movedata.handpose.Count > 0) rhand.currentPose = (int)movedata.handpose[0];
+                        if (movedata.handpose.Count > 1)
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => rhand.handPoseValue, x => rhand.handPoseValue = x, (int)movedata.handpose[1], frame.duration));
+                            else rhand.handPoseValue = (int)movedata.handpose[1];
+                        }
+
+                    }
+
+                }
+            }
+
+
+            //---Blend Shape
+            if (movedata.animationType == AF_MOVETYPE.BlendShape)
+            {
+                OperateLoadedVRM mainface = naa.avatar.GetComponent<OperateLoadedVRM>();
+                SkinnedMeshRenderer face = mainface.GetBlendShapeTarget();
+                int maxcnt = face.sharedMesh.blendShapeCount;
+                foreach (BasicStringFloatList val in movedata.blendshapes)
+                {
+                    float weight = val.value;
+
+                    string hitName = "";
+                    for (int chki = 0; chki < maxcnt; chki++)
+                    {
+                        if (face.sharedMesh.GetBlendShapeName(chki).Contains(val.text))
+                        {
+                            hitName = face.sharedMesh.GetBlendShapeName(chki);
+                            break;
+                        }
+                    }
+                    
+                    int bindex = face.sharedMesh.GetBlendShapeIndex(hitName);
+                    //if (bindex > -1) face.SetBlendShapeWeight(bindex, weight);
+
+                    if (bindex > -1)
+                    {
+                        if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => face.GetBlendShapeWeight(bindex), x => face.SetBlendShapeWeight(bindex, x), weight, frame.duration));
+                        else mainface.changeAvatarBlendShapeByName(val.text, val.value);  //face.SetBlendShapeWeight(bindex, weight);
+                    }
+
+                }
+            }
+            if (movedata.animationType == AF_MOVETYPE.Equipment)
+            { //===Not include an animation (Until there is a prospect of correction.) ============================================================
+                OperateLoadedVRM ovrm = naa.avatar.GetComponent<OperateLoadedVRM>();
+
+                if (options.isBuildDoTween == 0)
+                {
+                    ovrm.SetEquipFlag(movedata.equipType);
+
+                    //---For unequipping
+                    ovrm.equipDestinations.list.ForEach(body =>
+                    {
+                        AvatarEquipSaveClass equip = movedata.equipDestinations.Find(match =>
+                        {
+                            if ((match.bodybonename == body.bodybonename) && (match.equipitem == body.equipitem)) return true;
+                            return false;
+                        });
+                        if (equip == null) //---animation don't has this body equip...UNEQUIP
+                        {
+                            NativeAnimationAvatar cast = GetCastInProject(body.equipitem);
+                            if (cast != null)
+                            {
+                                ovrm.UnequipObject((HumanBodyBones)body.bodybonename, cast.roleName);
+                            }
+
+                        }
+                    });
+                    //---For equipping
+                    movedata.equipDestinations.ForEach(body =>
+                    {
+                        AvatarEquipSaveClass equip = ovrm.equipDestinations.list.Find(match =>
+                        {
+                            if ((match.bodybonename == body.bodybonename) && (match.equipitem == body.equipitem)) return true;
+                            return false;
+                        });
+                        if (equip == null) //---body don't has this animation equip...EQUIP
+                        {
+                            NativeAnimationAvatar cast = GetCastInProject(body.equipitem);
+                            if (cast != null)
+                            {
+                                //ovrm.SetPosition(body.position);
+                                //ovrm.SetRotation(body.rotation);
+                                //vi devas sxargi POSITION kaj ROTATION antaux cxi tiu metodo.
+                                ovrm.EquipObject((HumanBodyBones)body.bodybonename, cast);
+                            }
+                        }
+                    });
+                }
+                
+            }
+
+            //---VRM Gravity information
+            if (movedata.animationType == AF_MOVETYPE.GravityProperty)
+            {
+                OperateLoadedVRM ovrm = naa.avatar.GetComponent<OperateLoadedVRM>();
+                if (options.isBuildDoTween == 0)
+                {
+                    movedata.gravityList.ForEach(action =>
+                    {
+                        ovrm.SetGravityPower(action.comment + "," + action.rootBoneName + "," + action.power.ToString());
+                        ovrm.SetGravityDir(action.comment + "," + action.rootBoneName + "," + action.dir.x.ToString() + "," + action.dir.y.ToString() + "," + action.dir.z.ToString());
+                    });
+                }
+            }
+            return seq;
+        }
+        private Sequence ParseForOtherObject(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationParsingOptions options)
+        {
+            NativeAnimationAvatar naa = targetObjects.avatar;
+            OperateLoadedOther olo = naa.avatar.GetComponent<OperateLoadedOther>();
+            if (movedata.animationType == AF_MOVETYPE.AnimStart)
+            {
+                if (options.isBuildDoTween == 0)
+                {
+                    olo.PlayAnimation();
+                    olo.SetPlayFlagAnimation(UserAnimationState.Play);
+                }
+            }
+            else if (movedata.animationType == AF_MOVETYPE.AnimStop)
+            {
+                if (options.isBuildDoTween == 0)
+                {
+                    olo.StopAnimation();
+                    olo.SetPlayFlagAnimation(UserAnimationState.Stop);
+                }
+            }
+            else if (movedata.animationType == AF_MOVETYPE.AnimSeek)
+            {
+
+                if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => olo.GetSeekPosAnimation(0), x => olo.SetSeekPosAnimation(x), movedata.animSeek, frame.duration));
+                else olo.SetSeekPosAnimation(movedata.animSeek);
+
+                if (options.isBuildDoTween == 0)
+                {
+                    olo.SeekPlayAnimation();
+                    olo.SetPlayFlagAnimation(UserAnimationState.Seeking);
+                }
+            }
+            else if (movedata.animationType == AF_MOVETYPE.AnimPause)
+            {
+                if (options.isBuildDoTween == 0)
+                {
+                    olo.PauseAnimation();
+                    olo.SetPlayFlagAnimation(UserAnimationState.Pause);
+                }
+            }
+            else if (movedata.animationType == AF_MOVETYPE.AnimProperty)
+            {
+
+                if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => olo.GetSpeedAnimation(0), x => olo.SetSpeedAnimation(x), movedata.animSpeed, frame.duration));
+                else olo.SetSpeedAnimation(movedata.animSpeed);
+            }
+            else if (movedata.animationType == AF_MOVETYPE.Rest)
+            {
+                if (options.isBuildDoTween == 0)
+                {
+                    olo.SetPlayFlagAnimation(UserAnimationState.Playing);
+                }
+            }
+            else if (movedata.animationType == AF_MOVETYPE.OtherObjectTexture)
+            {
+
+            }
+            return seq;
+        }
+        private Sequence ParseForLight(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationParsingOptions options)
+        {
+            NativeAnimationAvatar naa = targetObjects.avatar;
+
+            Light lt = naa.avatar.GetComponent<Light>();
+
+            if (movedata.animationType == AF_MOVETYPE.LightProperty)
+            {
+                if (options.isExecuteForDOTween == 1)
+                {
+                    //---Light type
+                    if (options.isBuildDoTween == 0) lt.type = movedata.lightType;
+
+                    //---Range
+                    seq.Join(DOTween.To(() => lt.range, x => lt.range = x, movedata.range, frame.duration));
+
+                    //---Color
+                    seq.Join(lt.DOColor(movedata.color, frame.duration));
+
+                    //---Power
+                    seq.Join(lt.DOIntensity(movedata.power, frame.duration));
+
+                    //---Angle (SpotLight only)
+                    if (lt.type == LightType.Spot)
+                    {
+                        seq.Join(DOTween.To(() => lt.spotAngle, x => lt.spotAngle = x, movedata.spotAngle, frame.duration));
+                    }
+
+                    //---Light Render Mode
+                    if (options.isBuildDoTween == 0) lt.renderMode = movedata.lightRenderMode;
+                }
+                else
+                {
+                    lt.type = movedata.lightType;
+                    lt.range = movedata.range;
+                    lt.color = movedata.color;
+                    lt.intensity = movedata.power;
+                    if (lt.type == LightType.Spot)
+                    {
+                        lt.spotAngle = movedata.spotAngle;
+                    }
+                    lt.renderMode = movedata.lightRenderMode;
+                }
+
+            }
+
+            return seq;
+        }
+        private Sequence ParseForCamera(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationParsingOptions options)
+        {
+            NativeAnimationAvatar naa = targetObjects.avatar;
+
+            OperateLoadedCamera olc = naa.avatar.GetComponent<OperateLoadedCamera>();
+            Camera cam = naa.avatar.GetComponent<Camera>();
+            if (movedata.animationType == AF_MOVETYPE.Camera)
+            {
+
+            }
+            else if (movedata.animationType == AF_MOVETYPE.CameraOn)
+            {
+                if (options.isBuildDoTween == 0)
+                {
+                    olc.SetCameraPlaying(movedata.cameraPlaying);
+                    if (options.isCameraPreviewing == 1) olc.PreviewCamera();
+                }
+            }
+            else if (movedata.animationType == AF_MOVETYPE.CameraOff)
+            {
+                if (options.isBuildDoTween == 0)
+                {
+                    olc.SetCameraPlaying(movedata.cameraPlaying);
+                    olc.EndPreview();
+                }
+            }
+            else if (movedata.animationType == AF_MOVETYPE.CameraProperty)
+            {
+                if (options.isExecuteForDOTween == 1)
+                {
+                    seq.Join(cam.DOFieldOfView(movedata.fov, frame.duration));
+
+                    seq.Join(cam.DOColor(movedata.color, frame.duration));
+
+                    seq.Join(cam.DORect(movedata.viewport, frame.duration));
+
+                    seq.Join(DOTween.To(() => cam.depth, x => cam.depth = x, movedata.depth, frame.duration));
+                }
+                else
+                {
+                    cam.fieldOfView = movedata.fov;
+                    cam.backgroundColor = movedata.color;
+                    cam.rect = movedata.viewport;
+                    cam.depth = movedata.depth;
+                }
+
+                if (options.isBuildDoTween == 0)
+                {
+                    if ((movedata.renderTex.x > 0) && (movedata.renderTex.y > 0)) olc.SetRenderTexture(movedata.renderTex.x + "," + movedata.renderTex.y);
+                    else olc.DestroyRenderTexture();
+                }
+
+                if (options.isBuildDoTween == 0) olc.SetClearFlag(movedata.clearFlag);
+            }
+            return seq;
+        }
+        private Sequence ParseForText(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationParsingOptions options)
+        {
+            NativeAnimationAvatar naa = targetObjects.avatar;
+
+            Text ui = naa.avatar.GetComponent<Text>();
+            if (movedata.animationType == AF_MOVETYPE.Text)
+            {
+                if (options.isExecuteForDOTween == 1) seq.Join(ui.DOText(movedata.text, frame.duration));
+                ui.text = movedata.text;
+            }
+            else if (movedata.animationType == AF_MOVETYPE.TextProperty)
+            {
+                if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => ui.fontSize, x => ui.fontSize = x, movedata.fontSize, frame.duration));
+                else ui.fontSize = movedata.fontSize;
+
+                ui.fontStyle = movedata.fontStyle;
+
+                if (options.isExecuteForDOTween == 1) seq.Join(ui.DOColor(movedata.color, frame.duration));
+                else ui.color = movedata.color;
+            }
+            return seq;
+        }
+        private Sequence ParseForImage(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationParsingOptions options)
+        {
+            NativeAnimationAvatar naa = targetObjects.avatar;
+
+            if (movedata.animationType == AF_MOVETYPE.ImageProperty)
+            {
+                OperateLoadedOther olo = naa.avatar.GetComponent<OperateLoadedOther>();
+
+                if (options.isBuildDoTween == 1)
+                {
+                    olo.SetBaseColorForAnimation(seq, frame.duration, movedata.color);
+                }
+                else
+                {
+                    olo.SetBaseColor(movedata.color);
+                }
+            }
+
+            return seq;
+        }
+        private Sequence ParseForUImage(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationParsingOptions options)
+        {
+            NativeAnimationAvatar naa = targetObjects.avatar;
+            Image ui = naa.avatar.GetComponent<Image>();
+
+            if (options.isBuildDoTween == 0)
+            {
+                if (movedata.animationType == AF_MOVETYPE.ImageProperty)
+                {
+                    if (options.isExecuteForDOTween == 1) seq.Join(ui.DOColor(movedata.color, frame.duration));
+                    else ui.color = movedata.color;
+                }
+            }
+
+            return seq;
+        }
+        private Sequence ParseForAudio(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationParsingOptions options)
+        {
+            NativeAnimationAvatar naa = targetObjects.avatar;
+
+            OperateLoadedAudio ola = naa.avatar.GetComponent<OperateLoadedAudio>();
+            ola.SetAudio(movedata.audioName);
+
+            if (options.isBuildDoTween == 0)
+            {
+                if (movedata.animationType == AF_MOVETYPE.AnimStart)
+                {
+                    if (movedata.isSE == 1)
+                    {
+                        ola.PlaySe();
+                    }
+                    else
+                    {
+                        ola.PlayAudio();
+                        ola.SetPlayFlag(UserAnimationState.Play);
+                    }
+                }
+                else if (movedata.animationType == AF_MOVETYPE.AnimPause)
+                {
+                    ola.PauseAudio();
+                    ola.SetPlayFlag(UserAnimationState.Pause);
+                }
+                else if (movedata.animationType == AF_MOVETYPE.AnimSeek)
+                {
+                    if (movedata.seekTime != -1f)
+                    {
+                        ola.SetSeekSeconds(movedata.seekTime);
+                    }
+                    ola.SetPlayFlag(UserAnimationState.Seeking);
+                }
+                else if (movedata.animationType == AF_MOVETYPE.AnimStop)
+                {
+                    ola.StopAudio();
+                    ola.SetPlayFlag(UserAnimationState.Stop);
+                }
+                else if (movedata.animationType == AF_MOVETYPE.Rest)
+                {
+                    ola.SetPlayFlag(UserAnimationState.Playing);
+                }
+
+            }
+
+
+            if (movedata.animationType == AF_MOVETYPE.AudioProperty)
+            {
+                if (options.isBuildDoTween == 0)
+                {
+                    ola.SetLoop(movedata.isLoop);
+                    ola.SetMute(movedata.isMute);
+                }
+
+                if (options.isExecuteForDOTween == 1) seq.Join(ola.audioPlayer.DOPitch(movedata.pitch, frame.duration));
+                else ola.SetPitch(movedata.pitch);
+
+                if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => ola.GetVolume(), x => ola.SetVolume(x), movedata.volume, frame.duration));
+                else ola.SetVolume(movedata.volume);
+
+            }
+            return seq;
+        }
+        private Sequence ParseForEffect(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationParsingOptions options)
+        {
+            NativeAnimationAvatar naa = targetObjects.avatar;
+            OperateLoadedEffect ole = naa.avatar.GetComponent<OperateLoadedEffect>();
+
+            if (options.isBuildDoTween == 0)
+            {
+                if (movedata.animationType == AF_MOVETYPE.AnimStart)
+                {
+                    ole.SetEffect(movedata.effectGenre + "," + movedata.effectName);
+                    if (movedata.animLoop == 1)
+                    {
+                        ole.PlayEffect(1);
+                        ole.SetPlayFlagEffect(UserAnimationState.PlayWithLoop);
+                    }
+                    else
+                    {
+                        ole.PlayEffect();
+                        ole.SetPlayFlagEffect(UserAnimationState.Play);
+                    }
+                }
+                else if (movedata.animationType == AF_MOVETYPE.AnimPause)
+                {
+                    ole.PauseEffect();
+                    ole.SetPlayFlagEffect(UserAnimationState.Pause);
+                }
+                else if (movedata.animationType == AF_MOVETYPE.AnimStop)
+                {
+                    ole.StopEffect();
+                    ole.SetPlayFlagEffect(UserAnimationState.Stop);
+                }
+                else if (movedata.animationType == AF_MOVETYPE.Rest)
+                {
+                    ole.SetPlayFlagEffect(UserAnimationState.Playing);
+                }
+
+            }
+            return seq;
+        }
+        private Sequence ParseForSystemEffect(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationParsingOptions options)
+        {
+            NativeAnimationAvatar naa = targetObjects.avatar;
+
+            ManageSystemEffect mse = gameObject.GetComponent<ManageSystemEffect>();
+
+            for (int i = 0; i < mse.ProcessNames.Length; i++)
+            {
+                string effectName = mse.ProcessNames[i];
+                if (movedata.effectName.ToLower() == effectName.ToLower())
+                {
+                    bool isEnable = movedata.animationType == AF_MOVETYPE.SystemEffectOff ? false : true;
+                    seq = mse.SetEffectValues(seq, effectName, movedata.effectValues, isEnable, options.isExecuteForDOTween == 1 ? true : false, frame.duration);
+                }
+            }
+
+
+            return seq;
+        }
+        private Sequence ParseForStage(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationParsingOptions options)
+        {
+            NativeAnimationAvatar naa = targetObjects.avatar;
+            OperateStage os = naa.avatar.GetComponent<OperateStage>();
+
+            if (movedata.animationType == AF_MOVETYPE.StageProperty)
+            {
+                if (options.isBuildDoTween == 0) os.SelectStage(movedata.stageType);
+
+                if (options.isExecuteForDOTween == 1)
+                {
+                    if (os.GetActiveStageType() == StageKind.Default)
+                    {
+                        if (os.GetActiveStageMaterial() != null)
+                        {
+                            seq.Join(os.GetActiveStageMaterial().DOColor(movedata.color, frame.duration));
+                        }
+                    }
+                    else if ((os.GetActiveStageType() == StageKind.SeaDaytime) || (os.GetActiveStageType() == StageKind.SeaNight))
+                    {
+                        if (os.GetActiveStageMaterial() != null)
+                        {
+                            seq.Join(os.GetActiveStageMaterial().DOVector(movedata.wavespeed, "WaveSpeed", frame.duration));
+                            /*seq.Join(DOTween.To(() => os.GetWaterWaveSpeed("x"), x => os.SetWaterWaveSpeed("x", x), movedata.wavespeed.x, frame.duration));
+                            seq.Join(DOTween.To(() => os.GetWaterWaveSpeed("y"), x => os.SetWaterWaveSpeed("y", x), movedata.wavespeed.y, frame.duration));
+                            seq.Join(DOTween.To(() => os.GetWaterWaveSpeed("z"), x => os.SetWaterWaveSpeed("z", x), movedata.wavespeed.z, frame.duration));
+                            seq.Join(DOTween.To(() => os.GetWaterWaveSpeed("w"), x => os.SetWaterWaveSpeed("w", x), movedata.wavespeed.w, frame.duration));
+                            */
+                            seq.Join(os.GetActiveStageMaterial().DOFloat(movedata.wavescale, "_WaveScale", frame.duration));
+                        }
+
+                    }
+                }
+                else
+                {
+                    if (os.GetActiveStageType() == StageKind.Default)
+                    {
+                        if (os.GetActiveStageMaterial() != null)
+                        {
+                            os.SetDefaultStageColor(movedata.color);
+                        }
+                    }
+                    else if ((os.GetActiveStageType() == StageKind.SeaDaytime) || (os.GetActiveStageType() == StageKind.SeaNight))
+                    {
+
+                        os.SetWaterWaveSpeed(movedata.wavespeed);
+                        os.SetWaterWaveScale(movedata.wavescale);
+
+                    }
+
+                }
+            }
+
+
+            //---Directional Light on stage
+            if (movedata.animationType == AF_MOVETYPE.LightProperty)
+            {
+                OperateLoadedLight oll = os.GetSystemDirectionalLight();
+                GameObject dl = oll.gameObject; //GameObject.Find("Directional Light");
+                Light lt = dl.GetComponent<Light>();
+
+                //---rotation(for system effect only)
+                if (options.isExecuteForDOTween == 1) seq.Join(dl.transform.DORotate(movedata.rotation, frame.duration));
+                else dl.transform.rotation = Quaternion.Euler(movedata.rotation);
+
+                //---Color
+                if (options.isExecuteForDOTween == 1) seq.Join(lt.DOColor(movedata.color, frame.duration));
+                else oll.SetColor(movedata.color);
+
+                //---Power
+                if (options.isExecuteForDOTween == 1) seq.Join(lt.DOIntensity(movedata.power, frame.duration));
+                else oll.SetPower(movedata.power);
+
+                //---shadowStrength
+                if (options.isExecuteForDOTween == 1) seq.Join(lt.DOShadowStrength(movedata.shadowStrength, frame.duration));
+                else oll.SetShadowPower(movedata.shadowStrength);
+            }
+
+
+
+
+            return seq;
+        }
+
+//===========================================================================================================================
+//  Register functions
+//===========================================================================================================================
+        public void RegisterFrame(string param)
+        {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
+
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+            AF_TARGETTYPE realtype = aro.targetType;
+
+            if (aro.index != -1)
+            {
+                /*
+                bool isNew = false;
+                // --- Check wheather target frame is existing.
+                
+                int nearmin = GetNearMinFrameIndex(aro.index);
+
+                NativeAnimationFrame nfgrp;
+                if (findex == -1)
+                { // --- newly register this frame ---
+                    nfgrp = new NativeAnimationFrame();
+                    isNew = true;
+
+                    nfgrp.index = aro.index;
+                    nfgrp.finalizeIndex = nfgrp.index;
+                    nfgrp.key = "fr_" + DateTime.Now.ToFileTime().ToString();
+                }
+                else
+                {
+                    nfgrp = currentProject.timeline.tmFrame[findex]; // GetFrame(aro.index);
+                }*/
+                ConfirmedNativeAnimationFrame conFrame = new ConfirmedNativeAnimationFrame();
+
+                if (aro.targetId == "")
+                {
+                    //---all objects--------------------------
+                    foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
+                    {
+                        if (actor.avatar.avatar != null)
+                        {
+                            int findex = GetFrameIndex(actor, aro.index);
+                            //---return real index
+                            int nearmin = GetNearMinFrameIndex(actor, aro.index);
+
+                            NativeAnimationFrame fr = SaveFrameData(aro.index, nearmin, actor, aro);
+                            if (findex == -1)
+                            {
+                                actor.frames.Add(fr);
+                            }
+                            else
+                            {
+                                actor.frames[findex] = null;
+                                actor.frames[findex] = fr;
+                            }
+                            SortActorFrames(actor);
+                            adjustNearMaxFrameIndex(actor, fr);
+
+                            //---for confirming
+                            AvatarAttachedNativeAnimationFrame aaFrame = new AvatarAttachedNativeAnimationFrame(actor);
+                            aaFrame.frame = fr;
+                            conFrame.frames.Add(aaFrame);
+                        }
+                    }
+                }
+                else
+                {
+                    //---specified object--------------------
+                    NativeAnimationFrameActor actor = GetFrameActorFromObjectID(aro.targetId, realtype);
+                    if ((actor != null) && (actor.avatar.avatar != null))
+                    {
+                        int findex = GetFrameIndex(actor, aro.index);
+                        //---return real index
+                        int nearmin = GetNearMinFrameIndex(actor, aro.index);
+
+                        //---always new create, and save overwritely.
+                        NativeAnimationFrame fr = SaveFrameData(aro.index, nearmin, actor, aro);
+                        if (findex == -1)
+                        {
+                            actor.frames.Add(fr);
+                        }
+                        else
+                        {
+                            actor.frames[findex] = null;
+                            actor.frames[findex] = fr;
+                        }
+                        SortActorFrames(actor);
+                        adjustNearMaxFrameIndex(actor, fr);
+
+                        /*NativeAnimationAvatar nav = GetFrameActorFromObjectID(aro.targetId, realtype);
+                        NativeAnimationFrameActor fr = SaveFrameData(aro.index, nearmin, nav, aro);
+                        nfgrp.characters.Add(fr);*/
+                        //---for confirming
+                        AvatarAttachedNativeAnimationFrame aaFrame = new AvatarAttachedNativeAnimationFrame(actor);
+                        aaFrame.frame = fr;
+                        conFrame.frames.Add(aaFrame);
+                    }
+                }
+
+                //---auto correct frame index(finalizeIndex)
+                /*if (nearmin != -1)
+                {
+                    nfgrp.finalizeIndex = currentProject.timeline.tmFrame[nearmin].index + 1;
+                }*/
+
+                /*
+                //---Sort added frame and current frames
+                if (isNew)
+                {
+                    currentProject.timeline.tmFrame.Add(nfgrp);
+                    findex = currentProject.timeline.tmFrame.Count - 1;
+                }
+                
+
+                //--- re-adjust current frame and near max frame(previous current)
+                if (currentProject.timeline.tmFrame.Count > 2)
+                {
+                    adjustNearMaxFrameIndex(findex, nfgrp);
+                }
+                */
+                string js = JsonUtility.ToJson(conFrame);
+#if !UNITY_EDITOR && UNITY_WEBGL
+        
+        ReceiveStringVal(js);
+        
+#endif
+            }
+        }
+        public void DirectModifyFrame(string param)
+        {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+            AF_TARGETTYPE realtype = aro.targetType;
+
+            if (aro.targetId == "")
+            {
+                foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
+                {
+                    NativeAnimationFrame frame = actor.frames.Find(match =>
+                    {
+                        if (match.index == aro.index) return true;
+                        return false;
+                    });
+                    if (frame != null)
+                    {
+                        frame.duration = aro.duration;
+                    }
+                }
+            }
+            else
+            {
+                NativeAnimationFrameActor actor = currentProject.timeline.characters.Find(match =>
+                {
+                    if ((match.avatar.avatarId == aro.targetId) && (match.avatar.type == aro.targetType)) return true;
+                    return false;
+                });
+                if (actor != null)
+                {
+                    NativeAnimationFrame frame = actor.frames.Find(match =>
+                    {
+                        if (match.index == aro.index) return true;
+                        return false;
+                    });
+                    if (frame != null)
+                    {
+                        frame.duration = aro.duration;
+                    }
+                }
+            }
+
+
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="param">csv string - [0] avatar id, [1] avatar type, [2] old frame index, [3] new frame index</param>
+        public void ChangeFramePosition(string param)
+        {
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
+            string[] prm = param.Split(',');
+            string id = prm[0];
+            int tmpi = int.TryParse(prm[1], out tmpi) ? tmpi : -1;
+            if (tmpi == -1)
+            {
+                return;
+            }
+            AF_TARGETTYPE type = (AF_TARGETTYPE)tmpi;
+            int oldindex = int.TryParse(prm[2], out oldindex) ? oldindex : -1;
+            int newindex = int.TryParse(prm[3], out newindex) ? newindex : -1;
+            if (oldindex == -1) return;
+            if (newindex == -1) return;
+
+            //---specified object--------------------
+            NativeAnimationFrameActor actor = GetFrameActorFromObjectID(id, type);
+            int findex = GetFrameIndex(actor, oldindex);
+            actor.frames[findex].index = newindex;
+            int nearmin = GetNearMinFrameIndex(actor, newindex);
+            if (nearmin > -1)
+            {
+                int dist = newindex - (actor.frames[nearmin].index + 1);
+                actor.frames[findex].finalizeIndex = actor.frames[nearmin].index + 1;
+                //actor.frames[findex].duration = (currentProject.baseDuration == 0f ? 0.01f : currentProject.baseDuration) * (float)dist;
+
+                //---To adjust all frame duration and finalIndex of the actor
+                AdjustAllFrame(actor, currentProject.baseDuration, true, true);
+            }
+        }
+        public void UnregisterFrame(string param)
+        {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+            AF_TARGETTYPE realtype = aro.targetType;
+            if (aro.index != -1)
+            {
+                if (aro.targetId == "")
+                { //---all characters
+                    foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
+                    {
+                        NativeAnimationFrame frame = actor.frames.Find(match =>
+                        {
+                            if (match.index == aro.index) return true;
+                            return false;
+                        });
+                        if (frame != null)
+                        {
+                            actor.frames.Remove(frame);
+                        }
+                        //---adjust duration and finalIndex
+                        AdjustAllFrame(actor, currentProject.baseDuration, true, true);
+                    }
+                }
+                else
+                { //--- indicated character only
+                    NativeAnimationFrameActor actor = GetFrameActorFromObjectID(aro.targetId, aro.targetType);
+                    if (actor != null)
+                    {
+                        NativeAnimationFrame frame = actor.frames.Find(match =>
+                        {
+                            if (match.index == aro.index) return true;
+                            return false;
+                        });
+                        if (frame != null)
+                        {
+                            actor.frames.Remove(frame);
+                        }
+                        //---adjust duration and finalIndex
+                        AdjustAllFrame(actor, currentProject.baseDuration, true, true);
+
+
+                    }
+                }
+
+            }
+        }
+        public NativeAnimationFrame SaveFrameData(int frameNumber, int nearMinIndex, NativeAnimationFrameActor actor, AnimationRegisterOptions options)
+        {
+            //---Save common information for each object
+            NativeAnimationFrame aframe = new NativeAnimationFrame();
+            aframe.movingData = new List<AnimationTargetParts>();
+            aframe.index = frameNumber;
+            aframe.finalizeIndex = frameNumber;
+            aframe.ease = options.ease;
+
+            //---update bodyInfoList current avatar body info.
+            aframe.useBodyInfo = UseBodyInfoType.CurrentAvatar;
+
+            /*actor.bodyInfoList.Clear();
+            OperateLoadedVRM ovrm = actor.avatar.avatar.GetComponent<OperateLoadedVRM>();
+            float[] heights = actor.avatar.avatar.GetComponent<ManageAvatarTransform>().ParseBodyInfo(ovrm.GetTPoseBodyInfo());
+            List <Vector3> list = ovrm.GetTPoseBodyList();
+
+            Array.Copy(heights, actor.bodyHeight, heights.Length);
+            foreach (Vector3 v in list)
+            {
+                actor.bodyInfoList.Add(new Vector3(v.x, v.y, v.z));
+            }*/
+
+
+
+            //int[] dist = GetDistanceFromPreviousFrame(frameNumber);
+            //---calculate baseDuration * distance of previous Frame and current Frame.
+            int dist = 1;
+            if ((actor.frames.Count > 0) && (nearMinIndex != -1))
+            {
+                dist = frameNumber - (actor.frames[nearMinIndex].index);
+            }
+
+            aframe.duration = (currentProject.baseDuration == 0f ? 0.01f : currentProject.baseDuration) * (float)dist;
+            if (nearMinIndex != -1)
+            {
+                aframe.finalizeIndex = actor.frames[nearMinIndex].finalizeIndex;
+            }
+
+
+            //aframe.enabled = 1;
+
+
+            if (actor.targetType == AF_TARGETTYPE.SystemEffect)
+            {
+                aframe = PackForSystemEffect(aframe, actor, options);
+            }
+            else if (actor.targetType == AF_TARGETTYPE.Audio)
+            {
+                aframe = PackForAudio(aframe, actor, options);
+            }
+            else
+            {
+                //---Each save process for each object
+                aframe = PackForCommon(aframe, actor, options);
+                if (actor.targetType == AF_TARGETTYPE.VRM)
+                {
+                    aframe = PackForVRM(aframe, actor, options);
+                }
+                else if (actor.targetType == AF_TARGETTYPE.OtherObject)
+                {
+                    aframe = PackForOtherObject(aframe, actor, options);
+                }
+                else if (actor.targetType == AF_TARGETTYPE.Light)
+                {
+                    aframe = PackForLight(aframe, actor, options);
+                }
+                else if (actor.targetType == AF_TARGETTYPE.Camera)
+                {
+                    aframe = PackForCamera(aframe, actor, options);
+                }
+                else if (actor.targetType == AF_TARGETTYPE.Text)
+                {
+                    aframe = PackForText(aframe, actor, options);
+                }
+                else if (actor.targetType == AF_TARGETTYPE.Image)
+                {
+                    aframe = PackForImage(aframe, actor, options);
+                }
+                else if (actor.targetType == AF_TARGETTYPE.UImage)
+                {
+                    aframe = PackForUImage(aframe, actor, options);
+                }
+                else if (actor.targetType == AF_TARGETTYPE.Effect)
+                {
+                    aframe = PackForEffect(aframe, actor, options);
+                }
+                else if (actor.targetType == AF_TARGETTYPE.Stage)
+                {
+                    aframe = PackForStage(aframe, actor, options);
+                }
+
+
+            }
+
+
+            return aframe;
+
+        }
+        private NativeAnimationFrame PackForCommon(NativeAnimationFrame frame, NativeAnimationFrameActor nav, AnimationRegisterOptions options)
+        {
+            if (nav.targetType == AF_TARGETTYPE.VRM)
+            {
+                if ((options.isBlendShapeOnly == 0) && (options.isHandOnly == 0) && (options.isTransformOnly == 0))
+                {
+                    AnimationTargetParts[] ikp = new AnimationTargetParts[3];
+                    ikp[0] = new AnimationTargetParts();
+                    ikp[0].animationType = AF_MOVETYPE.Translate;
+                    ikp[0].vrmBone = ParseIKBoneType.IKParent;
+                    ikp[0].position = nav.avatar.ikparent.transform.position;
+                    ikp[1] = new AnimationTargetParts();
+                    ikp[1].animationType = AF_MOVETYPE.Rotate;
+                    ikp[1].vrmBone = ParseIKBoneType.IKParent;
+                    ikp[1].rotation = nav.avatar.ikparent.transform.rotation.eulerAngles;
+                    ikp[2] = new AnimationTargetParts();
+                    ikp[2].animationType = AF_MOVETYPE.Scale;
+                    ikp[2].vrmBone = ParseIKBoneType.IKParent;
+                    ikp[2].scale = nav.avatar.avatar.transform.localScale;
+
+                    frame.movingData.Add(ikp[0]);
+                    frame.movingData.Add(ikp[1]);
+                    frame.movingData.Add(ikp[2]);
+
+
+                    //---Transform for HumanBodyBones------------------------------------------
+                    Animator animator = nav.avatar.avatar.GetComponent<Animator>();
+                    foreach (HumanBodyBones hBone in Enum.GetValues(typeof(HumanBodyBones)))
+                    {
+                        if (hBone != HumanBodyBones.LastBone)
+                        {
+                            Transform boneTran = animator.GetBoneTransform(hBone);
+
+                            if (boneTran != null)
+                            {
+                                AnimationTargetParts[] atp = new AnimationTargetParts[3];
+                                atp[0] = new AnimationTargetParts();
+                                atp[1] = new AnimationTargetParts();
+                                atp[0].vrmBone = ParseIKBoneType.UseHumanBodyBones;
+                                atp[1].vrmBone = ParseIKBoneType.UseHumanBodyBones;
+                                atp[0].vrmHumanBodyBone = hBone;
+                                atp[1].vrmHumanBodyBone = hBone;
+                                atp[0].animationType = AF_MOVETYPE.Rotate;
+                                atp[1].animationType = AF_MOVETYPE.Scale;
+                                atp[0].rotation = boneTran.localRotation.eulerAngles;
+                                atp[1].scale = boneTran.localScale;
+
+                                frame.movingData.Add(atp[0]);
+                                frame.movingData.Add(atp[1]);
+                            }
+                        }
+                    }
+
+
+                    //---Transform for IK----------------------------------------------
+                    int[] sortedIndex = new int[IKbonesCount] {
+                        (int)ParseIKBoneType.IKParent,
+
+
+                        (int)ParseIKBoneType.Pelvis,(int)ParseIKBoneType.Chest,
+                        (int)ParseIKBoneType.Head,(int)ParseIKBoneType.Aim,(int)ParseIKBoneType.LookAt, 
+
+                        (int)ParseIKBoneType.LeftHand, (int)ParseIKBoneType.LeftLowerArm,
+                        (int)ParseIKBoneType.RightHand, (int)ParseIKBoneType.RightLowerArm,
+
+                        (int)ParseIKBoneType.LeftLowerLeg, (int)ParseIKBoneType.LeftLeg, 
+                        (int)ParseIKBoneType.RightLowerLeg,(int)ParseIKBoneType.RightLeg,
+                        (int)ParseIKBoneType.EyeViewHandle
+                        
+                    };
+
+                    for (int srti = 1; srti < sortedIndex.Length; srti++)
+                    {
+                        int i = sortedIndex[srti];
+                        string ikname = IKBoneNames[i];
+                        Transform child = nav.avatar.ikparent.transform.Find(ikname);
+
+                        AnimationTargetParts[] atp = new AnimationTargetParts[3];
+                        atp[0] = new AnimationTargetParts();
+                        atp[1] = new AnimationTargetParts();
+                        atp[2] = new AnimationTargetParts();
+                        atp[0].vrmBone = (ParseIKBoneType)i;
+                        atp[1].vrmBone = (ParseIKBoneType)i;
+                        atp[2].vrmBone = (ParseIKBoneType)i;
+                        atp[0].animationType = AF_MOVETYPE.Translate;
+                        atp[1].animationType = AF_MOVETYPE.Rotate;
+                        atp[2].animationType = AF_MOVETYPE.Scale;
+                        atp[0].position = child.localPosition;
+                        atp[1].rotation = child.localRotation.eulerAngles;
+                        atp[2].scale = child.localScale;
+
+                        frame.movingData.Add(atp[0]);
+                        frame.movingData.Add(atp[1]);
+                        frame.movingData.Add(atp[2]);
+                    }
+
+
+                }
+
+            }
+            else if ((nav.targetType == AF_TARGETTYPE.Text) || (nav.targetType == AF_TARGETTYPE.UImage))
+            {
+                //---transform is RectTransform
+                RectTransform rectt = nav.avatar.avatar.GetComponent<RectTransform>();
+
+                AnimationTargetParts[] ikp = new AnimationTargetParts[3];
+                ikp[0] = new AnimationTargetParts();
+                ikp[0].animationType = AF_MOVETYPE.Translate;
+                ikp[0].vrmBone = ParseIKBoneType.IKParent;
+                ikp[0].position = rectt.anchoredPosition3D;
+                frame.movingData.Add(ikp[0]);
+
+                ikp[1] = new AnimationTargetParts();
+                ikp[1].animationType = AF_MOVETYPE.Rotate;
+                ikp[1].vrmBone = ParseIKBoneType.IKParent;
+                ikp[1].rotation = rectt.rotation.eulerAngles;
+                frame.movingData.Add(ikp[1]);
+
+                if ((nav.avatar.type == AF_TARGETTYPE.OtherObject) || (nav.avatar.type == AF_TARGETTYPE.Image))
+                {
+                    ikp[2] = new AnimationTargetParts();
+                    ikp[2].animationType = AF_MOVETYPE.Scale;
+                    ikp[2].vrmBone = ParseIKBoneType.IKParent;
+                    ikp[2].scale = rectt.sizeDelta;
+                    frame.movingData.Add(ikp[2]);
+                }
+            }
+            else if (nav.targetType == AF_TARGETTYPE.Stage)
+            {
+                OperateStage os = nav.avatar.avatar.GetComponent<OperateStage>();
+
+                //---Here is other of VRM, RectTransform, Audio, SystemEffect
+                AnimationTargetParts[] ikp = new AnimationTargetParts[3];
+                ikp[0] = new AnimationTargetParts();
+                ikp[0].animationType = AF_MOVETYPE.Translate;
+                ikp[0].vrmBone = ParseIKBoneType.IKParent;
+                ikp[0].position = os.GetPositionFromOuter(0);
+                frame.movingData.Add(ikp[0]);
+
+                ikp[1] = new AnimationTargetParts();
+                ikp[1].animationType = AF_MOVETYPE.Rotate;
+                ikp[1].vrmBone = ParseIKBoneType.IKParent;
+                ikp[1].rotation = os.GetRotationFromOuter(0);
+                frame.movingData.Add(ikp[1]);
+
+                ikp[2] = new AnimationTargetParts();
+                ikp[2].animationType = AF_MOVETYPE.Scale;
+                ikp[2].vrmBone = ParseIKBoneType.IKParent;
+                ikp[2].scale = os.GetScale(0);
+                frame.movingData.Add(ikp[2]);
+
+            }
+            else
+            {
+                OperateLoadedBase olb = nav.avatar.avatar.GetComponent<OperateLoadedBase>();
+                bool isEquip = false;
+                if (olb != null)
+                {
+                    OtherObjectDummyIK ooik = olb.relatedHandleParent.GetComponent<OtherObjectDummyIK>();
+                    isEquip = ooik.isEquipping;
+                }
+
+                if (!isEquip)
+                { //---Enable transfroming without equipped status
+                    //---Here is other of VRM, RectTransform, Audio, SystemEffect
+                    AnimationTargetParts[] ikp = new AnimationTargetParts[3];
+                    ikp[0] = new AnimationTargetParts();
+                    ikp[0].animationType = AF_MOVETYPE.Translate;
+                    ikp[0].vrmBone = ParseIKBoneType.IKParent;
+                    ikp[0].position = nav.avatar.ikparent.transform.position;
+                    frame.movingData.Add(ikp[0]);
+
+                    ikp[1] = new AnimationTargetParts();
+                    ikp[1].animationType = AF_MOVETYPE.Rotate;
+                    ikp[1].vrmBone = ParseIKBoneType.IKParent;
+                    ikp[1].rotation = nav.avatar.ikparent.transform.rotation.eulerAngles;
+                    frame.movingData.Add(ikp[1]);
+
+                    if ((nav.avatar.type == AF_TARGETTYPE.OtherObject) || (nav.avatar.type == AF_TARGETTYPE.Image))
+                    {
+                        ikp[2] = new AnimationTargetParts();
+                        ikp[2].animationType = AF_MOVETYPE.Scale;
+                        ikp[2].vrmBone = ParseIKBoneType.IKParent;
+                        ikp[2].scale = nav.avatar.avatar.transform.localScale;
+                        frame.movingData.Add(ikp[2]);
+                    }
+
+                }
+
+
+
+            }
+
+            return frame;
+        }
+        private NativeAnimationFrame PackForVRM(NativeAnimationFrame frame, NativeAnimationFrameActor nav, AnimationRegisterOptions options)
+        {
+            OperateLoadedVRM ovrm = nav.avatar.avatar.GetComponent<OperateLoadedVRM>();
+
+            //---handpose
+            if ((options.isBlendShapeOnly != 1) && (options.isCompileAnimation != 1))
+            {
+                LeftHandPoseController lhand = nav.avatar.avatar.GetComponent<LeftHandPoseController>();
+                RightHandPoseController rhand = nav.avatar.avatar.GetComponent<RightHandPoseController>();
+
+                AnimationTargetParts[] athand = new AnimationTargetParts[2];
+                athand[0] = new AnimationTargetParts();
+                athand[0].animationType = AF_MOVETYPE.NormalTransform;
+                athand[0].vrmBone = ParseIKBoneType.LeftHandPose;
+                athand[0].isHandPose = 1;
+                athand[0].handpose.Add((float)lhand.currentPose);
+                athand[0].handpose.Add(lhand.handPoseValue);
+
+                athand[1] = new AnimationTargetParts();
+                athand[1].animationType = AF_MOVETYPE.NormalTransform;
+                athand[1].vrmBone = ParseIKBoneType.RightHandPose;
+                athand[1].isHandPose = 1;
+                athand[1].handpose.Add((float)rhand.currentPose);
+                athand[1].handpose.Add(rhand.handPoseValue);
+
+                frame.movingData.Add(athand[0]);
+                frame.movingData.Add(athand[1]);
+
+            }
+
+
+            //---blendshape
+            if (options.isHandOnly != 1)
+            {
+                GameObject mainface = nav.avatar.avatar.GetComponent<ManageAvatarTransform>().GetFaceMesh();
+                SkinnedMeshRenderer face = mainface.GetComponent<SkinnedMeshRenderer>();
+                List<BasicStringFloatList> blst = new List<BasicStringFloatList>();
+
+
+                AnimationTargetParts atblendshape = new AnimationTargetParts();
+                atblendshape.animationType = AF_MOVETYPE.BlendShape;
+                atblendshape.vrmBone = ParseIKBoneType.BlendShape;
+                atblendshape.isBlendShape = 1;
+
+                int bscnt = face.sharedMesh.blendShapeCount;
+                for (int i = 0; i < bscnt; i++)
+                {
+                    atblendshape.blendshapes.Add(new BasicStringFloatList(face.sharedMesh.GetBlendShapeName(i), face.GetBlendShapeWeight(i)));
+
+                }
+
+                frame.movingData.Add(atblendshape);
+
+            }
+            //---equipment
+            
+            if ((options.isBlendShapeOnly == 0) && (options.isHandOnly == 0))
+            {
+
+                AnimationTargetParts atequip = new AnimationTargetParts();
+                atequip.equipType = ovrm.GetEquipFlag();
+                atequip.animationType = AF_MOVETYPE.Equipment;
+
+                //---equip / unequip
+                List<AvatarEquipSaveClass> lst = ovrm.GetEquipmentInformation();
+                lst.ForEach(match =>
+                {
+                    AvatarEquipSaveClass aes = new AvatarEquipSaveClass();
+                    aes.bodybonename = match.bodybonename;
+                    aes.equipitem = match.equipitem;
+                    aes.position = match.position;
+                    aes.rotation = match.rotation;
+                    atequip.equipDestinations.Add(aes);
+                });
+
+                    
+                frame.movingData.Add(atequip);
+
+                //---gravity info
+                AnimationTargetParts atgravity = new AnimationTargetParts();
+                atgravity.animationType = AF_MOVETYPE.GravityProperty;
+                ovrm.gravityList.ForEach(item =>
+                {
+                    atgravity.gravityList.Add(new VRMGravityInfo(item.comment, item.rootBoneName, item.power, item.dir.x, item.dir.y, item.dir.z));
+                });
+                frame.movingData.Add(atgravity);
+            }
+            
+
+            return frame;
+        }
+        private NativeAnimationFrame PackForOtherObject(NativeAnimationFrame frame, NativeAnimationFrameActor nav, AnimationRegisterOptions options)
+        {
+
+
+            OperateLoadedOther olo = nav.avatar.avatar.GetComponent<OperateLoadedOther>();
+            //---save the animation
+            if (olo.GetSystemAnimationType(0) != "")
+            {
+                AnimationTargetParts atobj = new AnimationTargetParts();
+
+                atobj.animPlaying = olo.GetPlayFlagAnimation(0);
+
+                if (options.isPropertyOnly != 1)
+                {
+                    atobj.animPlaying = olo.GetPlayFlagAnimation(0);
+                    if (olo.GetPlayFlagAnimation(0) == UserAnimationState.Play)
+                    {
+                        atobj.animationType = AF_MOVETYPE.AnimStart;
+                    }
+                    else if (olo.GetPlayFlagAnimation(0) == UserAnimationState.Stop)
+                    {
+                        atobj.animationType = AF_MOVETYPE.AnimStop;
+                    }
+                    else if (olo.GetPlayFlagAnimation(0) == UserAnimationState.Seeking)
+                    {
+                        atobj.animationType = AF_MOVETYPE.AnimSeek;
+                    }
+                    else if (olo.GetPlayFlagAnimation(0) == UserAnimationState.Pause)
+                    {
+                        atobj.animationType = AF_MOVETYPE.AnimPause;
+                    }
+                    else if (olo.GetPlayFlagAnimation(0) == UserAnimationState.Playing)
+                    {
+                        atobj.animationType = AF_MOVETYPE.Rest;
+                    }
+                }
+                frame.movingData.Add(atobj);
+
+                AnimationTargetParts atobj2 = new AnimationTargetParts();
+                if (options.isDefineOnly != 1)
+                {
+
+                    if ((options.isAnimationSeekOnly == 1) || (olo.GetPlayFlagAnimation(0) == UserAnimationState.Seeking))
+                    {
+                        //atobj2.animationType = AF_MOVETYPE.AnimSeek;
+                        atobj2.animSeek = olo.GetSeekPosAnimation(0);
+                    }
+                    else
+                    {
+                        atobj2.animationType = AF_MOVETYPE.AnimProperty;
+                        //atobj2.animSeek = olo.GetSeekPosAnimation(0);
+                        atobj2.animSpeed = olo.GetSpeedAnimation(0);
+                        //atobj.color = olo.GetBaseColor();
+                    }
+                }
+                frame.movingData.Add(atobj2);
+
+                AnimationTargetParts atobj3 = new AnimationTargetParts();
+                atobj3.renderTextureId = olo.GetCameraRenderTexture(0);
+            }
+
+
+
+            return frame;
+        }
+        private NativeAnimationFrame PackForLight(NativeAnimationFrame frame, NativeAnimationFrameActor nav, AnimationRegisterOptions options)
+        {
+            AnimationTargetParts atlight = new AnimationTargetParts();
+            Light lt = nav.avatar.avatar.GetComponent<Light>();
+            atlight.animationType = AF_MOVETYPE.LightProperty;
+
+            atlight.lightType = lt.type;
+            atlight.range = lt.range;
+            atlight.power = lt.intensity;
+            atlight.spotAngle = lt.spotAngle;
+            atlight.color = lt.color;
+            atlight.lightRenderMode = lt.renderMode;
+
+            frame.movingData.Add(atlight);
+
+            return frame;
+        }
+        private NativeAnimationFrame PackForCamera(NativeAnimationFrame frame, NativeAnimationFrameActor nav, AnimationRegisterOptions options)
+        {
+
+            OperateLoadedCamera olc = nav.avatar.avatar.GetComponent<OperateLoadedCamera>();
+            Camera cam = nav.avatar.avatar.GetComponent<Camera>();
+            if (options.isPropertyOnly != 1)
+            {
+                AnimationTargetParts atcam1 = new AnimationTargetParts();
+                atcam1.cameraPlaying = olc.GetCameraPlaying();
+
+                if (olc.GetCameraPlaying() == 1)
+                {
+                    atcam1.animationType = AF_MOVETYPE.CameraOn;
+                }
+                else
+                {
+                    atcam1.animationType = AF_MOVETYPE.CameraOff;
+                }
+                frame.movingData.Add(atcam1);
+            }
+            if (options.isDefineOnly != 1)
+            {
+                AnimationTargetParts atcam2 = new AnimationTargetParts();
+                atcam2.animationType = AF_MOVETYPE.CameraProperty;
+                atcam2.clearFlag = (int)cam.clearFlags;
+                atcam2.color = cam.backgroundColor;
+                atcam2.fov = cam.fieldOfView;
+                atcam2.depth = cam.depth;
+                atcam2.viewport = cam.rect;
+                if (olc.GetCameraRenderFlag() == 1)
+                {
+                    RenderTexture rt = olc.GetRenderTexture();
+                    if (rt != null)
+                    {
+                        atcam2.renderTex.x = rt.width;
+                        atcam2.renderTex.y = rt.height;
+                    }
+
+                }
+                else
+                {
+                    atcam2.renderTex.x = -1f;
+                    atcam2.renderTex.y = -1f;
+                }
+                frame.movingData.Add(atcam2);
+            }
+
+
+
+            return frame;
+        }
+        private NativeAnimationFrame PackForText(NativeAnimationFrame frame, NativeAnimationFrameActor nav, AnimationRegisterOptions options)
+        {
+            Text text = nav.avatar.avatar.GetComponent<Text>();
+
+            if (options.isPropertyOnly != 1)
+            {
+                AnimationTargetParts attext = new AnimationTargetParts();
+                attext.text = text.text;
+                attext.animationType = AF_MOVETYPE.Text;
+
+                frame.movingData.Add(attext);
+            }
+
+            if (options.isDefineOnly != 1)
+            {
+                AnimationTargetParts atprop = new AnimationTargetParts();
+                atprop.animationType = AF_MOVETYPE.TextProperty;
+                atprop.fontSize = text.fontSize;
+                atprop.fontStyle = text.fontStyle;
+                atprop.color = text.color;
+                frame.movingData.Add(atprop);
+
+            }
+
+
+            return frame;
+        }
+        private NativeAnimationFrame PackForImage(NativeAnimationFrame frame, NativeAnimationFrameActor nav, AnimationRegisterOptions options)
+        {
+            AnimationTargetParts atp = new AnimationTargetParts();
+            OperateLoadedOther olo = nav.avatar.avatar.GetComponent<OperateLoadedOther>();
+            //GameObject imgobj = olo.GetEffectiveObject();
+
+            atp.animationType = AF_MOVETYPE.ImageProperty;
+            atp.color = olo.GetBaseColor();
+
+            return frame;
+        }
+        private NativeAnimationFrame PackForUImage(NativeAnimationFrame frame, NativeAnimationFrameActor nav, AnimationRegisterOptions options)
+        {
+            AnimationTargetParts atp = new AnimationTargetParts();
+            OperateLoadedUImage olo = nav.avatar.avatar.GetComponent<OperateLoadedUImage>();
+
+
+            atp.animationType = AF_MOVETYPE.ImageProperty;
+            atp.color = olo.GetImageBaseColor();
+
+            return frame;
+        }
+        private NativeAnimationFrame PackForAudio(NativeAnimationFrame frame, NativeAnimationFrameActor nav, AnimationRegisterOptions options)
+        {
+            OperateLoadedAudio ola = nav.avatar.avatar.GetComponent<OperateLoadedAudio>();
+
+            if (options.isPropertyOnly != 1)
+            {
+                AnimationTargetParts atp = new AnimationTargetParts();
+                atp.audioName = ola.targetAudioName;
+
+                atp.isSE = ola.GetIsSE() ? 1 : 0;
+
+
+                if (ola.GetPlayFlag() == UserAnimationState.Stop)  //---stop
+                {
+                    atp.animationType = AF_MOVETYPE.AnimStop;
+                }
+                else if (ola.GetPlayFlag() == UserAnimationState.Play) //---play
+                {
+                    atp.animationType = AF_MOVETYPE.AnimStart;
+                }
+                else if (ola.GetPlayFlag() == UserAnimationState.Pause) //---pause
+                {
+                    atp.animationType = AF_MOVETYPE.AnimPause;
+                }
+                else if (ola.GetPlayFlag() == UserAnimationState.Playing) //---playing
+                {
+                    atp.animationType = AF_MOVETYPE.Rest;
+                }
+                else if (ola.GetPlayFlag() == UserAnimationState.Seeking)//---seek
+                {
+                    atp.animationType = AF_MOVETYPE.AnimSeek;
+
+
+                    if (ola.GetSeekFlag() == 1)
+                    {
+                        atp.seekTime = ola.GetSeekSeconds();
+                    }
+                    else
+                    {
+                        atp.seekTime = -1f;
+                    }
+
+                }
+                frame.movingData.Add(atp);
+            }
+
+
+            if (options.isDefineOnly != 1)
+            {
+                AnimationTargetParts atprop = new AnimationTargetParts();
+                atprop.animationType = AF_MOVETYPE.AudioProperty;
+                atprop.audioName = ola.targetAudioName;
+                atprop.isSE = ola.GetIsSE() ? 1 : 0;
+
+                atprop.isLoop = ola.GetLoop();
+                atprop.isMute = ola.GetMute();
+                atprop.pitch = ola.GetPitch();
+                atprop.volume = ola.GetVolume();
+
+                frame.movingData.Add(atprop);
+
+            }
+
+
+
+            return frame;
+        }
+        private NativeAnimationFrame PackForEffect(NativeAnimationFrame frame, NativeAnimationFrameActor nav, AnimationRegisterOptions options)
+        {
+            AnimationTargetParts atobj = new AnimationTargetParts();
+
+            OperateLoadedEffect ole = nav.avatar.avatar.GetComponent<OperateLoadedEffect>();
+            //---save the animation
+            if (ole.targetEffect != null)
+            {
+                atobj.animPlaying = ole.GetPlayFlagEffect(0);
+                EffectCurrentStates ecs = ole.GetCurrentEffect();
+                atobj.effectGenre = ecs.genre; //nav.avatar.avatar.transform.parent.name;
+                atobj.effectName = ecs.effectName; //ole.targetEffect.name;
+
+                if (ole.GetPlayFlagEffect(0) == UserAnimationState.Play)
+                { //single play
+                    atobj.animationType = AF_MOVETYPE.AnimStart;
+                    atobj.animLoop = 0;
+
+                }
+                else if (ole.GetPlayFlagEffect(0) == UserAnimationState.PlayWithLoop)
+                { //play with loop
+                    atobj.animationType = AF_MOVETYPE.AnimStart;
+
+                    atobj.animLoop = 1;
+                }
+                else if (ole.GetPlayFlagEffect(0) == UserAnimationState.Pause)
+                {
+                    atobj.animationType = AF_MOVETYPE.AnimPause;
+
+                }
+                else if (ole.GetPlayFlagEffect(0) == UserAnimationState.Stop)
+                {
+                    atobj.animationType = AF_MOVETYPE.AnimStop;
+                    atobj.animLoop = -1;
+                }
+                else if (ole.GetPlayFlagEffect(0) == UserAnimationState.Playing)
+                {
+                    atobj.animationType = AF_MOVETYPE.Rest;
+
+                }
+                frame.movingData.Add(atobj);
+            }
+            return frame;
+        }
+        private NativeAnimationFrame PackForSystemEffect(NativeAnimationFrame frame, NativeAnimationFrameActor nav, AnimationRegisterOptions options)
+        {
+            ManageSystemEffect mse = nav.avatar.avatar.GetComponent<ManageSystemEffect>();
+
+            for (int i = 0; i < mse.ProcessNames.Length; i++)
+            {
+                AnimationTargetParts ateff = new AnimationTargetParts();
+
+                string processname = mse.ProcessNames[i];
+                int ena = mse.GetEnablePostProcessing(processname + ",0");
+
+                ateff.effectName = processname;
+                if (ena == 1)
+                {
+                    ateff.effectValues = mse.PackEffectValue(processname);
+                    ateff.animationType = AF_MOVETYPE.SystemEffect;
+                }
+                else
+                {
+                    ateff.animationType = AF_MOVETYPE.SystemEffectOff;
+                }
+
+
+                frame.movingData.Add(ateff);
+            }
+
+
+
+            return frame;
+        }
+        private NativeAnimationFrame PackForStage(NativeAnimationFrame frame, NativeAnimationFrameActor nav, AnimationRegisterOptions options)
+        {
+            OperateStage os = nav.avatar.avatar.GetComponent<OperateStage>();
+
+            AnimationTargetParts atp = new AnimationTargetParts();
+            atp.animationType = AF_MOVETYPE.StageProperty;
+
+            atp.stageType = (int)os.GetActiveStageType();
+
+            atp.color = os.GetDefaultStageColor(0);
+
+            atp.wavescale = os.GetWaterWaveScale(0);
+
+            atp.wavespeed = os.GetWaterWaveSpeedFromOuter(0);
+
+            frame.movingData.Add(atp);
+
+
+            //---Directional Light on stage
+            OperateLoadedLight oll = os.GetSystemDirectionalLight();
+            AnimationTargetParts atlight = new AnimationTargetParts();
+            atlight.animationType = AF_MOVETYPE.LightProperty;
+            atlight.rotation = oll.GetRotation();
+            atlight.color = oll.GetColor();
+            atlight.power = oll.GetPower();
+            atlight.shadowStrength = oll.GetShadowPower();
+            frame.movingData.Add(atlight);
+
+
+
+            return frame;
+        }
+    }
+}

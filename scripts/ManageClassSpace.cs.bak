@@ -1,0 +1,982 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using UnityEngine;
+using DG.Tweening;
+
+namespace UserHandleSpace
+{
+
+    //===============================================================================================================
+    //  Pose file class
+    //===============================================================================================================
+    [Serializable]
+    public class AvatarEquipSaveClass
+    {
+        public HumanBodyBones bodybonename;
+
+        /// <summary>
+        /// Equipment role name in projects
+        /// </summary>
+        public string equipitem;
+        public Vector3 position;
+        public Vector3 rotation;
+    }
+    [Serializable]
+    public class AvatarEquipmentClass
+    {
+        public List<AvatarEquipSaveClass> list;
+        public AvatarEquipmentClass()
+        {
+            list = new List<AvatarEquipSaveClass>();
+        }
+    }
+    [Serializable]
+    public class BasicStringFloatList
+    {
+        public string text;
+        public float value;
+
+        public BasicStringFloatList(string t, float v)
+        {
+            text = t;
+            value = v;
+        }
+    }
+
+    [Serializable]
+    public class BasicStringIntList
+    {
+        public string text;
+        public int value;
+
+        public BasicStringIntList(string t, int v)
+        {
+            text = t;
+            value = v;
+        }
+    }
+    [Serializable]
+    public class BasicTransformInformation
+    {
+        public string id = "";
+        public string dimension = "";
+        public Vector3 position;
+        public Vector3 rotation;
+        public Vector3 scale;
+    }
+    /*
+     * "EyeViewHandle", "Head", "LookAt", "Aim", "Chest", "Pelvis", "LeftLowerArm", "LeftHand",
+            "RightLowerArm","RightHand","LeftLowerLeg","LeftLeg","RightLowerLeg","RightLeg"
+     * */
+    public enum IKBoneType
+    {
+        IKParent = 0,
+        EyeViewHandle,
+        Head,
+        LookAt,
+        Aim,
+        Chest,
+        Pelvis,
+        LeftLowerArm,
+        LeftHand,
+        RightLowerArm,
+        RightHand,
+        LeftLowerLeg,
+        LeftLeg,
+        RightLowerLeg,
+        RightLeg
+    };
+    public enum RangeIKBoneType
+    {
+        Head_Chest = 0,
+        Chest_Pelvis,
+        Chest_LeftLowerArm,
+        Chest_RightLowerArm,
+        LeftLower_LeftHand,
+        RightLower_RightHand,
+        Pelvis_LeftLower,
+        Pelvis_RightLower,
+        LeftLower_LeftLeg,
+        RightLower_RightLeg
+    };
+
+    [Serializable]
+    public class AvatarTransformSaveClass
+    {
+        public string sampleavatar;
+        public string thumbnail;
+        public AnimationFrameActor frameData;
+
+        //public string type;
+        /* Sample avatar specify information
+         * 0-2 bounds.extents
+         * 3-5 Chest.transform.position
+         * 6-8 Pelvis.transform.position
+         * */
+        //public float[] bodyinfo = new float[3 + 3 + 3];
+
+        //public float[] bodyHeight = new float[3];
+        /*
+         * List[0] - Height
+         * List[1]~[n] - IKbone
+         */
+        //public List<Vector3> bodyInfoList = new List<Vector3>();
+        //---effective transform data
+        /*
+        public List<float> handpose;
+        public List<BasicStringFloatList> blendshapes;
+        public List<Vector3> positions;
+        public List<Vector3> rotations;
+        public List<Vector3> bonerotations;
+        public List<AvatarEquipSaveClass> equips;
+        //---options
+        public float duration;
+        public int useik;
+        */
+
+    }
+    [Serializable]
+    public class AvatarSingleIKTransform
+    {
+        public string ikname;
+        public Vector3 position;
+        public Vector3 rotation;
+        public AvatarSingleIKTransform(string name, Vector3 pos, Vector3 rot)
+        {
+            ikname = name;
+            position = pos;
+            rotation = rot;
+        }
+    }
+    [Serializable]
+    public class AvatarAllIKParts
+    {
+        public List<AvatarSingleIKTransform> list = new List<AvatarSingleIKTransform>();
+    }
+
+    [Serializable]
+    public class VRMGravityInfo
+    {
+        public string comment = "";
+        public string rootBoneName = "";
+        public float power = 0f;
+        public Vector3 dir = new Vector3(0, -1f, 0);
+        
+        public VRMGravityInfo()
+        {
+
+        }
+        public VRMGravityInfo(string p_comment, string p_bonename, float p_power, float p_x, float p_y, float p_z)
+        {
+            comment = p_comment;
+            rootBoneName = p_bonename;
+            power = p_power;
+            dir = new Vector3(p_x,p_y,p_z);
+        }
+    }
+
+    //===============================================================================================================
+    //  Motion file class
+    //===============================================================================================================
+    public enum AF_TARGETTYPE
+    {
+        VRM = 0,
+        OtherObject,
+        Light,
+        Camera,
+        Text,
+        Image,
+        UImage,
+        Audio,
+        Effect,
+        SystemEffect,
+        Stage,
+
+        Unknown = 99
+    }
+    public enum AF_MOVETYPE
+    {
+        Rest = 0,
+        Start,
+        NormalTransform,
+        Translate,
+        Rotate,
+        Scale,
+        BlendShape,
+        LookAt,
+
+        AnimStart,
+        AnimStop,
+        AnimSeek,
+        AnimProperty,
+
+        OtherObjectTexture,
+
+        Light = 20,
+        LightProperty,
+        Camera,
+        CameraProperty,
+        CameraOn,
+        CameraOff,
+        Text,
+        TextProperty,
+        Image,
+        ImageProperty,
+        Audio,
+        AudioProperty,
+
+        SystemEffect,
+        SystemEffectOff,
+
+        Stage,
+        StageProperty,
+
+        Equipment,
+
+        AnimPause,
+
+        //---effect
+        Shake1 = 40,
+        LineShake,
+        Jump,
+        Coloring,
+
+        //---vrm
+        GravityProperty = 50,
+
+
+        Stop = 99
+    };
+    public enum ParseIKBoneType
+    {
+        IKParent = 0,
+        EyeViewHandle,
+        Head,
+        LookAt,
+        Aim,
+        Chest,
+        Pelvis,
+        LeftLowerArm,
+        LeftHand,
+        RightLowerArm,
+        RightHand,
+        LeftLowerLeg,
+        LeftLeg,
+        RightLowerLeg,
+        RightLeg,
+        LeftHandPose,
+        RightHandPose,
+        BlendShape,
+
+        Unknown = 25,
+        UseHumanBodyBones = 99
+    };
+    public enum UseBodyInfoType
+    {
+        TimelineCharacter = 0,
+        CurrentAvatar
+    }
+    public enum UserAnimationState
+    {
+        Stop = 0,
+        Play = 1,
+        PlayWithLoop,
+        Playing,
+        Seeking,
+        Pause
+    }
+    
+    [Serializable]
+    public class AnimationTargetParts
+    {
+        public ParseIKBoneType vrmBone;
+        public HumanBodyBones vrmHumanBodyBone;
+
+        public AF_MOVETYPE animationType;
+        public Vector3 position;
+        public Vector3 rotation;
+        public Vector3 scale;
+
+        //---vrm options
+        public int isHandPose;
+        public List<float> handpose;
+        public int isBlendShape;
+        public List<BasicStringFloatList> blendshapes;
+        public int equipType;
+        public List<AvatarEquipSaveClass> equipDestinations;
+        public List<VRMGravityInfo> gravityList;
+
+
+        //---vrm and other object
+        public UserAnimationState animPlaying;
+        public float animSpeed;
+        public float animSeek;
+        public int animLoop;
+
+        //---other object
+        public string renderTextureId;
+        //public int isEquip;
+        //public string equippedRoleName;
+
+
+        //---light options
+        public LightType lightType;
+        public float range;
+        public Color color;
+        public float power;
+        public float spotAngle;
+        public LightRenderMode lightRenderMode;
+        public float shadowStrength;
+
+        //---camera options
+        public int cameraPlaying;
+        public int clearFlag;
+        public float fov;
+        public float depth;
+        public Rect viewport;
+        public Vector3 renderTex;
+
+        //---text options
+        public string text = "";
+        public int fontSize;
+        public FontStyle fontStyle;
+        public TextAnchor textAlignment;
+
+        //---image options
+
+        //---audio
+        public string audioName;
+        public int isSE;
+        public int isLoop;
+        public int isMute;
+        public float volume;
+        public float pitch;
+        public float seekTime;
+
+        //---effect
+        public string effectGenre;
+
+        //---system effect
+        public string effectName = "";
+        public List<float> effectValues;
+
+        //---stage
+        public int stageType;
+        public Vector4 wavespeed;
+        public float wavescale;
+
+
+        public AnimationTargetParts()
+        {
+            vrmBone = ParseIKBoneType.IKParent;
+            vrmHumanBodyBone = HumanBodyBones.Hips;
+            animationType = AF_MOVETYPE.Rest;
+            isHandPose = 0;
+            isBlendShape = 0;
+            equipType = 0;
+            equipDestinations = new List<AvatarEquipSaveClass>();
+            animPlaying = 0;
+            animLoop = 0;
+            handpose = new List<float>();
+            blendshapes = new List<BasicStringFloatList>();
+            effectValues = new List<float>();
+            renderTex = new Vector3();
+            //isEquip = 0;
+            //equippedRoleName = "";
+            gravityList = new List<VRMGravityInfo>();
+
+        }
+        public AnimationTargetParts SCopy()
+        {
+            AnimationTargetParts sc = (AnimationTargetParts)MemberwiseClone();
+            if (sc.handpose != null)
+            {
+                sc.handpose = new List<float>(handpose);
+            }
+            if (sc.blendshapes != null)
+            {
+                sc.blendshapes = new List<BasicStringFloatList>(blendshapes);
+            }
+            if (sc.effectValues != null)
+            {
+                sc.effectValues = new List<float>(effectValues);
+            }
+            if (sc.equipDestinations != null)
+            {
+                sc.equipDestinations = new List<AvatarEquipSaveClass>(equipDestinations);
+            }
+
+            return sc;
+        }
+    }
+
+    //==============================================================
+    //  AnimationFrame
+    //==============================================================
+
+    [Serializable]
+    public class AnimationFrame
+    {
+        public int index;
+        public int finalizeIndex;
+        public string key;
+        public float duration;
+        public Ease ease;
+
+        public List<string> movingData = new List<string>();
+        //public List<AnimationTargetParts> movingData = new List<AnimationTargetParts>();
+
+        public AnimationFrame()
+        {
+            index = 0;
+            finalizeIndex = 0;
+            key = "";
+            duration = 0.1f;
+            ease = Ease.Linear;
+        }
+        public AnimationFrame SCopy()
+        {
+            AnimationFrame sc = (AnimationFrame)MemberwiseClone();
+            if (movingData != null)
+            {
+                sc.movingData = new List<string>(movingData);
+                //sc.movingData = new List<AnimationTargetParts>(movingData);
+            }
+
+            return sc;
+        }
+        public void SetFromNative(NativeAnimationFrame naf)
+        {
+            index = naf.index;
+            finalizeIndex = naf.finalizeIndex;
+            key = naf.key;
+            duration = naf.duration;
+            ease = naf.ease;
+        }
+    }
+    [Serializable]
+    public class NativeAnimationFrame : AnimationFrame
+    {
+
+        public UseBodyInfoType useBodyInfo;
+        public new List<AnimationTargetParts> movingData = new List<AnimationTargetParts>();
+
+        public NativeAnimationFrame()
+        {
+            useBodyInfo = UseBodyInfoType.TimelineCharacter;
+            movingData = new List<AnimationTargetParts>();
+        }
+        public new NativeAnimationFrame SCopy()
+        {
+            NativeAnimationFrame sc = (NativeAnimationFrame)MemberwiseClone();
+            if (movingData != null)
+            {
+                sc.movingData = new List<AnimationTargetParts>(movingData);
+            }
+            return sc;
+        }
+        public void SetFromRaw(AnimationFrame af)
+        {
+            index = af.index;
+            finalizeIndex = af.finalizeIndex;
+            key = af.key;
+            duration = af.duration;
+            ease = af.ease;
+
+        }
+    }
+    //==============================================================
+    //  AvatarAttachedNativeAnimationFrame, ConfirmedNativeAnimationFrame
+    //==============================================================
+
+    [Serializable]
+    public class AvatarAttachedNativeAnimationFrame
+    {
+        public string id = "";
+        public string role = "";
+        public AF_TARGETTYPE type = AF_TARGETTYPE.Unknown;
+        public NativeAnimationFrame frame = null;
+        public AvatarAttachedNativeAnimationFrame(AnimationFrameActor actor)
+        {
+            id = actor.targetId;
+            role = actor.targetRole;
+            type = actor.targetType;
+        }
+    }
+    [Serializable]
+    public class ConfirmedNativeAnimationFrame
+    {
+        public List<AvatarAttachedNativeAnimationFrame> frames = new List<AvatarAttachedNativeAnimationFrame>();
+    }
+
+    //==============================================================
+    //  AnimationSingleMotion
+    //==============================================================
+    [Serializable]
+    public class AnimationSingleMotion
+    {
+        //public AnimationAvatar cast;
+        //public AnimationFrameActor timeline;
+
+        public AF_TARGETTYPE targetType = AF_TARGETTYPE.Unknown;
+        public int compiled = 0;
+        public List<AnimationSingleFrame> frames;
+
+        /* Sample avatar specify information
+         * 0-2 bounds.extents
+         * 
+         * 
+         * */
+        public float[] bodyHeight = new float[3];
+        public List<Vector3> bodyInfoList;
+        public List<string> blendShapeList;
+
+        public AnimationSingleMotion()
+        {
+            
+            bodyInfoList = new List<Vector3>();
+            blendShapeList = new List<string>();
+            frames = new List<AnimationSingleFrame>();
+        }
+        public AnimationSingleMotion SCopy()
+        {
+            AnimationSingleMotion sc = (AnimationSingleMotion)MemberwiseClone();
+            //--- To clone to this class children from "sc"
+            if (bodyHeight != null)
+            {
+                sc.bodyHeight = new float[sc.bodyHeight.Length];
+                Array.Copy(sc.bodyHeight, bodyHeight, sc.bodyHeight.Length);
+            }
+            if (bodyInfoList != null)
+            {
+                for (int i = 0; i < sc.bodyInfoList.Count; i++)
+                {
+                    bodyInfoList.Add(new Vector3(sc.bodyInfoList[i].x, sc.bodyInfoList[i].y, sc.bodyInfoList[i].z));
+                }
+            }
+            if (blendShapeList != null)
+            {
+                for (int i = 0; i < sc.blendShapeList.Count; i++)
+                {
+                    blendShapeList.Add(sc.blendShapeList[i]);
+                }
+            }
+            return sc;
+        }
+    }
+    [Serializable]
+    public class AnimationSingleFrame
+    {
+        public int index;
+        public int finalizeIndex;
+        public string key;
+        public float duration;
+
+        public List<string> movingData = new List<string>();
+
+        public AnimationSingleFrame()
+        {
+            index = 0;
+            finalizeIndex = 0;
+            key = "";
+            duration = 0.1f;
+        }
+        public AnimationSingleFrame SCopy()
+        {
+            AnimationSingleFrame sc = (AnimationSingleFrame)MemberwiseClone();
+            if (movingData != null)
+            {
+                sc.movingData = new List<string>(movingData);
+            }
+
+            return sc;
+        }
+    }
+
+    //==============================================================
+    //  AnimationFrameActor
+    //==============================================================
+
+    [Serializable]
+    public class AnimationFrameActor
+    {
+        public string targetId = "";
+        public string targetRole = "";
+        public AF_TARGETTYPE targetType = AF_TARGETTYPE.Unknown;
+        public int enabled = 1;
+        public int compiled = 0;
+
+        /* Sample avatar specify information
+         * 0-2 bounds.extents
+         * 
+         * 
+         * */
+        public float[] bodyHeight = new float[3];
+        public List<Vector3> bodyInfoList;
+        public List<string> blendShapeList;
+
+        public List<AnimationFrame> frames;
+        
+        //---Only Playing mode: List index of frames
+        public int frameIndexMarker;
+
+        public AnimationFrameActor()
+        {
+            bodyInfoList = new List<Vector3>();
+            blendShapeList = new List<string>();
+            frames = new List<AnimationFrame>();
+            frameIndexMarker = 0;
+        }
+        public void SetFromNative(NativeAnimationFrameActor naf)
+        {
+            targetId = naf.targetId;
+            targetType = naf.targetType;
+            targetRole = naf.targetRole;
+            enabled = naf.enabled;
+            //bodyHeight = naf.bodyHeight;
+            Array.Copy(naf.bodyHeight, bodyHeight, naf.bodyHeight.Length);
+            for (int i = 0; i < naf.bodyInfoList.Count; i++)
+            {
+                bodyInfoList.Add(new Vector3(naf.bodyInfoList[i].x, naf.bodyInfoList[i].y, naf.bodyInfoList[i].z));
+            }
+            for (int i = 0; i < naf.blendShapeList.Count; i++)
+            {
+                blendShapeList.Add(naf.blendShapeList[i]);
+            }
+            frameIndexMarker = naf.frameIndexMarker;
+        }
+        public AnimationFrameActor SCopy()
+        {
+            //--- sc is Copy.
+            AnimationFrameActor sc = (AnimationFrameActor)MemberwiseClone();
+            //--- To clone to this class children from "sc"
+            if (bodyHeight != null)
+            {
+                sc.bodyHeight = new float[sc.bodyHeight.Length];
+                Array.Copy(sc.bodyHeight, bodyHeight, sc.bodyHeight.Length);
+            }
+            if (bodyInfoList != null)
+            {
+                for (int i = 0; i < sc.bodyInfoList.Count; i++)
+                {
+                    bodyInfoList.Add(new Vector3 (sc.bodyInfoList[i].x, sc.bodyInfoList[i].y, sc.bodyInfoList[i].z) );
+                }
+            }
+            if (blendShapeList != null)
+            {
+                for (int i = 0; i < sc.blendShapeList.Count; i++)
+                {
+                    blendShapeList.Add(sc.blendShapeList[i]);
+                }
+            }
+            return sc;
+        }
+    }
+    public class NativeAnimationFrameActor : AnimationFrameActor
+    {
+        public NativeAnimationAvatar avatar;
+
+        public new List<NativeAnimationFrame> frames;
+
+        public NativeAnimationFrameActor()
+        {
+            avatar = new NativeAnimationAvatar();
+            frames = new List<NativeAnimationFrame>();
+        }
+
+        public void SetFromRaw(AnimationFrameActor naf)
+        {
+            targetId = naf.targetId;
+            targetType = naf.targetType;
+            targetRole = naf.targetRole;
+            enabled = naf.enabled;
+            //bodyHeight = naf.bodyHeight;
+            Array.Copy(naf.bodyHeight, bodyHeight, naf.bodyHeight.Length);
+            bodyInfoList.Clear();
+            for (int i = 0; i < naf.bodyInfoList.Count; i++)
+            {
+                bodyInfoList.Add(new Vector3(naf.bodyInfoList[i].x, naf.bodyInfoList[i].y, naf.bodyInfoList[i].z));
+            }
+            blendShapeList.Clear();
+            for (int i = 0; i < naf.blendShapeList.Count; i++)
+            {
+                blendShapeList.Add(naf.blendShapeList[i]);
+            }
+            frameIndexMarker = naf.frameIndexMarker;
+        }
+        public new NativeAnimationFrameActor SCopy()
+        {
+            NativeAnimationFrameActor sc = (NativeAnimationFrameActor)MemberwiseClone();
+            if (sc.avatar != null)
+            {
+                sc.avatar = avatar.SCopy();
+            }
+            return sc;
+        }
+    }
+
+
+    //==============================================================
+    //  AnimationMotionTimeline
+    //==============================================================
+
+    [Serializable]
+    public class AnimationMotionTimeline
+    {
+
+        public List<AnimationFrameActor> characters;
+
+        public AnimationMotionTimeline()
+        {
+            characters = new List<AnimationFrameActor>();
+        }
+        public AnimationMotionTimeline SCopy()
+        {
+            AnimationMotionTimeline sc = (AnimationMotionTimeline)MemberwiseClone();
+            if (sc.characters != null)
+            {
+                sc.characters = new List<AnimationFrameActor>(characters);
+            }
+
+            return sc;
+        }
+    }
+    public class NativeAnimationMotionTimeline
+    {
+        public List<NativeAnimationFrameActor> characters;
+
+        public NativeAnimationMotionTimeline ()
+        {
+            characters = new List<NativeAnimationFrameActor>();
+        }
+        public NativeAnimationMotionTimeline SCopy()
+        {
+            NativeAnimationMotionTimeline sc = (NativeAnimationMotionTimeline)MemberwiseClone();
+            if (sc.characters != null)
+            {
+                sc.characters = new List<NativeAnimationFrameActor>(characters);
+            }
+
+            return sc;
+        }
+
+    }
+    //==============================================================
+    //  AnimationAvatar
+    //==============================================================
+
+    [Serializable]
+    public class AnimationAvatar
+    {
+        public string roleName = "";
+        public string roleTitle = "";
+        public string avatarId = "";
+        public AF_TARGETTYPE type = AF_TARGETTYPE.Unknown;
+        public float[] bodyHeight = new float[3];
+        public List<Vector3> bodyInfoList = new List<Vector3>();
+
+        public AnimationAvatar SCopy()
+        {
+            AnimationAvatar sc = (AnimationAvatar)MemberwiseClone();
+            if (bodyHeight != null)
+            {
+                sc.bodyHeight = new float[sc.bodyHeight.Length];
+                Array.Copy(sc.bodyHeight, bodyHeight, sc.bodyHeight.Length);
+            }
+            if (bodyInfoList != null)
+            {
+                for (int i = 0; i < sc.bodyInfoList.Count; i++)
+                {
+                    bodyInfoList.Add(new Vector3 ( sc.bodyInfoList[i].x, sc.bodyInfoList[i].y, sc.bodyInfoList[i].z) );
+                }
+            }
+            return sc;
+        }
+        public void SetFromNative(NativeAnimationAvatar nav)
+        {
+            roleName = nav.roleName;
+            roleTitle = nav.roleTitle;
+            avatarId = nav.avatarId;
+            type = nav.type;
+            if (bodyHeight != null)
+            {
+                Array.Copy(nav.bodyHeight, bodyHeight, nav.bodyHeight.Length);
+            }
+            if (bodyInfoList != null)
+            {
+                for (int i = 0; i < nav.bodyInfoList.Count; i++)
+                {
+                    bodyInfoList.Add(new Vector3(nav.bodyInfoList[i].x, nav.bodyInfoList[i].y, nav.bodyInfoList[i].z));
+                }
+            }
+        }
+    }
+    public class NativeAnimationAvatar : AnimationAvatar
+    {
+        public GameObject avatar;
+        public GameObject ikparent;
+        public NativeAnimationAvatar()
+        {
+            avatar = null;
+            ikparent = null;
+        }
+        public new NativeAnimationAvatar SCopy()
+        {
+            NativeAnimationAvatar sc = (NativeAnimationAvatar)MemberwiseClone();
+
+            return sc;
+        }
+    }
+    //==============================================================
+    //  AnimationProjectMetaInformation
+    //==============================================================
+
+    [Serializable]
+    public class AnimationProjectMetaInformation
+    {
+        public string name = "";
+        public string license = "";
+        public string description = "";
+        public string coverImage = "";
+        public string referURL = "";
+
+        public AnimationProjectMetaInformation SCopy()
+        {
+            return (AnimationProjectMetaInformation)MemberwiseClone();
+        }
+    }
+    //==============================================================
+    //  AnimationProject
+    //==============================================================
+
+    [Serializable]
+    public class AnimationProject
+    {
+        public long mkey;
+        public int version;
+        public List<AnimationAvatar> casts;
+        public AnimationMotionTimeline timeline;
+        public int timelineFrameLength;
+        public int fps;
+        public float baseDuration;
+        public AnimationProjectMetaInformation meta;
+        public bool isSharing;
+        public bool isReadOnly;
+        public bool isNew;
+        public bool isOpenAndEdit;
+
+        public AnimationProject()
+        {
+            mkey = 0;
+            version = 1;
+            casts = new List<AnimationAvatar>();
+            timeline = new AnimationMotionTimeline();
+            timelineFrameLength = 60;
+            fps = 60;
+            baseDuration = (float)fps / 6000f;
+            meta = new AnimationProjectMetaInformation();
+            isSharing = false;
+            isReadOnly = false;
+            isNew = true;
+            isOpenAndEdit = false;
+
+        }
+
+        public AnimationProject SCopy()
+        {
+            return (AnimationProject)MemberwiseClone();
+        }
+    }
+    public class NativeAnimationProject : AnimationProject
+    {
+        public new List<NativeAnimationAvatar> casts;
+
+        public new NativeAnimationMotionTimeline timeline;
+
+        public NativeAnimationProject()
+        {
+            casts = new List<NativeAnimationAvatar>();
+            timeline = new NativeAnimationMotionTimeline();
+        }
+        public new NativeAnimationProject SCopy()
+        {
+            return (NativeAnimationProject)MemberwiseClone();
+        }
+    }
+
+    //==============================================================
+    //  Animation other option class
+    //==============================================================
+
+    [Serializable]
+    public class AnimationRegisterOptions
+    {
+        public int index = -1;
+        public float duration = 0.1f;
+        public string targetId = "";
+        public AF_TARGETTYPE targetType = AF_TARGETTYPE.Unknown;
+        public int isTransformOnly = 0;
+        public int isHandOnly = 0;
+        public int isBlendShapeOnly = 0;
+        public int isPropertyOnly = 0;
+        public int isDefineOnly = 0;
+        public int isAnimationSeekOnly = 0;
+        public int isSystemEffectOnly = 0;
+
+        /// <summary>
+        /// To compile an animation as an external using.(futurely as library)
+        /// </summary>
+        public int isCompileAnimation = 0;
+
+        public Ease ease = Ease.Linear;
+    }
+    [Serializable]
+    public class AnimationParsingOptions
+    {
+        public int index = -1;
+        public int finalizeIndex = -1;
+        public int endIndex = -1;
+        public string targetId = "";
+        public string targetRole = "";
+        public AF_TARGETTYPE targetType = AF_TARGETTYPE.Unknown;
+        public int isExecuteForDOTween = 0;
+        public int isSystemEffectOnly = 0;
+        public int isCameraPreviewing = 0;
+
+        /// <summary>
+        /// To build an animation as perform of DOTween.
+        /// </summary>
+        public int isBuildDoTween = 0;
+
+        /// <summary>
+        /// To compile an animation as an external using.(futurely as library)
+        /// </summary>
+        public int isCompileAnimation = 0;
+
+        /// <summary>
+        /// To rebuild forcely
+        /// </summary>
+        public int isRebuildAnimation = 0;
+
+        /// <summary>
+        /// To show IK-marker of an objects
+        /// </summary>
+        public int isShowIK = 0;
+
+        public int isLoop = 0;
+
+        public float endDelay = 0f;
+
+        public Ease ease = Ease.Linear;
+    }
+
+    public class FrameClipboard
+    {
+        public string targetRoleName = "";
+        public AF_TARGETTYPE targetType;
+        public int keyFrame = -1;
+        public bool isCut = false;
+    }
+}
