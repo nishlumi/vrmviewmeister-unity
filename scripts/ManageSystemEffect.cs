@@ -317,8 +317,8 @@ namespace UserHandleSpace
             {
                 Bloom st = ppvol.profile.GetSetting<Bloom>();
 
+                seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
                 
-                st.enabled.Override(isEnable);
                 if (isEnable)
                 {
                     if (useDOTween) seq.Join(DOTween.To(() => st.intensity.value, x => st.intensity.Override(x), values[0], duration));
@@ -330,7 +330,8 @@ namespace UserHandleSpace
             {
                 ChromaticAberration st = ppvol.profile.GetSetting<ChromaticAberration>();
 
-                st.enabled.Override(isEnable);
+                seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
+                
                 if (isEnable)
                 {
                     if (useDOTween) seq.Join(DOTween.To(() => st.intensity.value, x => st.intensity.Override(x), values[0], duration));
@@ -342,7 +343,7 @@ namespace UserHandleSpace
             {
                 ColorGrading st = ppvol.profile.GetSetting<ColorGrading>();
 
-                st.enabled.Override(isEnable);
+                seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
                 if (isEnable)
                 {
                     if (useDOTween) seq.Join(DOTween.To(() => st.temperature.value, x => st.temperature.Override(x), values[0], duration));
@@ -362,7 +363,7 @@ namespace UserHandleSpace
             {
                 DepthOfField st = ppvol.profile.GetSetting<DepthOfField>();
 
-                st.enabled.Override(isEnable);
+                seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
                 if (isEnable)
                 {
                     if (useDOTween) seq.Join(DOTween.To(() => st.aperture.value, x => st.aperture.Override(x), values[0], duration));
@@ -378,7 +379,7 @@ namespace UserHandleSpace
             {
                 Grain st = ppvol.profile.GetSetting<Grain>();
 
-                st.enabled.Override(isEnable);
+                seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
                 if (isEnable)
                 {
                     if (useDOTween) seq.Join(DOTween.To(() => st.intensity.value, x => st.intensity.Override(x), values[0], duration));
@@ -394,7 +395,7 @@ namespace UserHandleSpace
             {
                 MotionBlur st = ppvol.profile.GetSetting<MotionBlur>();
 
-                st.enabled.Override(isEnable);
+                seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
                 if (isEnable)
                 {
                     if (useDOTween) seq.Join(DOTween.To(() => st.shutterAngle.value, x => st.shutterAngle.Override(x), values[0], duration));
@@ -410,7 +411,7 @@ namespace UserHandleSpace
             {
                 Vignette st = ppvol.profile.GetSetting<Vignette>();
 
-                st.enabled.Override(isEnable);
+                seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
                 if (isEnable)
                 {
                     if (useDOTween) seq.Join(DOTween.To(() => st.intensity.value, x => st.intensity.Override(x), values[0], duration));

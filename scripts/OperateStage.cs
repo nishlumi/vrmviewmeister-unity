@@ -345,6 +345,17 @@ namespace UserHandleSpace
 
             }
         }
+        public Sequence SetDefaultStageColorTween(Sequence seq, Color param, float duration)
+        {
+            if (ActiveStageType == StageKind.Default)
+            {
+                MeshRenderer mesh = ActiveStage.GetComponent<MeshRenderer>();
+
+                seq.Join(mesh.sharedMaterial.DOColor(param, duration));
+
+            }
+            return seq;
+        }
         //------------------------------------------------------------------------------------------------
         public float GetFloatUserStage(string param)
         {
@@ -355,7 +366,11 @@ namespace UserHandleSpace
                 MeshRenderer mesh = ActiveStage.GetComponent<MeshRenderer>();
                 if (mesh.materials.Length > 0)
                 {
-                    if (param == "metallic")
+                    if (param == "renderingtype")
+                    {
+                        ret = mesh.material.GetFloat("_Mode");
+                    }
+                    else if (param == "metallic")
                     {
                         ret = mesh.material.GetFloat("_Metallic");
                     }
@@ -376,7 +391,11 @@ namespace UserHandleSpace
                 MeshRenderer mesh = ActiveStage.GetComponent<MeshRenderer>();
                 if (mesh.materials.Length > 0)
                 {
-                    if (param == "emissioncolor")
+                    if (param == "color")
+                    {
+                        ret = mesh.material.GetColor("_Color");
+                    }
+                    else if (param == "emissioncolor")
                     {
                         ret = mesh.material.GetColor("_EmissionColor");
 
@@ -407,6 +426,8 @@ namespace UserHandleSpace
                 MeshRenderer mesh = ActiveStage.GetComponent<MeshRenderer>();
                 if (mesh.materials.Length > 0)
                 {
+                    ret += "color=#" + ColorUtility.ToHtmlStringRGBA(mesh.material.GetColor("_Color")) + "\t";
+                    ret += "renderingtype=" + mesh.material.GetFloat("_Mode").ToString() + "\t";
                     ret += "metallic=" + mesh.material.GetFloat("_Metallic").ToString() + "\t";
                     ret += "glossiness=" + mesh.material.GetFloat("_Glossiness").ToString() + "\t";
                     ret += "emissioncolor=#" + ColorUtility.ToHtmlStringRGBA(mesh.material.GetColor("_EmissionColor"));
@@ -427,7 +448,16 @@ namespace UserHandleSpace
                 MeshRenderer mesh = ActiveStage.GetComponent<MeshRenderer>();
                 if (mesh.materials.Length > 0)
                 {
-                    if (prm[0] == "metallic")
+                    if (prm[0] == "color")
+                    {
+                        Color col = ColorUtility.TryParseHtmlString(prm[1], out col) ? col : Color.white;
+                        mesh.material.SetColor("_Color", col);
+                    }
+                    else if (prm[0] == "renderingtype")
+                    {
+                        mesh.material.SetFloat("_Mode", val);
+                    }
+                    else if (prm[0] == "metallic")
                     {
                         mesh.material.SetFloat("_Metallic", val);
                     }
@@ -437,7 +467,7 @@ namespace UserHandleSpace
                     }
                     else if (prm[0] == "emissioncolor")
                     {
-                        Color col = ColorUtility.TryParseHtmlString("#" + prm[1], out col) ? col : Color.white;
+                        Color col = ColorUtility.TryParseHtmlString(prm[1], out col) ? col : Color.white;
                         mesh.material.EnableKeyword("_EMISSION");
                         mesh.material.SetColor("_EmissionColor", col);
 

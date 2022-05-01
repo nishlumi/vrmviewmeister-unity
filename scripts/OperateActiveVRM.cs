@@ -609,7 +609,9 @@ namespace UserHandleSpace
         //  New Activate methods: using Layer "Handle", "HiddenHandle"
         public void AddAvatarBox(string name, GameObject avatar, GameObject ikparent)
         {
-#if !UNITY_WEBGL
+            Debug.Log(name);
+#if UNITY_EDITOR || UNITY_STANDALONE
+
             Dropdown.OptionData opt = new Dropdown.OptionData();
             opt.text = name;
 
@@ -622,7 +624,9 @@ namespace UserHandleSpace
         }
         public void RemoveAvatarBox(GameObject ikparent)
         {
-#if !UNITY_WEBGL
+#if UNITY_EDITOR || UNITY_STANDALONE
+
+#else
             int index = HasAvatarList.FindIndex(match =>
             {
                 if (match == ikparent) return true;
@@ -680,11 +684,12 @@ namespace UserHandleSpace
 
                 //---Change enable/disable the ground handle.
                 OperateLoadedVRM hitolvrm = ActiveAvatar.GetComponent<OperateLoadedVRM>();
-                hitolvrm.isMoveMode = isMoveMode;
+                hitolvrm.ChangeToggleAvatarMoveFromOuter(-1);
+                /*hitolvrm.isMoveMode = isMoveMode;
                 if (isMoveMode)
                 {
                     if (ActiveIKHandle) ShowHandleBody(true, ActiveIKHandle);
-                }
+                }*/
                 //---change updateWhenOffscreen flag
                 ManageAvatarTransform mat = GetEffectiveActiveAvatar().GetComponent<ManageAvatarTransform>();
                 List<GameObject> meshcnt = mat.CheckSkinnedMeshAvailable();
@@ -855,7 +860,7 @@ namespace UserHandleSpace
             if ((GetEffectiveActiveAvatar().tag == "Player") || (GetEffectiveActiveAvatar().tag == "SampleData"))
             {
                 ActiveAvatar.transform.DOScale(new Vector3(x, y, z), 0.2f);
-                ActiveIKHandle.transform.DOScale(new Vector3(x, y, z), 0.2f);
+                //ActiveIKHandle.transform.DOScale(new Vector3(x, y, z), 0.2f);
             }
             else if (GetEffectiveActiveAvatar().tag == "OtherPlayer")
             {
@@ -1023,13 +1028,13 @@ namespace UserHandleSpace
         {
             if (!ActiveAvatar) return;
 
-            Debug.Log("unity . param=" + param);
+            //Debug.Log("unity . param=" + param);
             string[] prm = param.Split(',');
             string handtype = prm[0];
             int posetype  = int.TryParse(prm[1], out posetype) ? posetype : 1;
             float value = float.TryParse(prm[2], out value) ? value : 0f;
-            Debug.Log("unity . int=" + posetype);
-            Debug.Log("unity . float=" + value);
+            //Debug.Log("unity . int=" + posetype);
+            //Debug.Log("unity . float=" + value);
 
             LeftHandPoseController ctl = ActiveAvatar.GetComponent<LeftHandPoseController>();
             RightHandPoseController ctr = ActiveAvatar.GetComponent<RightHandPoseController>();

@@ -68,7 +68,7 @@ namespace UserHandleSpace
 
             ret = ltype + "\t"
                 + lt.range.ToString() + "\t"
-                + ColorUtility.ToHtmlStringRGBA(lt.color)
+                + "#" + ColorUtility.ToHtmlStringRGBA(lt.color)
                 + "\t" + lt.intensity.ToString()
                 + "\t"+ lt.spotAngle.ToString()
                 + "\t" + ((int)lt.renderMode).ToString()
@@ -85,10 +85,15 @@ namespace UserHandleSpace
         {
             Light lt = transform.gameObject.GetComponent<Light>();
 
-#if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveFloatVal(lt.range);
-#endif
             return lt.range;
+        }
+        public void GetRangeFromOuter()
+        {
+            float ret = GetRange();
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(ret);
+#endif
         }
         public void SetRange(float range)
         {
@@ -101,10 +106,15 @@ namespace UserHandleSpace
         {
             Light lt = transform.gameObject.GetComponent<Light>();
 
-#if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveStringVal(ColorUtility.ToHtmlStringRGBA(lt.color));
-#endif
             return lt.color;
+        }
+        public void GetColorFromOuter()
+        {
+            Color ret = GetColor();
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ColorUtility.ToHtmlStringRGBA(ret));
+#endif
         }
         public void SetColor(Color col)
         {
@@ -126,10 +136,15 @@ namespace UserHandleSpace
         {
             Light lt = transform.gameObject.GetComponent<Light>();
 
-#if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveFloatVal(lt.intensity);
-#endif
             return lt.intensity;
+        }
+        public void GetPowerFromOuter()
+        {
+            float ret = GetPower();
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(ret);
+#endif
         }
         public void SetPower(float power)
         {
@@ -144,11 +159,16 @@ namespace UserHandleSpace
             Light lt = transform.gameObject.GetComponent<Light>();
             ret = lt.spotAngle;
 
+            return ret;
+
+        }
+        public void GetSpotAngleFromOuter()
+        {
+            float ret = GetSpotAngle();
+
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveFloatVal(ret);
 #endif
-            return ret;
-
         }
         public void SetSpotAngle(float angle)
         {
@@ -161,10 +181,15 @@ namespace UserHandleSpace
         {
             Light lt = transform.gameObject.GetComponent<Light>();
 
+            return lt.shadowStrength;
+        }
+        public void GetShadowPowerFromOuter()
+        {
+            float ret = GetShadowPower();
+
 #if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveFloatVal(lt.shadowStrength);
+            ReceiveFloatVal(ret);
 #endif
-            return lt.intensity;
         }
         public void SetShadowPower(float intensity)
         {

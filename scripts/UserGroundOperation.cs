@@ -36,7 +36,7 @@ namespace UserHandleSpace
         void Start()
         {
             SaveDefaultTransform(true, true);
-            GameObject can = GameObject.Find("Canvas");
+            GameObject can = GameObject.Find("AnimateArea");
             csl = can.GetComponent<ConfigSettingLabs>();
             bti = new BasicTransformInformation();
             bti.dimension = "3d";

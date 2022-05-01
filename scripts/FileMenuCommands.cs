@@ -37,12 +37,41 @@ namespace UserVRMSpace
     }
 
     [Serializable]
-    public class VRMObjectInformation : VRMMetaObject
+    public class VRMObjectInformation 
     {
         public string id;
         public string type;
         public string roleName = "";
         public string roleTitle = "";
+
+        public string ExporterVersion;
+
+        public string Title;
+
+        public string Version;
+
+        public string Author;
+
+        public string ContactInformation;
+
+        public string Reference;
+
+        public Texture2D Thumbnail;
+
+        public AllowedUser AllowedUser;
+
+        public UssageLicense ViolentUssage;
+
+        public UssageLicense SexualUssage;
+
+        public UssageLicense CommercialUssage;
+
+        public string OtherPermissionUrl;
+
+        public LicenseType LicenseType;
+
+        public string OtherLicenseUrl;
+
 
         public int isDuplicate;
         public AnimationTargetParts motion = new AnimationTargetParts();
@@ -348,35 +377,37 @@ namespace UserVRMSpace
             GameObject ikhp = GameObject.FindGameObjectWithTag("IKHandleWorld");
             OperateActiveVRM ovrm = ikhp.GetComponent<OperateActiveVRM>();
 
-            if (ovrm.ActiveType == AF_TARGETTYPE.VRM)
+            NativeAnimationAvatar nav = managa.GetCastByAvatar(ovrm.ActiveAvatar.name);
+
+            if (nav.type == AF_TARGETTYPE.VRM)
             {
                 DestroyVRM(ovrm.GetEffectiveActiveAvatar().name);
             }
-            else if (ovrm.ActiveType == AF_TARGETTYPE.OtherObject)
+            else if (nav.type == AF_TARGETTYPE.OtherObject)
             {
                 DestroyOther(ovrm.GetEffectiveActiveAvatar().name);
             }
-            else if (ovrm.ActiveType == AF_TARGETTYPE.Light)
+            else if (nav.type == AF_TARGETTYPE.Light)
             {
                 DestroyLight(ovrm.GetEffectiveActiveAvatar().name);
             }
-            else if (ovrm.ActiveType == AF_TARGETTYPE.Camera)
+            else if (nav.type == AF_TARGETTYPE.Camera)
             {
                 DestroyCamera(ovrm.GetEffectiveActiveAvatar().name);
             }
-            else if (ovrm.ActiveType == AF_TARGETTYPE.Text)
+            else if (nav.type == AF_TARGETTYPE.Text)
             {
                 DestroyText(ovrm.GetEffectiveActiveAvatar().name);
             }
-            else if (ovrm.ActiveType == AF_TARGETTYPE.UImage)
+            else if (nav.type == AF_TARGETTYPE.UImage)
             {
                 DestroyUImage(ovrm.GetEffectiveActiveAvatar().name);
             }
-            else if (ovrm.ActiveType == AF_TARGETTYPE.Image)
+            else if (nav.type == AF_TARGETTYPE.Image)
             {
                 DestroyImage(ovrm.GetEffectiveActiveAvatar().name);
             }
-            else if (ovrm.ActiveType == AF_TARGETTYPE.Effect)
+            else if (nav.type == AF_TARGETTYPE.Effect)
             {
                 DestroyEffect(ovrm.GetEffectiveActiveAvatar().name);
             }
@@ -617,7 +648,7 @@ namespace UserVRMSpace
             sendVRMInfo(incolor, incolor.Length, "VRM", json, pendingVRMmeta.LicenseType.ToString(), strHeight, blendShapeList);
 #endif
 
-            ScriptableObject.Destroy(vrmoi);
+            //ScriptableObject.Destroy(vrmoi);
         }
 
         public void CheckNormalizedVRM()
@@ -723,6 +754,7 @@ namespace UserVRMSpace
             olvrm.SetActiveFace();
             olvrm.InitializeBlendShapeList();
             olvrm.ListGravityInfo();
+            olvrm.RegisterUserMaterial();
 
             bool useFullBodyIK = false; // configLab.GetIntVal("use_fullbody_bipedik") == 1 ? true : false;
 
@@ -803,7 +835,6 @@ namespace UserVRMSpace
 
             olvrm.SetTPoseBodyInfo(mat_b.GetComponent<SkinnedMeshRenderer>().bounds);
             olvrm.SetTPoseBodyList(bodyinfoList);
-            olvrm.RegetTextureConfig();
 
             pendingContext = null;
 
@@ -842,6 +873,10 @@ namespace UserVRMSpace
                     Destroy(ik);
                     //olvrm.GetContext().Dispose();
                     Destroy(vrm[i]);
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+                    ReceiveStringVal(param);
+#endif
                     break;
                 }
             }
@@ -934,14 +969,12 @@ namespace UserVRMSpace
 
             ol.relatedHandleParent = ikcube;
 
-            //---Set up Handle Object for parent object.
-            //oth.AddComponent<RotationHandle>();
-            //oth.AddComponent<PositionHandle>();
-            //oth.AddComponent<ScaleHandle>();
 
             _loadedGameObject = oth;
 
 
+            //-------------------------------------
+            // Enumrate Material
             OtherObjectInformation obi = OnShowedOtherObject(oth);
 
             //---change ID to timestamp 
@@ -991,6 +1024,7 @@ namespace UserVRMSpace
 
             OperateLoadedOther olo = oth.GetComponent<OperateLoadedOther>();
 
+            olo.RegisterUserMaterial();
 
             OtherObjectInformation ret = new OtherObjectInformation();
 
@@ -1014,6 +1048,9 @@ namespace UserVRMSpace
                     ret.animationLength = anim.clip.length;
                     ret.animationWrapMode = anim.wrapMode;
                     ret.animationType = AnimationType.Legacy;
+
+                    //-------------------------------------------------
+                    // below: will use futurely Trilib full-support New Animator System
 
                     /*animt = oth.AddComponent<Animator>();
                     animt.runtimeAnimatorController = (RuntimeAnimatorController)RuntimeAnimatorController.Instantiate(Resources.Load("PoseOtherObject_anicon1"));
@@ -1040,6 +1077,7 @@ namespace UserVRMSpace
                 {
                     oth.AddComponent<BoxCollider>();
                 }
+                /*
                 MeshRenderer mr;
                 if (oth.TryGetComponent<MeshRenderer>(out mr))
                 {
@@ -1055,10 +1093,9 @@ namespace UserVRMSpace
                             olo.RegisterUserMaterial(mt.name, mt);
                         }
 
-
                         oomis.Add(oomi);
                     }
-                }
+                }*/
             }
 
             //---Check MeshRenderer and save information
@@ -1091,67 +1128,7 @@ namespace UserVRMSpace
                 }
             }
 
-            /*
-            for (int i = 0; i < cnt; i++)
-            {
-                //---Check for Material
-                MeshRenderer mr;
-                SkinnedMeshRenderer smr;
-
-                GameObject child = oth.transform.GetChild(i).gameObject;
-                
-                if (
-                    (child.TryGetComponent<MeshRenderer>(out mr))
-                    ||
-                    (child.TryGetComponent<SkinnedMeshRenderer>(out smr))
-                    )
-                {
-                    //---For collider judge, add Collider ( effective, use the parent of Collider object )
-                    child.tag = "OtherPlayerCollider";
-                    child.layer = LayerMask.NameToLayer("Player");
-                    child.AddComponent<BoxCollider>();
-
-                    Material[] mat = child.GetComponent<Renderer>().materials;
-                    
-
-                    for (int m = 0; m < mat.Length; m++)
-                    {
-                        Material mt = mat[m];
-                        OtherObjectMaterialInfo oomi = new OtherObjectMaterialInfo();
-                        oomi.name = mt.name;
-                        oomi.shaderName = mt.shader.name;
-                        if (mt.shader.name.ToLower() == "standard")
-                        {
-                            olo.RegisterUserMaterial(mt.name, mt);
-                        }
-
-                        
-                        oomis.Add(oomi);
-                        
-                    }
-                    
-
-                }
-
-                //---Check for Animation
-                if (child.TryGetComponent<Animation>(out anim))
-                {
-                    if (anim.clip)
-                    {
-                        anim.playAutomatically = false;
-                        anim.Stop();
-                        anim.wrapMode = WrapMode.Default;
-
-                        ret.animationName = anim.clip.name;
-                        ret.animationLength = anim.clip.length;
-                        ret.animationWrapMode = anim.wrapMode;
-                    }
-                }
-
-            }*/
-
-
-            ret.materials = oomis.ToArray();
+            //ret.materials = oomis.ToArray();
 
             //_loadedGameObject = null;
 
@@ -1164,6 +1141,7 @@ namespace UserVRMSpace
             child.layer = LayerMask.NameToLayer("Player");
             child.AddComponent<BoxCollider>();
 
+            /*
             Material[] mat = child.GetComponent<Renderer>().materials;
 
 
@@ -1182,6 +1160,9 @@ namespace UserVRMSpace
                 oomis.Add(oomi);
 
             }
+
+            */
+
         }
         public void ObjectFileSelected(string uri)
         {
@@ -1287,39 +1268,44 @@ namespace UserVRMSpace
         }
         public void DestroyOther(string param)
         {
+            Debug.Log("DestroyOther");
             GameObject ikhp = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
             OperateActiveVRM ovrm = ikhp.GetComponent<OperateActiveVRM>();
+            
             GameObject[] vrm = GameObject.FindGameObjectsWithTag("OtherPlayer");
-            for (var i = 0; i < vrm.Length; i++)
+            GameObject oth = GameObject.Find(param);
+            Debug.Log(param);
+            if (oth != null)
             {
-                if (vrm[i].name == param)
+                OperateLoadedOther olvrm = oth.GetComponent<OperateLoadedOther>();
+                GameObject ik = olvrm.relatedHandleParent;
+
+                if (olvrm.IsPlayingAnimation() == 1)
                 {
-                    GameObject ik = vrm[i].GetComponent<OperateLoadedOther>().relatedHandleParent;
-
-                    OperateLoadedOther olvrm = vrm[i].GetComponent<OperateLoadedOther>();
-                    if (olvrm.IsPlayingAnimation() == 1)
-                    {
-                        olvrm.StopAnimation();
-                    }
-
-                    ovrm.RemoveAvatarBox(ik);
-
-                    if (ovrm.GetEffectiveActiveAvatar().name == vrm[i].name)
-                    {
-                        ovrm.ActiveAvatar = null;
-                    }
-                    if (ovrm.ActiveIKHandle.name == ik.name)
-                    {
-                        ovrm.ActiveIKHandle = null;
-                    }
-
-                    managa.DetachAvatarFromRole(param + ",avatar");
-
-                    Destroy(ik);
-                    Destroy(vrm[i]);
-                    break;
+                    olvrm.StopAnimation();
                 }
+
+                ovrm.RemoveAvatarBox(ik);
+
+                if (ovrm.GetEffectiveActiveAvatar().name == oth.name)
+                {
+                    ovrm.ActiveAvatar = null;
+                }
+                if (ovrm.ActiveIKHandle.name == ik.name)
+                {
+                    ovrm.ActiveIKHandle = null;
+                }
+
+                managa.DetachAvatarFromRole(param + ",avatar");
+
+                Destroy(ik);
+                Destroy(oth);
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+                    ReceiveStringVal(oth.name);
+#endif
             }
+            
         }
         public void CreateBlankQuad()
         {
@@ -1472,6 +1458,9 @@ namespace UserVRMSpace
 
                     Destroy(ik);
                     Destroy(vrm[i]);
+#if !UNITY_EDITOR && UNITY_WEBGL
+                    ReceiveStringVal(vrm[i].name);
+#endif
                     break;
                 }
             }
@@ -1556,6 +1545,9 @@ namespace UserVRMSpace
 
                     Destroy(ik);
                     Destroy(vrm[i]);
+#if !UNITY_EDITOR && UNITY_WEBGL
+                    ReceiveStringVal(vrm[i].name);
+#endif
                     break;
                 }
             }
@@ -1625,6 +1617,9 @@ namespace UserVRMSpace
                     managa.DetachAvatarFromRole(param + ",avatar");
 
                     Destroy(vrm);
+#if !UNITY_EDITOR && UNITY_WEBGL
+                    ReceiveStringVal(vrm.name);
+#endif
                     break;
                 }
             }
@@ -1798,6 +1793,9 @@ namespace UserVRMSpace
                     managa.DetachAvatarFromRole(param + ",avatar");
 
                     Destroy(vrm);
+#if !UNITY_EDITOR && UNITY_WEBGL
+                    ReceiveStringVal(vrm.name);
+#endif
                     break;
                 }
             }
@@ -1856,9 +1854,9 @@ namespace UserVRMSpace
 
             //---Set up IK handle
             OperateLoadedOther ol = empt.AddComponent<OperateLoadedOther>();
+            empt.AddComponent<ManageAvatarTransform>();
             OnShowedOtherObject(empt);
 
-            empt.AddComponent<ManageAvatarTransform>();
 
             GameObject copycube = (GameObject)Resources.Load("IKHandleCube");
             GameObject ikcube = Instantiate(copycube, copycube.transform.position, Quaternion.identity, ikhp.transform);
@@ -2050,6 +2048,9 @@ namespace UserVRMSpace
 
                     Destroy(vrm[i]);
                     Destroy(ik);
+#if !UNITY_EDITOR && UNITY_WEBGL
+                    ReceiveStringVal(vrm[i].name);
+#endif
                     break;
                 }
             }

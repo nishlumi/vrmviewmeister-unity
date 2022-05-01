@@ -20,6 +20,9 @@ namespace UserHandleSpace
         [DllImport("__Internal")]
         private static extern void ReceiveFloatVal(float val);
 
+        protected const string CAMERAROLE = "#Camera";
+
+
         public string Title;
         public GameObject relatedHandleParent;
         public string objectType;
@@ -39,12 +42,40 @@ namespace UserHandleSpace
         protected Vector3 oldikposition;
 
 
+
+        //---render texture----------------------------------
+        protected string renderTextureParentId;
+
+
+        /*
+         * Specification: userShared -----------------------
+         * GameObject
+         *   -> Parts object1
+         *        Parts material1
+         *        Parts material2
+         *      Parts object2
+         *        Parts material1
+         *        
+         * key - 0 = object.child's name 
+         *       1 = material name
+         * 
+         */
+        //---Pointer of the each materials
+        [SerializeField]
+        protected Dictionary<string, Material> userSharedMaterials;
+        //---property saver of material
+        [SerializeField]
+        protected Dictionary<string, MaterialProperties> userSharedTextureFiles;
+        [SerializeField]
+        protected Dictionary<string, MaterialProperties> backupTextureFiles;
+
         private void Awake()
         {
             effectPunch = new AvatarPunchEffect();
             effectShake = new AvatarShakeEffect();
             jumpNum = 0;
             jumpPower = 1f;
+
         }
         // Start is called before the first frame update
         void Start()
@@ -430,7 +461,7 @@ namespace UserHandleSpace
             // At here: transform.gameObject IS Other Object own.
 
             transform.DOScale(new Vector3(x, y, z), 0.1f);
-            relatedHandleParent.transform.DOScale(new Vector3(x, y, z), 0.1f);
+            //relatedHandleParent.transform.DOScale(new Vector3(x, y, z), 0.1f);
 
         }
         public virtual Vector3 GetScale()
@@ -568,6 +599,749 @@ namespace UserHandleSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveIntVal(ret == "HiddenLayer" ? 0 : 1);
 #endif
+        }
+
+
+        //########################################################################
+        // Render texture (for OtherObject)
+        //########################################################################
+        public virtual string SetRenderTextureFromCamera(Material targetMat, string role)
+        {
+            ManageAnimation manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+            string ret = "";
+            NativeAnimationAvatar nav = manim.GetCastInProject(role, AF_TARGETTYPE.Camera);
+            if (nav != null)
+            {
+                ret = nav.roleTitle;
+                //renderTextureParentId = role;
+                OperateLoadedCamera olc = nav.avatar.GetComponent<OperateLoadedCamera>();
+              
+                targetMat.SetTexture("_MainTex", olc.GetRenderTexture());
+            }
+
+            return ret;
+        }
+        public virtual void DestroyCameraRenderTexture(Material targetMat)
+        {
+            ManageAnimation manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+
+            Dictionary<string, Material>.Enumerator userMat = userSharedMaterials.GetEnumerator();
+            while (userMat.MoveNext())
+            {
+                if (userMat.Current.Value.name == targetMat.name)
+                {
+                    string oldpath = userSharedTextureFiles[userMat.Current.Key].texturePath;
+                    if (oldpath.IndexOf(CAMERAROLE) > -1)
+                    {
+                        NativeAnimationAvatar tmpnav = manim.GetCastInProject(oldpath.Replace(CAMERAROLE, ""), AF_TARGETTYPE.Camera);
+                        if (tmpnav.avatar.GetComponent<OperateLoadedCamera>().GetRenderTexture() == targetMat.GetTexture("_MainTex"))
+                        { //---if render texture of any role, nullize here only.
+                            targetMat.SetTexture("_MainTex", null);
+                        }
+                        
+                    }
+                    
+                    break;
+                }
+            }
+        }
+        public virtual string GetCameraRenderTexture()
+        {
+            return renderTextureParentId;
+        }
+        public virtual void GetCameraRenderTextureFromOuter()
+        {
+            string ret = GetCameraRenderTexture();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(renderTextureParentId);
+#endif
+        }
+
+        //############################################################################
+        //  Material properties
+        //############################################################################
+
+        /// <summary>
+        /// To register materials as the pointer, GameObject has.
+        /// </summary>
+        public virtual void RegisterUserMaterial()
+        {
+            userSharedMaterials = new Dictionary<string, Material>();
+            userSharedTextureFiles = new Dictionary<string, MaterialProperties>();
+            backupTextureFiles = new Dictionary<string, MaterialProperties>();
+
+
+            ManageAvatarTransform matra = GetComponent<ManageAvatarTransform>();
+            List<GameObject> meshcnt = matra.CheckSkinnedMeshAvailable();
+            foreach (GameObject item in meshcnt)
+            {
+                SkinnedMeshRenderer skn = null;
+                MeshRenderer mr = null;
+                Material[] mats = null;
+                if (item.TryGetComponent<SkinnedMeshRenderer>(out skn))
+                {
+                    mats = skn.materials;
+                }
+                if (item.TryGetComponent<MeshRenderer>(out mr))
+                {
+                    mats = mr.materials;
+                }
+                if (mats != null)
+                {
+                    foreach (Material mat in mats)
+                    {
+                        string keyname = item.name + "_" + mat.name;
+                        if (userSharedMaterials.ContainsKey(keyname))
+                        {
+                            keyname += DateTime.Now.ToFileTime().ToString();
+                        }
+                        //userSharedMaterials & userSharedTextureFiles & backupTextureFiles always match key-name.
+
+                        
+                        userSharedMaterials.Add(keyname, mat);
+
+                        MaterialProperties matp = new MaterialProperties();
+                        matp.texturePath = "";
+                        userSharedTextureFiles.Add(keyname, matp);
+
+                        MaterialProperties backmatp = new MaterialProperties();
+                        backmatp.realTexture = mat.GetTexture("_MainTex");
+                        backmatp.texturePath = matp.texturePath;
+                        backupTextureFiles.Add(keyname, backmatp);
+                    }
+                }
+            }
+
+        }
+
+        /// <summary>
+        /// To write real Material to List of MaterialProperties
+        /// </summary>
+        /// <returns>packed Listof MaterialProperties</returns>
+        public virtual List<MaterialProperties> ListUserMaterialObject()
+        {
+            List<MaterialProperties> ret = new List<MaterialProperties>();
+
+            foreach (KeyValuePair<string, Material> kvp in userSharedMaterials)
+            {
+                Material mat = kvp.Value;
+
+                MaterialProperties matp = new MaterialProperties();
+
+                matp.name = kvp.Key;
+                matp.color = mat.color;
+                matp.shaderName = mat.shader.name;
+                matp.emissioncolor = mat.GetColor("_EmissionColor");
+                if (mat.shader.name.ToLower() == "vrm/mtoon")
+                {
+                    matp.cullmode = mat.GetFloat("_CullMode");
+                    matp.blendmode = mat.GetFloat("_BlendMode");
+                    matp.shadetexcolor = mat.GetColor("_ShadeColor");
+                    matp.shadingtoony = mat.GetFloat("_ShadeToony");
+                    matp.rimcolor = mat.GetColor("_RimColor");
+                    matp.rimfresnel = mat.GetFloat("_RimFresnelPower");
+                    matp.srcblend = mat.GetFloat("_SrcBlend");
+                    matp.dstblend = mat.GetFloat("_DstBlend");
+                }
+                else if (mat.shader.name.ToLower() == "standard")
+                {
+                    matp.cullmode = 0;
+                    matp.blendmode = mat.GetFloat("_Mode");
+                    matp.metallic = mat.GetFloat("_Metallic");
+                    matp.glossiness = mat.GetFloat("_Glossiness");
+                }
+                matp.texturePath = userSharedTextureFiles[kvp.Key].texturePath;
+                matp.textureRole = userSharedTextureFiles[kvp.Key].textureRole;
+                matp.textureIsCamera = userSharedTextureFiles[kvp.Key].textureIsCamera;
+
+                ret.Add(matp);
+            }
+
+            return ret;
+        }
+
+        /// <summary>
+        /// To write normal csv-string to serializable csv-string 
+        /// </summary>
+        /// <returns></returns>
+        public virtual List<string> ListUserMaterial()
+        {
+            List<string> ret = new List<string>();
+
+            Dictionary<string, Material>.Enumerator matlst = userSharedMaterials.GetEnumerator();
+            while (matlst.MoveNext())
+            {
+                ret.Add(ListGetOneUserMaterial(matlst.Current.Key));
+            }
+
+            return ret;
+        }
+        public virtual void ListUserMaterialFromOuter()
+        {
+#if !UNITY_EDITOR && UNITY_WEBGL
+            List<string> list = ListUserMaterial();
+            string js = string.Join("\r\n", list.ToArray());
+            ReceiveStringVal(js);
+#endif
+        }
+
+        /// <summary>
+        /// To write 1 - material to csv-string 
+        /// </summary>
+        /// <param name="param"></param>
+        /// <returns></returns>
+        public virtual string ListGetOneUserMaterial(string param)
+        {
+            string ret = "";
+
+            //Debug.Log("param=" + param);
+            //Debug.Log(userSharedMaterials.ContainsKey(param));
+
+            if (userSharedMaterials.ContainsKey(param))
+            {
+                Material mat = userSharedMaterials[param];
+                //Debug.Log("material name=" + mat.name);
+                string texturePath = userSharedTextureFiles[param].texturePath;
+
+                if (mat.shader.name.ToLower() == "vrm/mtoon")
+                {
+                    ret = (
+                        param + "," +
+                        mat.shader.name + "," +
+                        ColorUtility.ToHtmlStringRGBA(mat.color) + "," +
+                        mat.GetFloat("_CullMode").ToString() + "," +
+                        mat.GetFloat("_BlendMode").ToString() + "," +
+                        texturePath + "," +
+
+                        "0" + "," +
+                        "0" + "," +
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_EmissionColor")) + "," +
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_ShadeColor")) + "," +
+                        mat.GetFloat("_ShadeToony").ToString() + "," +
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_RimColor")) + "," +
+                        mat.GetFloat("_RimFresnelPower").ToString() + "," +
+                        mat.GetFloat("_SrcBlend").ToString() + "," +
+                        mat.GetFloat("_DstBlend")
+                    );
+                }
+                else
+                {
+                    ret = (
+                        param + "," +
+                        mat.shader.name + "," +
+                        ColorUtility.ToHtmlStringRGBA(mat.color) + "," +
+                        "0" + "," +
+                        mat.GetFloat("_Mode").ToString() + "," +
+                        texturePath + "," +
+
+                        mat.GetFloat("_Metallic").ToString() + "," +
+                        mat.GetFloat("_Glossiness").ToString() + "," +
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_EmissionColor")) + "," +
+                        ColorUtility.ToHtmlStringRGBA(Color.white) + "," +
+                        "0" + "," +
+                        ColorUtility.ToHtmlStringRGBA(Color.white) + "," +
+                        "0" + "," +
+                        "1" + "," +
+                        "0"
+                    );
+                }
+            }
+            /////Debug.Log("ret=" + ret);
+            // 0 - key name
+            // 1 - shader name
+            // 2 - material color
+            // 3 - Cull mode
+            // 4 - Blend mode
+            // 5 - Texture name
+            // 6 - Metallic (Standard)
+            // 7 - Glossiness (Standard)
+            // 8 - Emission Color 
+            // 9 - Shade Texture Color (VRM/MToon)
+            // 10- Shaing Toony (VRM/MToon)
+            // 11- Rim Color (VRM/MToon)
+            // 12- Rim Fresnel Power (VRM/MToon)
+            // 13- SrcBlend (VRM/MToon)
+            // 14- DstBlend (VRM/MToon)
+
+            return ret;
+        }
+        public virtual void ListGetOneUserMaterialFromOuter(string param)
+        {
+            string ret = ListGetOneUserMaterial(param);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+
+        /// <summary>
+        /// To set material property from Unity
+        /// </summary>
+        /// <param name="item_name"></param>
+        /// <param name="mat_name"></param>
+        /// <param name="propname"></param>
+        /// <param name="vmat"></param>
+        /// <param name="isSaveOnly"></param>
+        public virtual void SetUserMaterial(string item_name, string mat_name, string propname, MaterialProperties vmat, bool isSaveOnly = false)
+        {
+            string fullkey = item_name + "_" + mat_name;
+
+            if (userSharedMaterials.ContainsKey(fullkey))
+            {
+                ManageAnimation manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+
+                Material mat = userSharedMaterials[fullkey];
+                if (mat != null)
+                {
+                    if (propname.ToLower() == "shader")
+                    {
+                        Shader target = Shader.Find(vmat.shaderName);
+                        if (target != null)
+                        {
+                            mat.shader = target;
+                        }
+                    }
+                    else if (propname.ToLower() == "color")
+                    {
+                        mat.SetColor("_Color", vmat.color);
+                    }
+                    else if (propname.ToLower() == "renderingtype")
+                    {
+                        if (mat.shader.name.ToLower() == "standard")
+                        {
+                            mat.SetFloat("_Mode", vmat.blendmode);
+                        }
+                        else if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_BlendMode", vmat.blendmode);
+                        }
+                    }
+                    else if (propname.ToLower() == "cullmode")
+                    { //0 - off, 1 - front, 2 - back
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_CullMode", vmat.cullmode);
+                        }
+                    }
+                    else if (propname.ToLower() == "maintex")
+                    { //texture path or role name
+                        /*
+                         * Search order:
+                         * 1, Camera           = #Camera[Cam_932931229]
+                         * 2, Default material = ""
+                         * 3, materialPackage  = [material name]
+                         * 
+                         */
+                        if ((userSharedTextureFiles[fullkey].texturePath == vmat.texturePath) && (vmat.texturePath == ""))
+                        {
+                            mat.SetTexture("_MainTex", null);
+                            mat.SetTexture("_MainTex", backupTextureFiles[fullkey].realTexture);
+                            userSharedTextureFiles[fullkey].texturePath = vmat.texturePath;
+                            userSharedTextureFiles[fullkey].textureRole = "";
+                            userSharedTextureFiles[fullkey].textureIsCamera = 0;
+                        }
+                        else
+                        {
+                            if (vmat.texturePath.IndexOf(CAMERAROLE) > -1)
+                            { //value: #Cameracam_12335667-------------------------------
+                                string rolename = vmat.texturePath.Replace(CAMERAROLE, "");
+
+
+                                //---old texture nullize
+                                if (userSharedTextureFiles[fullkey].textureIsCamera == 0)
+                                { //---old is general texture
+                                    manim.materialManager.UnRefer(userSharedTextureFiles[fullkey].texturePath);
+                                }
+                                mat.SetTexture("_MainTex", null);
+
+                                //---set new texture
+                                if (rolename != "")
+                                {
+                                    SetRenderTextureFromCamera(mat, rolename);
+                                    userSharedTextureFiles[fullkey].texturePath = vmat.texturePath;
+                                    userSharedTextureFiles[fullkey].textureRole = rolename;
+                                    userSharedTextureFiles[fullkey].textureIsCamera = 1;
+                                }
+
+                            }
+                            else if (vmat.texturePath == "")
+                            { //---recover default texture
+                                mat.SetTexture("_MainTex", null);
+                                mat.SetTexture("_MainTex", backupTextureFiles[fullkey].realTexture);
+                                userSharedTextureFiles[fullkey].texturePath = vmat.texturePath;
+                                userSharedTextureFiles[fullkey].textureRole = "";
+                                userSharedTextureFiles[fullkey].textureIsCamera = 0;
+                            }
+                            else
+                            { // value: materialManager name ---------------------------
+                                
+                                //---new version
+                                //value: NativeAP_OneMaterial.name-------------------------------
+                                //---nullize old texture
+                                if (userSharedTextureFiles[fullkey].textureIsCamera == 0)
+                                {
+                                    manim.materialManager.UnRefer(userSharedTextureFiles[fullkey].texturePath);
+                                }
+                                mat.SetTexture("_MainTex", null);
+
+                                //---set new texture
+                                NativeAP_OneMaterial nap = manim.materialManager.FindTexture(vmat.texturePath);
+                                if (nap != null)
+                                {
+                                    mat.SetTexture("_MainTex", nap.ReferTexture2D());
+                                    userSharedTextureFiles[fullkey].texturePath = vmat.texturePath;
+                                    userSharedTextureFiles[fullkey].textureRole = "";
+                                    userSharedTextureFiles[fullkey].textureIsCamera = 0;
+                                }
+                            }
+                        }
+
+
+                    }
+                    else if (propname.ToLower() == "metallic")
+                    {
+                        if (mat.shader.name.ToLower() == "standard")
+                        {
+                            mat.SetFloat("_Metallic", vmat.metallic);
+                        }
+                    }
+                    else if (propname.ToLower() == "glossiness")
+                    {
+                        if (mat.shader.name.ToLower() == "standard")
+                        {
+                            mat.SetFloat("_Glossiness", vmat.glossiness);
+                        }
+                    }
+                    else if (propname.ToLower() == "emissioncolor")
+                    {
+                        mat.EnableKeyword("EMISSION");
+                        mat.SetColor("_EmissionColor", vmat.emissioncolor);
+
+                    }
+                    else if (propname.ToLower() == "shadetexcolor")
+                    {
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetColor("_ShadeColor", vmat.shadetexcolor);
+                        }
+                    }
+                    else if (propname.ToLower() == "shadingtoony")
+                    {
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_ShadeToony", vmat.shadingtoony);
+                        }   
+                    }
+                    else if (propname.ToLower() == "rimcolor")
+                    {
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetColor("_RimColor", vmat.rimcolor);
+                        }
+                    }
+                    else if (propname.ToLower() == "rimfresnel")
+                    {
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_RimFresnelPower", vmat.rimfresnel);
+                        }                        
+                    }
+                    else if (propname.ToLower() == "srcblend")
+                    {
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_SrcBlend", vmat.srcblend);
+                        }
+                    }
+                    else if (propname.ToLower() == "dstblend")
+                    {
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_DstBlend", vmat.dstblend);
+                        }
+                    }
+                }
+            }
+        }
+        public void SetUserMaterialFromOuter(string param)
+        {
+            SetUserMaterial(param);
+        }
+        /// <summary>
+        /// To set material property from HTML
+        /// </summary>
+        /// <param name="param">0-destination material name [itemname-materialname], 1-parts(shader,color,cullmode,etc),2-value(Standard,VRM/MToon, #FFFFFF)</param>
+        public void SetUserMaterial(string param)
+        {
+            string[] prm = param.Split(',');
+            string mat_name = prm[0];
+            string propname = prm[1];
+            string value = prm[2];
+            //Debug.Log("paramater="+mat_name);
+
+            if (userSharedMaterials.ContainsKey(mat_name))
+            {
+                ManageAnimation manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+
+                Material mat = userSharedMaterials[mat_name];
+                if (mat != null)
+                {
+                    if (propname.ToLower() == "shader")
+                    {
+                        Shader target = Shader.Find(value);
+                        if (target != null)
+                        {
+                            mat.shader = target;
+                        }
+                    }
+                    else if (propname.ToLower() == "color")
+                    {
+                        Color col;
+                        if (ColorUtility.TryParseHtmlString(value, out col))
+                        {
+                            //mat.color = col;
+                            mat.SetColor("_Color", col);
+                        }
+                    }
+                    else if (propname.ToLower() == "renderingtype")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == "standard")
+                        {
+                            mat.SetFloat("_Mode", fv);
+                        }
+                        else if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_BlendMode", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "cullmode")
+                    { //0 - off, 1 - front, 2 - back
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_CullMode", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "maintex")
+                    { //texture path or role name
+                        /*
+                         * Search order:
+                         * 1, Camera           = #Camera[Cam_932931229]
+                         * 2, Default material = ""
+                         * 3, materialPackage  = [material name]
+                         * 
+                         */
+                        if ((userSharedTextureFiles[mat_name].texturePath == value) && (value == ""))
+                        {
+                            mat.SetTexture("_MainTex", null);
+                            mat.SetTexture("_MainTex", backupTextureFiles[mat_name].realTexture);
+                            userSharedTextureFiles[mat_name].texturePath = value;
+                            userSharedTextureFiles[mat_name].textureRole = "";
+                            userSharedTextureFiles[mat_name].textureIsCamera = 0;
+                        }
+                        else
+                        {
+                            if (value.IndexOf(CAMERAROLE) > -1)
+                            { //value: #Cameracam_12335667-------------------------------
+                                string rolename = value.Replace(CAMERAROLE, "");
+
+
+                                //---old texture nullize
+                                if (userSharedTextureFiles[mat_name].textureIsCamera == 0)
+                                { //---old is general texture
+                                    manim.materialManager.UnRefer(userSharedTextureFiles[mat_name].texturePath);
+                                }
+                                mat.SetTexture("_MainTex", null);
+
+                                //---set new texture
+                                if (rolename != "")
+                                {
+                                    SetRenderTextureFromCamera(mat, rolename);
+                                    userSharedTextureFiles[mat_name].texturePath = value;
+                                    userSharedTextureFiles[mat_name].textureRole = rolename;
+                                    userSharedTextureFiles[mat_name].textureIsCamera = 1;
+                                }
+
+                            }
+                            else if (value == "")
+                            { //---recover default texture
+                                mat.SetTexture("_MainTex", null);
+                                mat.SetTexture("_MainTex", backupTextureFiles[mat_name].realTexture);
+                                userSharedTextureFiles[mat_name].texturePath = value;
+                                userSharedTextureFiles[mat_name].textureRole = "";
+                                userSharedTextureFiles[mat_name].textureIsCamera = 0;
+                            }
+                            else
+                            { // value: materialManager name ---------------------------
+                                /*
+                                string[] path = value.Split('\t');
+                                if (path.Length > 1)
+                                {
+                                    StartCoroutine(LoadImageuri(path[1], mat));
+                                    userSharedTextureFiles[mat_name] = value;
+                                }
+                                */
+                                //---new version
+                                //value: NativeAP_OneMaterial.name-------------------------------
+                                //---nullize old texture
+                                if (userSharedTextureFiles[mat_name].textureIsCamera == 0)
+                                {
+                                    manim.materialManager.UnRefer(userSharedTextureFiles[mat_name].texturePath);
+                                }
+                                mat.SetTexture("_MainTex", null);
+
+                                //---set new texture
+                                NativeAP_OneMaterial nap = manim.materialManager.FindTexture(value);
+                                if (nap != null)
+                                {
+                                    mat.SetTexture("_MainTex", nap.ReferTexture2D());
+                                    userSharedTextureFiles[mat_name].texturePath = value;
+                                    userSharedTextureFiles[mat_name].textureRole = "";
+                                    userSharedTextureFiles[mat_name].textureIsCamera = 0;
+                                }
+                            }
+                        }
+
+
+                    }
+                    else if (propname.ToLower() == "metallic")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == "standard")
+                        {
+                            mat.SetFloat("_Metallic", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "glossiness")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == "standard")
+                        {
+                            mat.SetFloat("_Glossiness", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "emissioncolor")
+                    {
+                        Color col;
+                        if (ColorUtility.TryParseHtmlString(value, out col))
+                        {
+                            mat.EnableKeyword("EMISSION");
+                            mat.SetColor("_EmissionColor", col);
+                        }
+                    }
+                    else if (propname.ToLower() == "shadetexcolor")
+                    {
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            Color col;
+                            if (ColorUtility.TryParseHtmlString(value, out col))
+                            {
+                                mat.SetColor("_ShadeColor", col);
+                            }
+                        }
+                    }
+                    else if (propname.ToLower() == "shadingtoony")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_ShadeToony", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "rimcolor")
+                    {
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            Color col;
+                            if (ColorUtility.TryParseHtmlString(value, out col))
+                            {
+                                mat.SetColor("_RimColor", col);
+                            }
+                        }
+                    }
+                    else if (propname.ToLower() == "rimfresnel")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_RimFresnelPower", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "srcblend")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_SrcBlend", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "dstblend")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_DstBlend", fv);
+                        }
+                    }
+                }
+            }
+
+        }
+
+        /// <summary>
+        /// To set material motion information to DOTween 
+        /// </summary>
+        /// <param name="seq"></param>
+        /// <param name="mat_name"></param>
+        /// <param name="value"></param>
+        /// <param name="duration"></param>
+        /// <returns></returns>
+        public virtual Sequence SetMaterialTween(Sequence seq, string mat_name, MaterialProperties value, float duration)
+        {
+            if (userSharedMaterials.ContainsKey(mat_name))
+            {
+                Material mat = userSharedMaterials[mat_name];
+                if (mat != null)
+                {
+                    seq.Join(DOVirtual.DelayedCall(duration, () =>
+                    {
+                        Shader target = Shader.Find(value.shaderName);
+                        if (target != null)
+                        {
+                            mat.shader = target;
+                        }
+                    }, false));
+                    seq.Join(DOVirtual.DelayedCall(duration, () =>
+                    {
+                        SetUserMaterial(mat_name + ",maintex," + value.texturePath);
+                    }, false));
+
+                    seq.Join(mat.DOColor(value.color, duration));
+                    if (value.shaderName.ToLower() == "standard")
+                    {
+                        seq.Join(mat.DOFloat(value.blendmode, "_Mode", duration));
+                        seq.Join(mat.DOFloat(value.metallic, "_Metallic", duration));
+                        seq.Join(mat.DOFloat(value.glossiness, "_Glossiness", duration));
+                    }
+                    else if (value.shaderName.ToLower() == "vrm/mtoon")
+                    {
+                        seq.Join(mat.DOFloat(value.blendmode, "_BlendMode", duration));
+                        seq.Join(mat.DOFloat(value.cullmode, "_CullMode", duration));
+                        seq.Join(mat.DOColor(value.shadetexcolor, "_ShadeColor", duration));
+                        seq.Join(mat.DOFloat(value.shadingtoony, "_ShadeToony", duration));
+                        seq.Join(mat.DOColor(value.rimcolor, "_RimColor", duration));
+                        seq.Join(mat.DOFloat(value.rimfresnel, "_RimFresnelPower", duration));
+                        seq.Join(mat.DOFloat(value.srcblend, "_SrcBlend", duration));
+                        seq.Join(mat.DOFloat(value.dstblend, "_DstBlend", duration));
+                    }
+                    seq.Join(DOVirtual.DelayedCall(duration, () => mat.EnableKeyword("EMISSION"), false));
+                    seq.Join(mat.DOColor(value.emissioncolor, "_EmissionColor", duration));
+
+                }
+            }
+
+
+            return seq;
         }
     }
 

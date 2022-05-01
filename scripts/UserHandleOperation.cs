@@ -40,7 +40,7 @@ namespace UserHandleSpace
 
             ovrm = relatedAvatar.GetComponent<OperateLoadedVRM>();
 
-            cnf = GameObject.FindGameObjectWithTag("UICanvas").GetComponent<ConfigSettingLabs>();
+            cnf = GameObject.Find("AnimateArea").GetComponent<ConfigSettingLabs>();
 
             mat = relatedAvatar.GetComponent<ManageAvatarTransform>();
             manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
@@ -77,8 +77,8 @@ namespace UserHandleSpace
             }
             */
             Sequence seq = DOTween.Sequence();
-            
-            
+
+            if (manim == null) return;
             if (manim.IsLimitedPelvis)
             {
                 if (PartsName == "pelvis")

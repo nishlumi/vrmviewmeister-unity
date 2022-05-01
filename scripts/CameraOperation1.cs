@@ -52,7 +52,7 @@ public class CameraOperation1 : MonoBehaviour
     {
         Debug.Log(RenderSettings.skybox.shader.name);
 
-        configLab = GameObject.Find("Canvas").GetComponent<ConfigSettingLabs>();
+        configLab = GameObject.Find("AnimateArea").GetComponent<ConfigSettingLabs>();
         mainCamera = Camera.main;
         //Dbg_diff = GameObject.Find("Dbg_diff").GetComponent<Text>();
         //Dbg_mouse = GameObject.Find("Dbg_mouse").GetComponent<Text>();
@@ -636,6 +636,12 @@ public class CameraOperation1 : MonoBehaviour
             Front3DCam.backgroundColor = col;
             //Front3DCam.transform.GetChild(0).gameObject.GetComponent<Camera>().backgroundColor = col;
         }
+    }
+    public Sequence SetSkyColorTween(Sequence seq, Color param, float duration)
+    {
+        seq.Join(Front3DCam.DOColor(param, duration));
+
+        return seq;
     }
     public Color GetSkyColor()
     {

@@ -36,7 +36,35 @@ namespace UserHandleSpace
             return vec3;
         }
 
+        private bool SetObjectMaterial(string rawstr, List<MaterialProperties> matProp, string sepprop, string sepitem)
+        {
+            bool ret = false;
+            string[] arr = rawstr.Split(sepitem);
+            foreach (string matstr in arr)
+            {
+                MaterialProperties mat = new MaterialProperties();
+                string[] matc = matstr.Split(sepprop);
 
+                mat.name = matc[0];
+                mat.shaderName = matc[1];
+                mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
+                mat.cullmode = float.TryParse(matc[3], out mat.cullmode) ? mat.cullmode : 0;
+                mat.blendmode = float.TryParse(matc[4], out mat.blendmode) ? mat.blendmode : 0;
+                mat.texturePath = matc[5];
+                mat.metallic = float.TryParse(matc[6], out mat.metallic) ? mat.metallic : 0;
+                mat.glossiness = float.TryParse(matc[7], out mat.glossiness) ? mat.glossiness : 0;
+                mat.emissioncolor = ColorUtility.TryParseHtmlString(matc[8], out mat.emissioncolor) ? mat.emissioncolor : Color.white;
+                mat.shadetexcolor = ColorUtility.TryParseHtmlString(matc[9], out mat.shadetexcolor) ? mat.shadetexcolor : Color.white;
+                mat.shadingtoony = float.TryParse(matc[10], out mat.shadingtoony) ? mat.shadingtoony : 0;
+                mat.rimcolor = ColorUtility.TryParseHtmlString(matc[11], out mat.rimcolor) ? mat.rimcolor : Color.white;
+                mat.rimfresnel = float.TryParse(matc[12], out mat.rimfresnel) ? mat.rimfresnel : 0;
+                mat.srcblend = float.TryParse(matc[13], out mat.srcblend) ? mat.srcblend : 0;
+                mat.dstblend = float.TryParse(matc[14], out mat.dstblend) ? mat.dstblend : 0;
+                matProp.Add(mat);
+            }
+            if (matProp.Count > 0) ret = true;
+            return ret;
+        }
         /// <summary>
         /// Convert "movingData" CSV-format to AnimationTargetParts
         /// </summary>
@@ -48,6 +76,9 @@ namespace UserHandleSpace
         private AnimationTargetParts CsvToFrameData(NativeAnimationFrameActor actor, AF_TARGETTYPE targetType, string param, AnimationTargetParts atp)
         {
             string[] lst = param.Split(',');
+            const string CST_SEPSTR_PROP = "=";
+            const string CST_SEPSTR_ITEM = "%";
+
             /* 
              * Column and meaning 
              * Index:
@@ -224,7 +255,7 @@ namespace UserHandleSpace
                     for (int lst_i = CSV_BEGINVAL; lst_i < lst.Length; lst_i++)
                     {
                         string lste = lst[lst_i];
-                        string[] equipItem = lste.Split('=');
+                        string[] equipItem = lste.Split(CST_SEPSTR_PROP);
                         int ival = int.TryParse(equipItem[0], out ival) ? ival : 0;
                         if (ival != 0)
                         {
@@ -243,7 +274,7 @@ namespace UserHandleSpace
                     for (int lst_i = CSV_BEGINVAL; lst_i < lst.Length; lst_i++)
                     {
                         string lste = lst[lst_i];
-                        string[] graitem = lste.Split('=');
+                        string[] graitem = lste.Split(CST_SEPSTR_PROP);
                         int gravIndex = int.TryParse(graitem[0], out gravIndex) ? gravIndex : -1;
                         if ((gravIndex > -1) && (gravIndex < actor.gravityBoneList.Count))
                         {
@@ -269,7 +300,7 @@ namespace UserHandleSpace
                     atp.animationType = AF_MOVETYPE.VRMIKProperty;
                     for (int i = CSV_BEGINVAL; i < lst.Length; i++)
                     {
-                        string[] arr = lst[i].Split('=');
+                        string[] arr = lst[i].Split(CST_SEPSTR_PROP);
                         AvatarIKMappingClass aikmc = new AvatarIKMappingClass();
                         int iparts = int.TryParse(arr[0], out iparts) ? iparts : 99;
                         if (iparts != 99)
@@ -283,26 +314,11 @@ namespace UserHandleSpace
                 else if (movetype == "objtex")
                 {
                     atp.animationType = AF_MOVETYPE.ObjectTexture;
-                    
-                    OperateLoadedVRM.MaterialProperties mat = new OperateLoadedVRM.MaterialProperties();
-                    string[] matc = lst[4].Split('=');
 
-                    mat.shaderName = matc[0];
-                    mat.color = ColorUtility.TryParseHtmlString(matc[1], out mat.color) ? mat.color : Color.white;
-                    mat.cullmode = float.TryParse(matc[2], out mat.cullmode) ? mat.cullmode : 0;
-                    mat.blendmode = float.TryParse(matc[3], out mat.blendmode) ? mat.blendmode : 0;
-                    //DUMMY: mat.texturePath = matc[4];
-                    //DUMMY: mat.metallic = float.TryParse(matc[5], out mat.metallic) ? mat.metallic : 0;
-                    //DUMMY: mat.glossiness = float.TryParse(matc[6], out mat.glossiness) ? mat.glossiness : 0;
-                    mat.emissioncolor = ColorUtility.TryParseHtmlString(matc[7], out mat.emissioncolor) ? mat.emissioncolor : Color.white;
-                    mat.shadetexcolor = ColorUtility.TryParseHtmlString(matc[8], out mat.shadetexcolor) ? mat.shadetexcolor : Color.white;
-                    mat.shadingtoony = float.TryParse(matc[9], out mat.shadingtoony) ? mat.shadingtoony : 0;
-                    mat.rimcolor = ColorUtility.TryParseHtmlString(matc[10], out mat.rimcolor) ? mat.rimcolor : Color.white;
-                    mat.rimfresnel = float.TryParse(matc[11], out mat.rimfresnel) ? mat.rimfresnel : 0;
-                    mat.srcblend = float.TryParse(matc[12], out mat.srcblend) ? mat.srcblend : 0;
-                    mat.dstblend = float.TryParse(matc[13], out mat.dstblend) ? mat.dstblend : 0;
-                    atp.vmatProp = mat;
-                    
+                    //---Open and set material properties from raw-string
+                    SetObjectMaterial(lst[4], atp.matProp, CST_SEPSTR_PROP, CST_SEPSTR_ITEM);
+
+
                 }
             }
             else
@@ -376,27 +392,10 @@ namespace UserHandleSpace
                     else if (movetype == "objtex")
                     {
                         atp.animationType = AF_MOVETYPE.ObjectTexture;
-                        string[] arr = lst[4].Split('%');
-                        foreach (string matstr in arr)
-                        {
-                            OperateLoadedOther.MaterialProperties mat = new OperateLoadedOther.MaterialProperties();
-                            string[] matc = matstr.Split('=');
 
-                            mat.name = matc[0];
-                            mat.shaderName = matc[1];
-                            mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
-                            mat.cullmode = float.TryParse(matc[3], out mat.cullmode) ? mat.cullmode : 0;
-                            mat.blendmode = float.TryParse(matc[4], out mat.blendmode) ? mat.blendmode : 0;
-                            mat.texturePath = matc[5];
-                            mat.metallic = float.TryParse(matc[6], out mat.metallic) ? mat.metallic : 0;
-                            mat.glossiness = float.TryParse(matc[7], out mat.glossiness) ? mat.glossiness : 0;
-                            mat.emissioncolor = ColorUtility.TryParseHtmlString(matc[8], out mat.emissioncolor) ? mat.emissioncolor : Color.white;
-                            mat.shadetexcolor = ColorUtility.TryParseHtmlString(matc[9], out mat.shadetexcolor) ? mat.shadetexcolor : Color.white;
-                            mat.shadingtoony = float.TryParse(matc[10], out mat.shadingtoony) ? mat.shadingtoony : 0;
-                            mat.rimcolor = ColorUtility.TryParseHtmlString(matc[11], out mat.rimcolor) ? mat.rimcolor : Color.white;
-                            mat.rimfresnel = float.TryParse(matc[12], out mat.rimfresnel) ? mat.rimfresnel : 0;
-                            atp.matProp.Add(mat);
-                        }
+                        //---Open and set material properties from raw-string
+                        SetObjectMaterial(lst[4], atp.matProp, CST_SEPSTR_PROP, CST_SEPSTR_ITEM);
+                        
                     }
                 }
                 else if (targetType == AF_TARGETTYPE.Light)
@@ -594,20 +593,30 @@ namespace UserHandleSpace
                         atp.windDurationMin = vec3[8];
                         atp.windDurationMax = vec3[9];
 
-                        //---user stage
-                        atp.userStageMetallic = vec3[10];
-                        atp.userStageGlossiness = vec3[11];
-                        atp.userStageEmissionColor = new Color(vec3[12], vec3[13], vec3[14], vec3[15]);
+                        if (atp.stageType == (int)StageKind.User)
+                        {
+                            MaterialProperties matmain = new MaterialProperties();
 
-                        //---user stage texture
-                        int utex_i = CSV_BEGINVAL + valueCount;
-                        OperateLoadedOther.MaterialProperties matmain = new OperateLoadedOther.MaterialProperties();
-                        matmain.texturePath = lst[utex_i];
-                        atp.matProp.Add(matmain);
-                        utex_i++;
-                        OperateLoadedOther.MaterialProperties matnormal = new OperateLoadedOther.MaterialProperties();
-                        matnormal.texturePath = lst[utex_i];
-                        atp.matProp.Add(matnormal);
+                            //---user stage
+                            matmain.metallic = vec3[10];
+                            matmain.glossiness = vec3[11];
+                            matmain.emissioncolor = new Color(vec3[12], vec3[13], vec3[14], vec3[15]);
+                            matmain.color = new Color(vec3[16], vec3[17], vec3[18], vec3[19]);
+                            matmain.blendmode = vec3[20];
+
+                            //---user stage texture
+                            string[] texparts = optParts.Split("\t");
+                            //int utex_i = CSV_BEGINVAL + valueCount;
+
+                            matmain.texturePath = texparts[0]; // lst[utex_i];
+                            atp.matProp.Add(matmain);
+                            //utex_i++;
+
+                            MaterialProperties matnormal = new MaterialProperties();
+                            matnormal.texturePath = texparts[1]; // lst[utex_i];
+                            atp.matProp.Add(matnormal);
+                        }
+                        
 
 
                     }
@@ -659,6 +668,8 @@ namespace UserHandleSpace
         /// <returns></returns>
         public string DataToCSV(AF_TARGETTYPE targetType, AnimationTargetParts atp)
         {
+            const string CST_SEPSTR_PROP = "=";
+            const string CST_SEPSTR_ITEM = "%";
             List<string> ret = new List<string>();
             /*
                 CSV format:
@@ -802,7 +813,7 @@ namespace UserHandleSpace
                         ret.Add(atp.equipDestinations.Count.ToString());
                         atp.equipDestinations.ForEach(equip =>
                         {
-                            ret.Add(((int)equip.bodybonename).ToString() + "=" + equip.equipitem);
+                            ret.Add(((int)equip.bodybonename).ToString() + CST_SEPSTR_PROP + equip.equipitem);
                         });
 
                     }
@@ -815,7 +826,7 @@ namespace UserHandleSpace
                         for (int i = 0; i < atp.gravity.list.Count; i++)
                         {
                             VRMGravityInfo gra = atp.gravity.list[i];
-                            ret.Add(i.ToString() + "=" + gra.power + "=" + gra.dir.x.ToString() + "=" + gra.dir.y.ToString() + "=" + gra.dir.z.ToString());
+                            ret.Add(i.ToString() + "=" + gra.power + CST_SEPSTR_PROP + gra.dir.x.ToString() + CST_SEPSTR_PROP + gra.dir.y.ToString() + CST_SEPSTR_PROP + gra.dir.z.ToString());
                         }
                     }
                     else if (atp.animationType == AF_MOVETYPE.VRMIKProperty)
@@ -826,7 +837,7 @@ namespace UserHandleSpace
                         ret.Add(atp.handleList.Count.ToString());
                         foreach (var item in atp.handleList)
                         {
-                            ret.Add(((int)item.parts).ToString() + "=" + item.name);
+                            ret.Add(((int)item.parts).ToString() + CST_SEPSTR_PROP + item.name);
                         }
                         
                     }
@@ -837,25 +848,29 @@ namespace UserHandleSpace
                         ret.Add("objtex");
                         ret.Add("0");
                         List<string> lst = new List<string>();
-                        OperateLoadedVRM.MaterialProperties mat = atp.vmatProp;
-                        
-                        string ln = mat.shaderName + "=" +
-                            "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + "=" +
-                            mat.cullmode.ToString() + "=" +
-                            mat.blendmode.ToString() + "=" +
-                            "" + "=" +
-                            "0" + "=" +
-                            "0" + "=" +
-                            "#" + ColorUtility.ToHtmlStringRGBA(mat.emissioncolor) + "=" +
-                            "#" + ColorUtility.ToHtmlStringRGBA(mat.shadetexcolor) + "=" +
-                            mat.shadingtoony.ToString() + "=" +
-                            "#" + ColorUtility.ToHtmlStringRGBA(mat.rimcolor) + "=" +
-                            mat.rimfresnel.ToString() + "=" + 
-                            mat.srcblend.ToString() + "=" + 
-                            mat.dstblend.ToString()
-                        ;
-                        
-                        ret.Add(ln);
+                        foreach (MaterialProperties mat in atp.matProp)
+                        {
+                            string ln = mat.name + CST_SEPSTR_PROP + 
+                                mat.shaderName + CST_SEPSTR_PROP +
+                                "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
+                                mat.cullmode.ToString() + CST_SEPSTR_PROP +
+                                mat.blendmode.ToString() + CST_SEPSTR_PROP +
+                                "" + CST_SEPSTR_PROP +
+                                "0" + CST_SEPSTR_PROP +
+                                "0" + CST_SEPSTR_PROP +
+                                "#" + ColorUtility.ToHtmlStringRGBA(mat.emissioncolor) + CST_SEPSTR_PROP +
+                                "#" + ColorUtility.ToHtmlStringRGBA(mat.shadetexcolor) + CST_SEPSTR_PROP +
+                                mat.shadingtoony.ToString() + CST_SEPSTR_PROP +
+                                "#" + ColorUtility.ToHtmlStringRGBA(mat.rimcolor) + CST_SEPSTR_PROP +
+                                mat.rimfresnel.ToString() + CST_SEPSTR_PROP +
+                                mat.srcblend.ToString() + CST_SEPSTR_PROP +
+                                mat.dstblend.ToString() + CST_SEPSTR_PROP +
+                                mat.srcblend.ToString() + CST_SEPSTR_PROP +
+                                mat.dstblend.ToString()
+                            ;
+                            lst.Add(ln);
+                        }
+                        ret.Add(string.Join(CST_SEPSTR_ITEM, lst));
                     }
                 }
                 else if (targetType == AF_TARGETTYPE.OtherObject)
@@ -906,25 +921,27 @@ namespace UserHandleSpace
                         ret.Add("objtex");
                         ret.Add("0");
                         List<string> lst = new List<string>();
-                        foreach (OperateLoadedOther.MaterialProperties mat in atp.matProp)
+                        foreach (MaterialProperties mat in atp.matProp)
                         {
-                            string ln = mat.name + "=" +
-                                mat.shaderName + "=" +
-                                "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + "=" +
-                                mat.cullmode.ToString() + "=" +
-                                mat.blendmode.ToString() + "=" +
-                                mat.texturePath + "=" +
-                                mat.metallic.ToString() + "=" + 
-                                mat.glossiness + "=" + 
-                                "#" + ColorUtility.ToHtmlStringRGBA(mat.emissioncolor) + "=" +
-                                "#" + ColorUtility.ToHtmlStringRGBA(mat.shadetexcolor) + "=" +
-                                mat.shadingtoony.ToString() + "=" +
-                                "#" + ColorUtility.ToHtmlStringRGBA(mat.rimcolor) + "=" +
-                                mat.rimfresnel.ToString()
+                            string ln = mat.name + CST_SEPSTR_PROP +
+                                mat.shaderName + CST_SEPSTR_PROP +
+                                "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
+                                mat.cullmode.ToString() + CST_SEPSTR_PROP +
+                                mat.blendmode.ToString() + CST_SEPSTR_PROP +
+                                mat.texturePath + CST_SEPSTR_PROP +
+                                mat.metallic.ToString() + CST_SEPSTR_PROP +
+                                mat.glossiness + CST_SEPSTR_PROP +
+                                "#" + ColorUtility.ToHtmlStringRGBA(mat.emissioncolor) + CST_SEPSTR_PROP +
+                                "#" + ColorUtility.ToHtmlStringRGBA(mat.shadetexcolor) + CST_SEPSTR_PROP +
+                                mat.shadingtoony.ToString() + CST_SEPSTR_PROP +
+                                "#" + ColorUtility.ToHtmlStringRGBA(mat.rimcolor) + CST_SEPSTR_PROP +
+                                mat.rimfresnel.ToString() + CST_SEPSTR_PROP +
+                                mat.srcblend.ToString() + CST_SEPSTR_PROP +
+                                mat.dstblend.ToString()
                             ;
                             lst.Add(ln);
                         }
-                        ret.Add(string.Join("%", lst));
+                        ret.Add(string.Join(CST_SEPSTR_ITEM, lst));
                     }
                 }
                 else if (targetType == AF_TARGETTYPE.Light)
@@ -1142,10 +1159,21 @@ namespace UserHandleSpace
                     ret.Add(((int)atp.vrmBone).ToString());
                     if (atp.animationType == AF_MOVETYPE.StageProperty)
                     {
-                        
-                        ret.Add("");
+                        string allCount = "";
+                        string optParts = "";
+                        if ((atp.matProp.Count > 0) && (atp.stageType == (int)StageKind.User))
+                        {
+                            allCount = "21";
+                            optParts = atp.matProp[0].texturePath + "\t" + atp.matProp[1].texturePath;
+                        }
+                        else
+                        {
+                            allCount = "10";
+                        }
+                        ret.Add(optParts);
                         ret.Add("stageprop");
-                        ret.Add("16");
+                        ret.Add(allCount);
+                        //0 ~ 9
                         ret.Add(atp.stageType.ToString());
                         ret.Add(atp.wavespeed.x.ToString());
                         ret.Add(atp.wavespeed.y.ToString());
@@ -1156,15 +1184,28 @@ namespace UserHandleSpace
                         ret.Add(atp.windFrequency.ToString());
                         ret.Add(atp.windDurationMin.ToString());
                         ret.Add(atp.windDurationMax.ToString());
-                        ret.Add(atp.userStageMetallic.ToString());
-                        ret.Add(atp.userStageGlossiness.ToString());
-                        ret.Add(atp.userStageEmissionColor.r.ToString());
-                        ret.Add(atp.userStageEmissionColor.g.ToString());
-                        ret.Add(atp.userStageEmissionColor.b.ToString());
-                        ret.Add(atp.userStageEmissionColor.a.ToString());
-                        //---below is string param
-                        ret.Add(atp.matProp[0].texturePath); //maintex
-                        ret.Add(atp.matProp[1].texturePath); //bump map
+
+                        if (atp.matProp.Count > 0)
+                        {
+                            MaterialProperties mat0 = atp.matProp[0];
+                            MaterialProperties mat1 = atp.matProp[1];
+                            //10 ~ 20
+                            ret.Add(mat0.metallic.ToString());
+                            ret.Add(mat0.glossiness.ToString());
+                            ret.Add(mat0.emissioncolor.r.ToString());
+                            ret.Add(mat0.emissioncolor.g.ToString());
+                            ret.Add(mat0.emissioncolor.b.ToString());
+                            ret.Add(mat0.emissioncolor.a.ToString());
+                            ret.Add(mat0.color.r.ToString());
+                            ret.Add(mat0.color.g.ToString());
+                            ret.Add(mat0.color.b.ToString());
+                            ret.Add(mat0.color.a.ToString());
+                            ret.Add(mat0.blendmode.ToString());
+                            //---below is string param
+                            //ret.Add(atp.matProp[0].texturePath); //maintex
+                            //ret.Add(atp.matProp[1].texturePath); //bump map
+                        }
+                        
                     }
                     else if (atp.animationType == AF_MOVETYPE.SkyProperty)
                     {

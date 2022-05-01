@@ -1257,6 +1257,16 @@ namespace UserHandleSpace
             {
                 if (avatar.avatarId == prm[0])
                 {
+                    //---repair for influence of renaming role title
+                    currentProject.casts.ForEach(vrm =>
+                    {
+                        if (vrm.type == AF_TARGETTYPE.VRM)
+                        {
+                            vrm.avatar.GetComponent<OperateLoadedVRM>().ApplyRenameIKTargetRoleTitle(avatar.roleTitle + "\t" + prm[1]);
+                        }
+                    });
+
+                    //---apply changes!
                     avatar.roleTitle = prm[1];
                     //Debug.Log(JsonUtility.ToJson(avatar));
                 }
@@ -1452,6 +1462,21 @@ namespace UserHandleSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(js);
 #endif
+        }
+
+        /// <summary>
+        /// To reset specified IK-target of all VRM
+        /// </summary>
+        /// <param name="param"></param>
+        public void ApplyAllVRM_ResetIKTargetBySearchObject(string param)
+        {
+            currentProject.casts.ForEach(item =>
+            {
+                if (item.type == AF_TARGETTYPE.VRM)
+                {
+                    item.avatar.GetComponent<OperateLoadedVRM>().ResetIKMappingBySearchObject(param);
+                }
+            });
         }
 
         //=== Functions to check, utility ===================================================================================
@@ -2346,8 +2371,12 @@ namespace UserHandleSpace
                     {
                         if (actor.type == AF_TARGETTYPE.VRM)
                         {
-                            OperateLoadedVRM olvrm = actor.avatar.GetComponent<OperateLoadedVRM>();
-                            olvrm.ListGravityInfo();
+                            if (actor.avatar != null)
+                            {
+                                OperateLoadedVRM olvrm = actor.avatar.GetComponent<OperateLoadedVRM>();
+                                olvrm.ListGravityInfo();
+                            }
+                            
                         }
                     }
                     foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
@@ -2642,7 +2671,7 @@ namespace UserHandleSpace
             TweenCallback cb_start = () =>
             {
                 //---For non-DOTween method and properties
-                SpecialUpdate_body(actor, actor.frameIndexMarker);
+                //SpecialUpdate_body(actor, actor.frameIndexMarker);
                 //actor.frameIndexMarker++;
                 //Debug.Log(actor.avatar.roleTitle + " keyframe " + actor.frameIndexMarker + "start");
             };

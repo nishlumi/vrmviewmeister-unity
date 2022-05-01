@@ -11,6 +11,32 @@ namespace UserHandleSpace
 {
 
     //===============================================================================================================
+    //  Material and General class
+    //===============================================================================================================
+    [Serializable]
+    public class MaterialProperties
+    {
+        public string name = "";
+        public string shaderName = "";
+        public Color color = Color.white;
+        public float cullmode = 0;
+        public float blendmode = 0;
+        public int textureIsCamera = 0;
+        public string textureRole = "";
+        public string texturePath = "";
+        public Texture realTexture = null;
+        public float metallic = 0;
+        public float glossiness = 0;
+        public Color emissioncolor = Color.white;
+        public Color shadetexcolor = Color.white;
+        public float shadingtoony = 0;
+        public Color rimcolor = Color.white;
+        public float rimfresnel = 0;
+        public float srcblend = 0;
+        public float dstblend = 0;
+    }
+
+    //===============================================================================================================
     //  Pose file class
     //===============================================================================================================
     [Serializable]
@@ -428,13 +454,13 @@ namespace UserHandleSpace
         public float animSeek;
         public int animLoop;
         public string animName;
-        public OperateLoadedVRM.MaterialProperties vmatProp;
+        public MaterialProperties vmatProp;
 
         //---other object
         public string renderTextureId;
         //public int isEquip;
         //public string equippedRoleName;
-        public List<OperateLoadedOther.MaterialProperties> matProp;
+        public List<MaterialProperties> matProp;
 
 
         //---light options
@@ -526,7 +552,7 @@ namespace UserHandleSpace
             blendshapes = new List<BasicStringFloatList>();
             viewHandle = "self";
             handleList = new List<AvatarIKMappingClass>();
-            matProp = new List<OperateLoadedOther.MaterialProperties>();
+            matProp = new List<MaterialProperties>();
             effectValues = new List<float>();
             windDurationMin = 0.01f;
             windDurationMax = 0.02f;
@@ -543,7 +569,7 @@ namespace UserHandleSpace
             isVRMCollider = 0;
             VRMColliderSize = 0.1f;
             VRMColliderTarget = new List<string>();
-            vmatProp = new OperateLoadedVRM.MaterialProperties();
+            vmatProp = new MaterialProperties();
 
         }
         public AnimationTargetParts SCopy()
@@ -576,7 +602,7 @@ namespace UserHandleSpace
             }
             if (sc.matProp != null)
             {
-                sc.matProp = new List<OperateLoadedOther.MaterialProperties>(matProp);
+                sc.matProp = new List<MaterialProperties>(matProp);
             }
             if (sc.skyShaderFloat != null)
             {
