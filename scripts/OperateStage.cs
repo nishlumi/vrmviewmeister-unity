@@ -271,7 +271,7 @@ namespace UserHandleSpace
             }
             else
             {
-                Addressables.ReleaseInstance(ActiveStage);
+                if (ActiveStage != null) Addressables.ReleaseInstance(ActiveStage);
             }
             
         }

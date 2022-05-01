@@ -291,7 +291,7 @@ public class ownscr_MoveUIBox : MonoBehaviour
         olv.SetVisibleAvatar(0);
         */
     }
-    public void OnClickBtnStageId()
+    public async void OnClickBtnStageId()
     {
         GameObject inp = GameObject.Find("inp_StageId");
         InputField inpf = inp.GetComponent<InputField>();
@@ -300,7 +300,7 @@ public class ownscr_MoveUIBox : MonoBehaviour
         GameObject grd = GameObject.FindGameObjectWithTag("GroundWorld");
         OperateStage os = grd.GetComponent<OperateStage>();
 
-        os.SelectStage(v);
+        await os.SelectStageRef(v);
     }
     public void OnClickEnableHandleShow()
     {
