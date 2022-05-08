@@ -152,13 +152,13 @@ namespace UserHandleSpace
             if (ActiveUserStageMainTextureName != "")
             {
                 MeshRenderer mesh = ActiveStage.GetComponent<MeshRenderer>();
-                manim.materialManager.UnRefer(ActiveUserStageMainTextureName);
+                manim.UnReferMaterial(OneMaterialType.Texture, ActiveUserStageMainTextureName);
                 mesh.material.SetTexture("_MainTex", null);
             }
             if (ActiveUserStageBumpmapTextureName != "")
             {
                 MeshRenderer mesh = ActiveStage.GetComponent<MeshRenderer>();
-                manim.materialManager.UnRefer(ActiveUserStageBumpmapTextureName);
+                manim.UnReferMaterial(OneMaterialType.Texture, ActiveUserStageBumpmapTextureName);
                 mesh.material.SetTexture("_BumpMap", null);
             }
         }
@@ -490,10 +490,10 @@ namespace UserHandleSpace
                     {
                         if (ActiveUserStageMainTextureName != prm[1])
                         {
-                            manim.materialManager.UnRefer(ActiveUserStageMainTextureName);
+                            manim.UnReferMaterial(OneMaterialType.Texture, ActiveUserStageMainTextureName);
                             mesh.material.SetTexture("_MainTex", null);
 
-                            NativeAP_OneMaterial nap = manim.materialManager.FindTexture(prm[1]);
+                            NativeAP_OneMaterial nap = manim.FindTexture(prm[1]);
                             if (nap != null)
                             {
                                 mesh.material.SetTexture("_MainTex", nap.ReferTexture2D());
@@ -506,10 +506,10 @@ namespace UserHandleSpace
                     {
                         if (ActiveUserStageBumpmapTextureName != prm[1])
                         {
-                            manim.materialManager.UnRefer(ActiveUserStageBumpmapTextureName);
+                            manim.UnReferMaterial(OneMaterialType.Texture, ActiveUserStageBumpmapTextureName);
                             mesh.material.SetTexture("_BumpMap", null);
 
-                            NativeAP_OneMaterial nap = manim.materialManager.FindTexture(prm[1]);
+                            NativeAP_OneMaterial nap = manim.FindTexture(prm[1]);
                             if (nap != null)
                             {
                                 mesh.material.EnableKeyword("_NORMALMAP");

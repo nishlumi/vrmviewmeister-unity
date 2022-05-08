@@ -66,6 +66,7 @@ namespace UserHandleSpace
             arr.Add(IsSE ? "SE" : "BGM");
             arr.Add(pflag.ToString());
             arr.Add(targetAudioName);
+            arr.Add(GetAudioLength().ToString());
             arr.Add(GetSeekSeconds().ToString());
             arr.Add(GetVolume().ToString());
             arr.Add(GetPitch().ToString());
@@ -76,10 +77,11 @@ namespace UserHandleSpace
             //0 - type
             //1 - play flag
             //2 - current audio
-            //3 - seek pos
-            //4 - volume
-            //5 - pitch
-            //6 - loop
+            //3 - audio length
+            //4 - seek pos
+            //5 - volume
+            //6 - pitch
+            //7 - loop
 
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(ret);
@@ -282,7 +284,7 @@ namespace UserHandleSpace
         public float GetAudioLength()
         {
             float ret = 0f;
-            ret = audioPlayer.clip.length;
+            if (audioPlayer.clip != null) ret = audioPlayer.clip.length;
             return ret;
         }
         public void GetAudioLengthFromOuter()
@@ -300,7 +302,9 @@ namespace UserHandleSpace
         }
         public float GetSeekSeconds()
         {
-            return audioPlayer.time;
+            float ret = 0f;
+            if (audioPlayer.clip != null) ret = audioPlayer.time;
+            return ret;
         }
         public void GetSeekSecondsFromOuter()
         {

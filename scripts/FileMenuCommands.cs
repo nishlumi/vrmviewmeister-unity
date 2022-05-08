@@ -2,6 +2,10 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System.Runtime.InteropServices;
+using UnityEngine.AddressableAssets;
+using UnityEngine.Events;
+using UnityEngine.ResourceManagement.AsyncOperations;
+
 using UnityEngine.Networking;
 using UnityEngine.UI;
 using RootMotion.FinalIK;
@@ -10,6 +14,7 @@ using VRM;
 using VRMShaders;
 
 using UserHandleSpace;
+using UserUISpace;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -189,11 +194,11 @@ namespace UserVRMSpace
         public GameObject ParentObject;
         //public GameObject VRMChara;
         //public GameObject ViewPointObject;
-        public Text VRMTitle;
-        public Text VRMVersion;
-        public Text VRMAuthor;
-        public Text VRMHeight;
-        public Image VRMAvatar;
+        //public Text VRMTitle;
+        //public Text VRMVersion;
+        //public Text VRMAuthor;
+        //public Text VRMHeight;
+        //public Image VRMAvatar;
         //private Renderer renderer;
         private int i = 0;
         private Vector3 thead_position;
@@ -202,6 +207,8 @@ namespace UserVRMSpace
         private VRMImporterContext pendingContext;
         private VRMMetaObject pendingVRMmeta;
         private RuntimeGltfInstance pendingInstance;
+
+        private NativeAnimationAvatar lastLoadedAvatar;
 
         private GameObject _loadedGameObject;
         //private string _loadedObjectFileName = "";
@@ -230,6 +237,8 @@ namespace UserVRMSpace
             //Debug.Log(animator);
 
             managa = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+
+            lastLoadedAvatar = null;
 
         }
         private void OnDestroy()
@@ -372,6 +381,14 @@ namespace UserVRMSpace
             }
             return null;
         }
+
+        public NativeAnimationAvatar LastLoaded
+        {
+            get
+            {
+                return lastLoadedAvatar;
+            }
+        }
         public void OnClickRemoveObject()
         {
             GameObject ikhp = GameObject.FindGameObjectWithTag("IKHandleWorld");
@@ -411,6 +428,38 @@ namespace UserVRMSpace
             {
                 DestroyEffect(ovrm.GetEffectiveActiveAvatar().name);
             }
+        }
+        public IEnumerator DownloadAAS(string param)
+        {
+            GameObject npd = GameObject.Find("newProgressDlg");
+            UserUIProgressDlg uui = npd.GetComponent<UserUIProgressDlg>();
+
+            AsyncOperationHandle<long> getDownloadSize = Addressables.GetDownloadSizeAsync(param);
+            Debug.Log("download size=" + getDownloadSize.Result.ToString());
+
+            yield return getDownloadSize.Result;
+
+            //UnityEvent<float> ProgressEvent;
+            //UnityEvent<bool> CompletionEvent;
+            AsyncOperationHandle dHandle = Addressables.DownloadDependenciesAsync(param, false);
+            float progress = 0;
+
+            Debug.Log("total bytes=" + dHandle.GetDownloadStatus().TotalBytes.ToString());
+            uui.EnableDlg(true);
+            while (dHandle.Status == AsyncOperationStatus.None)
+            {
+                float percentageComplete = dHandle.GetDownloadStatus().Percent;
+                Debug.Log("percent=" + percentageComplete.ToString());
+                if (percentageComplete > progress * 1.1)
+                {
+                    progress = percentageComplete;
+                    uui.SetProgressValue(progress);
+                }
+                yield return percentageComplete;
+            }
+            uui.EnableDlg(false);
+            Addressables.Release(dHandle);
+
         }
         //=============================================================================================================================
         //  VRM functions
@@ -554,7 +603,6 @@ namespace UserVRMSpace
 
 
             //--- load thumbnail
-            ///VRMAvatar.sprite = Sprite.Create(pendingContext.Meta.Thumbnail, new Rect(0, 0, pendingContext.Meta.Thumbnail.width, pendingContext.Meta.Thumbnail.height), Vector2.zero);
 
 
             //Animator conanime = pendingInstance.gameObject.GetComponent<Animator>();
@@ -596,7 +644,6 @@ namespace UserVRMSpace
             //bodyBounds.z = mat_b_mesh.bounds.size.z;
 
             hei = System.Math.Round(hei, 2, System.MidpointRounding.AwayFromZero);
-            VRMHeight.text = (hei * 100).ToString() + " cm";
             string strHeight = (hei * 100).ToString() + " cm";
             byte[] incolor = pendingVRMmeta.Thumbnail.EncodeToPNG();
 
@@ -619,7 +666,7 @@ namespace UserVRMSpace
             vrmoi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.VRM);
 
             string json = JsonUtility.ToJson(vrmoi);
-            Debug.Log(json);
+            //Debug.Log(json);
 
             //---get BlendShapes
             SkinnedMeshRenderer aface = null;
@@ -842,6 +889,7 @@ namespace UserVRMSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(js);
 #endif
+            lastLoadedAvatar = nav;
         }
 
         public void DestroyVRM(string param)
@@ -914,7 +962,7 @@ namespace UserVRMSpace
 
             //opt.ExternalDataMapper = ScriptableObject.CreateInstance<TriLibCore.Samples.ExternalDataMapperSample>();
             //opt.TextureMapper = ScriptableObject.CreateInstance<TriLibCore.Samples.TextureMapperSample>();
-            pick.LoadModelFromFilePickerAsync("Objectファイルを選んでください", onLoad: OnLoad, onMaterialsLoad: OnMaterialsLoad, OnProgress, null, OnErrorTriLib, wrapperGameObject: objpar, assetLoaderOptions: opt);
+            pick.LoadModelFromFilePickerAsync("Please select the object file", onLoad: OnLoad, onMaterialsLoad: OnMaterialsLoad, OnProgress, null, OnErrorTriLib, wrapperGameObject: objpar, assetLoaderOptions: opt);
 
             /*
             for (int i = 0; i < paths.Count; i++)
@@ -995,7 +1043,7 @@ namespace UserVRMSpace
             obi.roleTitle = nav.roleTitle;
 
             string js = JsonUtility.ToJson(obi);
-            Debug.Log(js);
+            //Debug.Log(js);
 
             OperateActiveVRM ovrm = managa.ikArea.GetComponent<OperateActiveVRM>();
             ovrm.EnableTransactionHandle(null, ikcube);
@@ -1007,7 +1055,7 @@ namespace UserVRMSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
             sendOtherObjectInfo(fext, js);
 #endif
-
+            lastLoadedAvatar = nav;
 
 
         }
@@ -1034,10 +1082,7 @@ namespace UserVRMSpace
             //Animator animt;
             if (oth.TryGetComponent<Animation>(out anim))
             {
-                foreach (AnimationState aa in anim)
-                {
-                    Debug.Log(aa.name);
-                }
+                
                 if (anim.clip)
                 {
                     anim.playAutomatically = false;
@@ -1268,13 +1313,13 @@ namespace UserVRMSpace
         }
         public void DestroyOther(string param)
         {
-            Debug.Log("DestroyOther");
+            //Debug.Log("DestroyOther");
             GameObject ikhp = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
             OperateActiveVRM ovrm = ikhp.GetComponent<OperateActiveVRM>();
             
             GameObject[] vrm = GameObject.FindGameObjectsWithTag("OtherPlayer");
             GameObject oth = GameObject.Find(param);
-            Debug.Log(param);
+            //Debug.Log(param);
             if (oth != null)
             {
                 OperateLoadedOther olvrm = oth.GetComponent<OperateLoadedOther>();
@@ -1307,19 +1352,19 @@ namespace UserVRMSpace
             }
             
         }
-        public void CreateBlankQuad()
+        public NativeAnimationAvatar CreateBlankQuad()
         {
-            CreateBlankCube(PrimitiveType.Cube);
+            return CreateBlankCube(PrimitiveType.Cube);
         }
-        public void CreateBlankObject(int param)
+        public NativeAnimationAvatar CreateBlankObject(int param)
         {
             /*
              * 
              * 0 - sphere, 1 - capsule, 2 - cylinder, 3 - cube, 4 - plane, 5 - quad
              */
-            CreateBlankCube((PrimitiveType)param);
+            return CreateBlankCube((PrimitiveType)param);
         }
-        public void CreateBlankCube(PrimitiveType ptype)
+        public NativeAnimationAvatar CreateBlankCube(PrimitiveType ptype)
         {
             string[] pritype = {"BlankSphere", "BlankCapsule", "BlankCylinder", "BlankCube", "BlankPlane", "BlankQuad" };
             GameObject ikhp = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
@@ -1357,7 +1402,7 @@ namespace UserVRMSpace
             obi.roleTitle = nav.roleTitle;
 
             string js = JsonUtility.ToJson(obi);
-            Debug.Log(js);
+            //Debug.Log(js);
 
             OperateActiveVRM ovrm = managa.ikArea.GetComponent<OperateActiveVRM>();
             ovrm.EnableTransactionHandle(null, ikcube);
@@ -1369,22 +1414,22 @@ namespace UserVRMSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
             sendOtherObjectInfo(fext, js);
 #endif
-
+            return nav;
 
 
         }
         //=============================================================================================================================
         //  Light functions
         //=============================================================================================================================
-        public void OpenSpotLight()
+        public NativeAnimationAvatar OpenSpotLight()
         {
-            OpenLightObject("spot");
+            return OpenLightObject("spot");
         }
-        public void OpenPointLight()
+        public NativeAnimationAvatar OpenPointLight()
         {
-            OpenLightObject("point");
+            return OpenLightObject("point");
         }
-        public void OpenLightObject(string param)
+        public NativeAnimationAvatar OpenLightObject(string param)
         {
             GameObject ikworld = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
             GameObject[] lt = ikworld.GetComponent<OperateLoadedObj>().CreateLight(param);
@@ -1429,6 +1474,7 @@ namespace UserVRMSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
             sendOtherObjectInfo(fext, js);
 #endif
+            return nav;
         }
         public void DestroyLight(string param)
         {
@@ -1468,11 +1514,11 @@ namespace UserVRMSpace
         //=============================================================================================================================
         //  Camera functions
         //=============================================================================================================================
-        public void OnClickBtnAddCamera()
+        public NativeAnimationAvatar OnClickBtnAddCamera()
         {
-            CreateCameraObject("");
+            return CreateCameraObject("");
         }
-        public void CreateCameraObject(string param)
+        public NativeAnimationAvatar CreateCameraObject(string param)
         {
             GameObject ikworld = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
             GameObject[] lt = ikworld.GetComponent<OperateLoadedObj>().CreateCamera();
@@ -1515,6 +1561,7 @@ namespace UserVRMSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
             sendOtherObjectInfo(fext, js);
 #endif
+            return nav;
         }
         public void DestroyCamera(string param)
         {
@@ -1555,15 +1602,15 @@ namespace UserVRMSpace
         //=============================================================================================================================
         //  Text functions
         //=============================================================================================================================
-        public void OpenSample1Text ()
+        public NativeAnimationAvatar OpenSample1Text()
         {
-            OpenText("ABC,tl");
+            return OpenText ("ABC,tl");
         }
         /// <summary>
         /// Create and Show Text UI
         /// </summary>
         /// <param name="param">CSV-string: 0=text label, 1=anchor position(tl=TopLeft, bl=BottomLeft, tr=TopRight, br=BottomRight)</param>
-        public void OpenText(string param)
+        public NativeAnimationAvatar OpenText(string param)
         {
             string[] prm = param.Split(',');
 
@@ -1604,6 +1651,7 @@ namespace UserVRMSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
             sendOtherObjectInfo(fext, js);
 #endif
+            return nav;
         }
         public void DestroyText(string param)
         {
@@ -1629,9 +1677,9 @@ namespace UserVRMSpace
         //=============================================================================================================================
         public void OnClickBtnImage()
         {
-            InputField inpf2 = GameObject.Find("inpf2").GetComponent<InputField>();
-            //ImageFileSelected(inpf2.text);
-            UIImageFileSelected(inpf2.text);
+            //InputField inpf2 = GameObject.Find("inpf2").GetComponent<InputField>();
+            ////ImageFileSelected(inpf2.text);
+            //UIImageFileSelected(inpf2.text);
 
             string[] ext = new string[2];
             ext[0] = "jpg";
@@ -1642,7 +1690,7 @@ namespace UserVRMSpace
                 new ExtensionFilter("PNG File", "png"),
                 new ExtensionFilter("Image File", ext),
             };
-            IList<ItemWithStream> paths = StandaloneFileBrowser.OpenFilePanel("画像ファイルを選んでください。。", "", exts, false);
+            IList<ItemWithStream> paths = StandaloneFileBrowser.OpenFilePanel("Please select an image file.", "", exts, false);
             for (int i = 0; i < paths.Count; i++)
             {
                 Stream stm = paths[i].OpenStream();
@@ -1656,9 +1704,9 @@ namespace UserVRMSpace
         }
         public void OnClickBtnUImage()
         {
-            InputField inpf2 = GameObject.Find("inpf2").GetComponent<InputField>();
-            //ImageFileSelected(inpf2.text);
-            UIImageFileSelected(inpf2.text);
+            //InputField inpf2 = GameObject.Find("inpf2").GetComponent<InputField>();
+            ////ImageFileSelected(inpf2.text);
+            //UIImageFileSelected(inpf2.text);
 
             string[] ext = new string[2];
             ext[0] = "jpg";
@@ -1669,7 +1717,7 @@ namespace UserVRMSpace
                 new ExtensionFilter("PNG File", "png"),
                 new ExtensionFilter("Image File", ext),
             };
-            IList<ItemWithStream> paths = StandaloneFileBrowser.OpenFilePanel("画像ファイルを選んでください。。", "", exts, false);
+            IList<ItemWithStream> paths = StandaloneFileBrowser.OpenFilePanel("Please select an image file.", "", exts, false);
             for (int i = 0; i < paths.Count; i++)
             {
                 Stream stm = paths[i].OpenStream();
@@ -1777,7 +1825,7 @@ namespace UserVRMSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
             sendOtherObjectInfo(fext, js);
 #endif
-
+            lastLoadedAvatar = nav;
 
             yield return null;
         }
@@ -1895,7 +1943,7 @@ namespace UserVRMSpace
             sendOtherObjectInfo(fext, js);
 #endif
 
-
+            lastLoadedAvatar = nav;
 
             yield return null;
 
@@ -1917,7 +1965,7 @@ namespace UserVRMSpace
         //=============================================================================================================================
         //  Effect functions
         //=============================================================================================================================
-        public void CreateSingleEffect()
+        public NativeAnimationAvatar CreateSingleEffect()
         {
             GameObject ikworld = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
             GameObject[] lt = ikworld.GetComponent<OperateLoadedObj>().CreateEffect();
@@ -1955,6 +2003,7 @@ namespace UserVRMSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
                 sendOtherObjectInfo(fext, js);
 #endif
+            return nav;
 
         }
         public string ListEffectGenre()
@@ -2162,7 +2211,7 @@ namespace UserVRMSpace
                 ola.Title = "Audio";
                 ola.AddAudio(filename, ac);
             }
-            string js = BoxName + "," + filename + "," + ac.samples;
+            string js = BoxName + "," + filename + "," + ac.samples.ToString() + "," + ac.length.ToString();
             Debug.Log(js);
 
 #if !UNITY_EDITOR && UNITY_WEBGL

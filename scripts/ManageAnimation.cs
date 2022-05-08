@@ -62,7 +62,12 @@ namespace UserHandleSpace
         const int CSV_VALCNT = 3;
         const int CSV_BEGINVAL = 4;
 
+        //-------------------------------------------------------------------------
+        // Important objects
+
+        public NativeAnimationProjectMaterialPackage materialManager;
         public NativeAnimationProject currentProject;
+        private int initialFrameCount = 60;
         public bool IsExternalProject;
         public bool IsPlaying;
         public bool IsPause;
@@ -81,8 +86,9 @@ namespace UserHandleSpace
         private Sequence currentSeq;
         private int seqInIndex;
         private FrameClipboard clipboard;
+        private int bkupScreenWidth;
+        private int bkupScreenHeight;
 
-        public NativeAnimationProjectMaterialPackage materialManager;
 
 
         protected NativeAnimationAvatar SingleMotionTargetRole = null;
@@ -122,6 +128,9 @@ namespace UserHandleSpace
             currentSeq = null;
             oldPreviewMarker = 1;
 
+            bkupScreenWidth = Screen.width;
+            bkupScreenHeight = Screen.height;
+
             ChangeFullIKType(false);
         }
         // Start is called before the first frame update
@@ -129,7 +138,7 @@ namespace UserHandleSpace
         {
             configLab = GameObject.Find("Canvas").GetComponent<ConfigSettingLabs>();
 
-            currentProject = new NativeAnimationProject();
+            currentProject = new NativeAnimationProject(initialFrameCount);
             materialManager = new NativeAnimationProjectMaterialPackage();
             NewProject();
             /*
@@ -185,7 +194,16 @@ namespace UserHandleSpace
 
                 }
             }
-            
+            if ((bkupScreenWidth != Screen.width) || (bkupScreenHeight != Screen.height))
+            {
+                if (currentSeq != null)
+                {
+                    currentSeq.Kill();
+                    currentSeq = null;
+                }
+            }
+            bkupScreenWidth = Screen.width;
+            bkupScreenHeight = Screen.height;
         }
         private void OnDestroy()
         {
@@ -237,6 +255,10 @@ namespace UserHandleSpace
         //===========================================================================================================================
         //  Utility functions
         //===========================================================================================================================
+        public void SetInitialTimelineLength(int count)
+        {
+            initialFrameCount = count;
+        }
         public void SetTimelineFrameLength(int count)
         {
             if ((currentProject != null) && (currentProject.isSharing || currentProject.isReadOnly)) return;
@@ -725,19 +747,28 @@ namespace UserHandleSpace
         public void GetAllActorsFromOuter()
         {
             List<string> ret = new List<string>();
-            foreach (NativeAnimationAvatar avatar in currentProject.casts)
+            if (currentProject != null)
             {
-                AnimationAvatar aa = new AnimationAvatar();
-                aa.avatarId = avatar.avatarId;
-                Array.Copy(avatar.bodyHeight, aa.bodyHeight, avatar.bodyHeight.Length);
-                aa.roleName = avatar.roleName;
-                aa.roleTitle = avatar.roleTitle;
-                aa.type = avatar.type;
-                ret.Add(JsonUtility.ToJson(aa));
+                foreach (NativeAnimationAvatar avatar in currentProject.casts)
+                {
+                    AnimationAvatar aa = new AnimationAvatar();
+                    if (avatar != null)
+                    {
+                        aa.avatarId = avatar.avatarId;
+                        //Array.Copy(avatar.bodyHeight, aa.bodyHeight, avatar.bodyHeight.Length); Not neccessary...
+                        aa.roleName = avatar.roleName;
+                        aa.roleTitle = avatar.roleTitle;
+                        aa.type = avatar.type;
+                        string js = JsonUtility.ToJson(aa);
+                        ret.Add(js);
+                    }
+                    
+                }
             }
 
+            string jsret = string.Join("%", ret);
 #if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveStringVal(string.Join("%", ret));
+            ReceiveStringVal(jsret);
 #endif
         }
 
@@ -970,14 +1001,14 @@ namespace UserHandleSpace
         public int GetNextExistKeyframe(AnimationParsingOptions apo)
         {
             NativeAnimationFrameActor naf = GetFrameActorFromRole(apo.targetRole, apo.targetType);
-            Debug.Log(apo.targetRole);
-            Debug.Log(apo.targetType);
+            //Debug.Log(apo.targetRole);
+            //Debug.Log(apo.targetType);
             int ret = -1;
             if (naf != null)
             {
-                Debug.Log("naf.targetId="+naf.targetId);
+                //Debug.Log("naf.targetId="+naf.targetId);
                 int index = GetNearMaxFrameIndex(naf, apo.index);
-                Debug.Log(index);
+                //Debug.Log(index);
                 if (index > -1)
                 {
                     ret = naf.frames[index].index;
@@ -2851,32 +2882,71 @@ namespace UserHandleSpace
         /// <summary>
         /// Add and load texture file
         /// </summary>
-        /// <param name="param">[0] - name, [1] - url, [2] - load flag(1 - load, 0 - no load)</param>
+        /// <param name="param">[0] - name, [1] - group, [2] - url, [3] - load flag(1 - load, 0 - no load), [4] - save destination a(app) or p(project)</param>
         public void LoadMaterialTexture(string param)
         {
-            string[] prm = param.Split(",");
+            string[] prm = param.Split("\t");
+
+            string name = prm[0];
+            string group = prm[1];
+            string url = prm[2];
             bool isEffectiveLoad = false;
-            if (prm.Length >= 3) isEffectiveLoad = (prm[2] == "1" ? true : false);
+            if (prm.Length >= 4) isEffectiveLoad = (prm[3] == "1" ? true : false);
+            OneMaterialFrom fromtype = OneMaterialFrom.app;
+            if (prm[4] == "a") fromtype = OneMaterialFrom.app;
+            else if (prm[4] == "p") fromtype = OneMaterialFrom.project;
 
-            NativeAP_OneMaterial nap = new NativeAP_OneMaterial(prm[0], prm[1], OneMaterialType.texture2d);
+            NativeAP_OneMaterial nap = new NativeAP_OneMaterial(name, url, OneMaterialType.Texture);
+            nap.group = group;
 
-            int ishit = materialManager.textures.FindIndex(item =>
-            {
-                if (item.name == prm[0]) return true;
-                return false;
-            });
             string ret = "";
-            if (ishit < 0)
+
+            //===1st: material in project=======
+            if (fromtype == OneMaterialFrom.project)
             {
-                if (isEffectiveLoad)
+                NativeAP_OneMaterial ishit = materialManager.FindTexture(name, group);
+
+                if (ishit == null)
                 {
-                    StartCoroutine(nap.Open(prm[1]));
+                    ishit = currentProject.materialManager.FindTexture(name, group);
+
+                    if (ishit == null)
+                    {
+                        if (isEffectiveLoad)
+                        {
+                            StartCoroutine(nap.Open(url));
+                        }
+
+
+                        currentProject.materialManager.materials.Add(nap);
+                        ret = nap.name;
+                    }
                 }
                 
+            }            
+            else if (fromtype == OneMaterialFrom.app) 
+            {
+                NativeAP_OneMaterial ishit = currentProject.materialManager.FindTexture(name, group);
+                if (ishit == null)
+                {
+                    //===2nd: material in app============
+                    ishit = materialManager.FindTexture(name, group);
+                    if (ishit == null)
+                    {
+                        if (isEffectiveLoad)
+                        {
+                            StartCoroutine(nap.Open(url));
+                        }
 
-                materialManager.textures.Add(nap);
-                ret = nap.name;
+
+                        materialManager.materials.Add(nap);
+                        ret = nap.name;
+                    }
+                }
+                
             }
+
+            
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(ret);
 #endif
@@ -2884,23 +2954,42 @@ namespace UserHandleSpace
         }
 
         /// <summary>
-        /// Only to load texture file 
+        /// Only to load existed texture file 
         /// </summary>
-        /// <param name="param">[0] - name, [1] - url</param>
+        /// <param name="param">[0] - name, [1] - group, [2] - url, [3] - save destination a(app) or p(project)</param>
         public void LoadOneMaterialTexture(string param)
         {
-            string[] prm = param.Split(",");
-            int ishit = materialManager.textures.FindIndex(item =>
-            {
-                if (item.name == prm[0]) return true;
-                return false;
-            });
+            string[] prm = param.Split("\t");
+            string name = prm[0];
+            string group = prm[1];
+            string url = prm[2];
+
+            OneMaterialFrom fromtype = OneMaterialFrom.app;
+            if (prm[3] == "a") fromtype = OneMaterialFrom.app;
+            if (prm[3] == "p") fromtype = OneMaterialFrom.project;
+
             string ret = "";
-            if (ishit > -1)
+            //===1st: material in project=======
+            if (fromtype == OneMaterialFrom.project)
             {
-                StartCoroutine(materialManager.textures[ishit].Open());
-                ret = materialManager.textures[ishit].name;
+                NativeAP_OneMaterial ishit = currentProject.materialManager.FindTexture(name, group);
+                if (ishit != null)
+                {
+                    StartCoroutine(ishit.Open(url));
+                    ret = ishit.name;
+                }
             }
+            else if (fromtype == OneMaterialFrom.app)
+            {
+                //===2nd: material in app============
+                NativeAP_OneMaterial ishit = materialManager.FindTexture(name, group);
+                if (ishit != null)
+                {
+                    StartCoroutine(ishit.Open(url));
+                    ret = ishit.name;
+                }
+            }
+            
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(ret);
 #endif
@@ -2914,13 +3003,36 @@ namespace UserHandleSpace
         */
 
         /// <summary>
-        /// 
+        /// Find material from materialManager (project, app)
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="group"></param>
+        /// <returns></returns>
+        public NativeAP_OneMaterial FindTexture(string name, string group = "")
+        {
+            //===1st: material in project
+            NativeAP_OneMaterial ishit = currentProject.materialManager.FindTexture(name, group);
+            //Debug.Log("1st search==>"+name);
+            //Debug.Log(ishit);
+
+            if (ishit == null)
+            {
+                //===2nd: material in app============
+                ishit = materialManager.FindTexture(name, group);
+                //Debug.Log("2nd search==>" + name);
+                //Debug.Log(ishit);
+            }
+            return ishit;
+        }
+        /// <summary>
+        /// Rename material
         /// </summary>
         /// <param name="param">[0] - oldname, [1] - newname</param>
         public void RenameMaterialName(string param)
         {
-            string[] prm = param.Split(",");
-            int ishit = materialManager.textures.FindIndex(item =>
+            string[] prm = param.Split("\t");
+            //===1st: material in project=======
+            int ishit = currentProject.materialManager.materials.FindIndex(item =>
             {
                 if (item.name == prm[0]) return true;
                 return false;
@@ -2928,29 +3040,66 @@ namespace UserHandleSpace
             string ret = "";
             if (ishit > -1)
             {
-                int isnewhit = materialManager.textures.FindIndex(item =>
+                int isnewhit = currentProject.materialManager.materials.FindIndex(item =>
                 {
                     if (item.name == prm[1]) return true;
                     return false;
                 });
                 if (isnewhit < 0)
                 {
-                    materialManager.textures[ishit].name = prm[1];
+                    currentProject.materialManager.materials[ishit].name = prm[1];
                     ret = prm[1];
                 }
             }
+            else
+            {
+                //===2nd: material in app============
+                ishit = materialManager.materials.FindIndex(item =>
+                {
+                    if (item.name == prm[0]) return true;
+                    return false;
+                });
+                if (ishit > -1)
+                {
+                    int isnewhit = materialManager.materials.FindIndex(item =>
+                    {
+                        if (item.name == prm[1]) return true;
+                        return false;
+                    });
+                    if (isnewhit < 0)
+                    {
+                        materialManager.materials[ishit].name = prm[1];
+                        ret = prm[1];
+                    }
+                }
+            }
+
+            
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(ret);
 #endif
 
         }
+
+        /// <summary>
+        /// Remove material from materialManager(project, app)
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
         public int RemoveMaterial(string name)
         {
-            return materialManager.RemoveTexture(name);
+            //Debug.Log("project search==>");
+            int ret = currentProject.materialManager.RemoveTexture(name);
+            if (ret == -1)
+            {
+                //Debug.Log("app search==>");
+                ret = materialManager.RemoveTexture(name);
+            }
+            return ret;
         }
         public void RemoveMaterialFromOuter(string name)
         {
-            int ret = materialManager.RemoveTexture(name);
+            int ret = RemoveMaterial(name);
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveIntVal(ret);
 #endif
@@ -2961,18 +3110,49 @@ namespace UserHandleSpace
             materialManager.CloseBundle(name);
         }
         */
-        public void EnumMaterialTexture()
+
+        /// <summary>
+        /// Unreference material from target object(project, app)
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="group"></param>
+        /// <returns></returns>
+        public int UnReferMaterial(OneMaterialType type, string name, string group = "")
         {
-            List<string> arr = new List<string>();
-            materialManager.textures.ForEach(item =>
+            int ret = currentProject.materialManager.UnRefer(type, name, group);
+            //Debug.Log("unref project[" + name + "]=" + ret.ToString());
+            if (ret == -1)
             {
-                arr.Add(item.name+","+((int)item.materialType).ToString()+","+item.size.x.ToString()+","+item.size.y.ToString());
-            });
+                ret = materialManager.UnRefer(type, name, group);
+                //Debug.Log("unref project[" + name + "]=" + ret.ToString());
+            }
+            return ret;
+        }
+        public void EnumMaterialTexture(int param)
+        {
+            OneMaterialFrom fromtype = (OneMaterialFrom)param;
+
+            List<string> arr = new List<string>();
+            if (fromtype == OneMaterialFrom.app)
+            {
+                materialManager.materials.ForEach(item =>
+                {
+                    arr.Add(item.name + "," + ((int)item.materialType).ToString() + "," + item.size.x.ToString() + "," + item.size.y.ToString());
+                });
+            }
+            else if (fromtype == OneMaterialFrom.project)
+            {
+                currentProject.materialManager.materials.ForEach(item =>
+                {
+                    arr.Add(item.name + "," + ((int)item.materialType).ToString() + "," + item.size.x.ToString() + "," + item.size.y.ToString());
+                });
+            }
             string ret = string.Join('\t', arr);
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(ret);
 #endif
         }
+
     }
 
 

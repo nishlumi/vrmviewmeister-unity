@@ -612,11 +612,11 @@ namespace UserHandleSpace
             Debug.Log(name);
 #if UNITY_EDITOR || UNITY_STANDALONE
 
-            Dropdown.OptionData opt = new Dropdown.OptionData();
-            opt.text = name;
+            //Dropdown.OptionData opt = new Dropdown.OptionData();
+            //opt.text = name;
 
             HasAvatarList.Add(ikparent);
-            BoxActivateAvatar.options.Add(opt);
+            //BoxActivateAvatar.options.Add(opt);
 
             UserUISpace.UserUIManager uuim = GameObject.Find("newUI").GetComponent<UserUISpace.UserUIManager>();
             uuim.objlist_add_item(name);
@@ -625,8 +625,6 @@ namespace UserHandleSpace
         public void RemoveAvatarBox(GameObject ikparent)
         {
 #if UNITY_EDITOR || UNITY_STANDALONE
-
-#else
             int index = HasAvatarList.FindIndex(match =>
             {
                 if (match == ikparent) return true;
@@ -634,8 +632,11 @@ namespace UserHandleSpace
             });
             if (index > -1)
             {
-                BoxActivateAvatar.options.RemoveAt(index);
+                //BoxActivateAvatar.options.RemoveAt(index);
                 HasAvatarList.RemoveAt(index);
+
+                UserUISpace.UserUIManager uuim = GameObject.Find("newUI").GetComponent<UserUISpace.UserUIManager>();
+                uuim.objlist_del_item(index);
             }
 #endif
 

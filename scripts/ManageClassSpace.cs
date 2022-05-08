@@ -7,6 +7,12 @@ using UnityEngine.Networking;
 using DG.Tweening;
 using System.Linq;
 
+using System.IO;
+using TriLibCore;
+using TriLibCore.General;
+using TriLibCore.SFB;
+
+
 namespace UserHandleSpace
 {
 
@@ -1100,10 +1106,15 @@ namespace UserHandleSpace
     [Serializable]
     public enum OneMaterialType
     {
-        unknown = 0,
-        texture3d = 1,
-        texture2d,
-        shader
+        Texture = 0,
+        Shader,
+        unknown = 9,
+    }
+    [Serializable]
+    public enum OneMaterialFrom
+    {
+        app = 0,
+        project
     }
     [Serializable]
     public class AP_OneMaterial : IDisposable
@@ -1150,6 +1161,12 @@ namespace UserHandleSpace
             effectiveObject = null;
             //StartCoroutine(Open(uri));
         }
+
+        /// <summary>
+        /// Open material file from HTML-URI
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <returns></returns>
         public IEnumerator Open(string uri)
         {
             path = uri;
@@ -1174,6 +1191,11 @@ namespace UserHandleSpace
                 }
             }
         }
+
+        /// <summary>
+        /// Open material file from saved URI
+        /// </summary>
+        /// <returns></returns>
         public IEnumerator Open()
         {
             using (UnityWebRequest www = UnityWebRequest.Get(path))
@@ -1197,15 +1219,61 @@ namespace UserHandleSpace
                 }
             }
         }
+
+        /// <summary>
+        /// Open material file from Native file dialog
+        /// </summary>
+        public void OpenFile()
+        {
+            string[] ext = new string[2];
+            ext[0] = "jpg";
+            ext[1] = "png";
+
+            ExtensionFilter[] exts = new ExtensionFilter[] {
+                new ExtensionFilter("JPEG File", "jpg"),
+                new ExtensionFilter("PNG File", "png"),
+                new ExtensionFilter("Image File", ext),
+            };
+            IList<ItemWithStream> paths = StandaloneFileBrowser.OpenFilePanel("Please select an image file.", "", exts, false);
+            for (int i = 0; i < paths.Count; i++)
+            {
+                Stream stm = paths[i].OpenStream();
+                path = paths[i].Name;
+
+                byte[] byt = new byte[stm.Length];
+                stm.Read(byt, 0, (int)stm.Length);
+                Texture2D tex = new Texture2D(1, 1);
+                tex.LoadImage(byt);
+
+                effectiveObject = tex;
+                size.x = tex.width;
+                size.y = tex.height;
+            }
+        }
+
+        /// <summary>
+        /// Set an object directly
+        /// </summary>
+        /// <param name="obj"></param>
         public void SetObject(UnityEngine.Object obj)
         {
             effectiveObject = obj;
         }
+
+        /// <summary>
+        /// To get reference of the texture
+        /// </summary>
+        /// <returns></returns>
         public Texture2D ReferTexture2D()
         {
             refCount++;
             return (Texture2D)effectiveObject;
         }
+
+        /// <summary>
+        /// Unreference from an object
+        /// </summary>
+        /// <returns></returns>
         public int UnRefer()
         {
             refCount--;
@@ -1220,29 +1288,43 @@ namespace UserHandleSpace
     [Serializable]
     public class AnimationProjectMaterialPackage : IDisposable
     {
-        public List<AP_OneMaterial> textures = new List<AP_OneMaterial>();
+        public List<AP_OneMaterial> materials = new List<AP_OneMaterial>();
 
         public void Dispose()
         {
-            textures.ForEach(item => {
+            materials.ForEach(item => {
                 item.Dispose();
                 item = null;
             });
-            textures.Clear();
+            materials.Clear();
+        }
+        public void SetFromNative(NativeAnimationProjectMaterialPackage pkg)
+        {
+            foreach( NativeAP_OneMaterial naom in pkg.materials)
+            {
+                AP_OneMaterial aom = new AP_OneMaterial();
+                aom.name = naom.name;
+                aom.group = naom.group;
+                //---do not save path made by URL.createObjectURL()
+                aom.path = (naom.path.IndexOf("blob:") > -1) ? "" :  naom.path;
+                aom.materialType = naom.materialType;
+                aom.size = new Vector2(naom.size.x, naom.size.y);
+                materials.Add(aom);
+            }
         }
     }
     public class NativeAnimationProjectMaterialPackage : AnimationProjectMaterialPackage 
     {
-        public new List<NativeAP_OneMaterial> textures = new List<NativeAP_OneMaterial>();
+        public new List<NativeAP_OneMaterial> materials = new List<NativeAP_OneMaterial>();
         //public Dictionary<string, AssetBundle> bundles = new Dictionary<string, AssetBundle>();
 
         public new void Dispose()
         {
-            textures.ForEach(item => {
+            materials.ForEach(item => {
                 item.Dispose();
                 item = null;
             });
-            textures.Clear();
+            materials.Clear();
 
             /*
             Dictionary<string, AssetBundle>.Enumerator de_bundle =  bundles.GetEnumerator();
@@ -1252,6 +1334,19 @@ namespace UserHandleSpace
             }
             bundles.Clear();
             */
+        }
+        public void SetFromRaw(AnimationProjectMaterialPackage pkg)
+        {
+            foreach (AP_OneMaterial aom in pkg.materials)
+            {
+                NativeAP_OneMaterial naom = new NativeAP_OneMaterial();
+                naom.name = aom.name;
+                naom.group = aom.group;
+                naom.path = aom.path;
+                naom.materialType = aom.materialType;
+                naom.size = new Vector2(aom.size.x, aom.size.y);
+                materials.Add(naom);
+            }
         }
         /*
         public IEnumerator OpenBundle(string name, string uri)
@@ -1317,11 +1412,19 @@ namespace UserHandleSpace
             return tex;
         }
         */
+
+
+        /// <summary>
+        /// Get the object, search by group & name
+        /// </summary>
+        /// <param name="name">material name</param>
+        /// <param name="group">material group (optional)</param>
+        /// <returns></returns>
         public NativeAP_OneMaterial FindTexture(string name, string group = "")
         {
-            return textures.Find(item =>
+            return materials.Find(item =>
             {
-                if (item.name == name)
+                if ((item.materialType == OneMaterialType.Texture) && (item.name == name))
                 {
                     if (group == "")
                     {
@@ -1343,7 +1446,7 @@ namespace UserHandleSpace
         /// <param name="obj"></param>
         public int UnRefer(UnityEngine.Object obj)
         {
-            NativeAP_OneMaterial nap = textures.Find(item =>
+            NativeAP_OneMaterial nap = materials.Find(item =>
             {
                 if (item.data == obj) return true;
                 return false;
@@ -1357,11 +1460,23 @@ namespace UserHandleSpace
             }
             return ret;
         }
-        public int UnRefer(string name)
+        public int UnRefer(OneMaterialType type, string name, string group = "")
         {
-            NativeAP_OneMaterial nap = textures.Find(item =>
+            NativeAP_OneMaterial nap = materials.Find(item =>
             {
-                if (item.name == name) return true;
+                if ((item.materialType == type) && (item.name == name))
+                {
+                    if (item.group == "")
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        if (item.group == group) return true;
+                        return false;
+                    }
+                    
+                }
                 return false;
             });
             int ret = -1;
@@ -1372,22 +1487,39 @@ namespace UserHandleSpace
             }
             return ret;
         }
-        public int RemoveTexture(string name)
+        public int RemoveTexture(string name, string group = "")
         {
-            NativeAP_OneMaterial nap = textures.Find(item =>
+            NativeAP_OneMaterial nap = materials.Find(item =>
             {
-                if (item.name == name) return true;
+                //Debug.Log(item.name + "-" + item.group + "-ref=" + item.refCount.ToString());
+                if ((item.materialType == OneMaterialType.Texture) && (item.name == name))
+                {
+                    if(item.group == "")
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        if (item.group == group) return true;
+                        return false;
+                    }
+                }
                 return false;
             });
             int ret = -1;
-            Debug.Log(name + "=" + ret.ToString());
+            //Debug.Log(name + "=>");
             if (nap != null)
             {
-                Debug.Log("nap: " + nap.name + "=" + nap.refCount.ToString());
+                //Debug.Log("nap: " + nap.name + "=" + nap.refCount.ToString());
                 if (nap.refCount <= 0)
                 {
+                    //Debug.Log("Dispose!");
                     nap.Dispose();
-                    textures.Remove(nap);
+                    materials.Remove(nap);
+                    ret = 0;
+                }
+                else
+                {
                     ret = nap.refCount;
                 }
             }
@@ -1411,22 +1543,24 @@ namespace UserHandleSpace
         public float baseDuration;
         public AnimationProjectMetaInformation meta;
         public AnimationProjectFixedProperties fixedProp;
+        public AnimationProjectMaterialPackage materialManager;
         public bool isSharing;
         public bool isReadOnly;
         public bool isNew;
         public bool isOpenAndEdit;
 
-        public AnimationProject()
+        public AnimationProject(int frameCount)
         {
             mkey = 0;
             version = 1;
             casts = new List<AnimationAvatar>();
             timeline = new AnimationMotionTimeline();
-            timelineFrameLength = 60;
+            timelineFrameLength = frameCount;
             fps = 60;
             baseDuration = (float)fps / 6000f;
             meta = new AnimationProjectMetaInformation();
             fixedProp = new AnimationProjectFixedProperties();
+            materialManager = new AnimationProjectMaterialPackage();
             isSharing = false;
             isReadOnly = false;
             isNew = true;
@@ -1445,10 +1579,11 @@ namespace UserHandleSpace
 
         public new NativeAnimationMotionTimeline timeline;
 
-        public NativeAnimationProjectMaterialPackage materialManager;
+        public new NativeAnimationProjectMaterialPackage materialManager;
 
-        public NativeAnimationProject()
+        public NativeAnimationProject(int frameCount) : base(frameCount)
         {
+            
             casts = new List<NativeAnimationAvatar>();
             timeline = new NativeAnimationMotionTimeline();
 

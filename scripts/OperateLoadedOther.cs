@@ -110,7 +110,7 @@ namespace UserHandleSpace
                     {
                         if ((userSharedTextureFiles[kvp.Key].textureIsCamera == 0) && (userSharedTextureFiles[kvp.Key].texturePath != ""))
                         {
-                            manim.materialManager.UnRefer(userSharedTextureFiles[kvp.Key].texturePath);
+                            manim.UnReferMaterial(OneMaterialType.Texture, userSharedTextureFiles[kvp.Key].texturePath);
                         }
 
                         mat.SetTexture("_MainTex", null);

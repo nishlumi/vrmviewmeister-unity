@@ -29,6 +29,9 @@ namespace UserHandleSpace
         protected Vector2 defaultPosition;
         protected Quaternion defaultRotation;
 
+        public Vector2 currentPositionPercent;
+
+
         protected Vector2 oldikposition;
         protected AF_TARGETTYPE targetType;
 
@@ -294,12 +297,21 @@ namespace UserHandleSpace
 
         }
 
+        public Vector2 GetPosition()
+        {
+            Vector2 ret = Vector2.zero;
+            ret.x = currentPositionPercent.x;
+            ret.y = currentPositionPercent.y;
+            return ret;
+        }
         public Vector2 GetPositionFromOuter()
         {
             RectTransform rect = GetRectTransform();
 
-            Vector2 ret;
-            ret = rect.anchoredPosition;
+            Vector2 ret = Vector2.zero;
+            //ret = rect.anchoredPosition;
+            ret.x = currentPositionPercent.x;
+            ret.y = currentPositionPercent.y;
 
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(JsonUtility.ToJson(ret));
@@ -314,11 +326,14 @@ namespace UserHandleSpace
             string[] prm = param.Split(',');
             float x = float.TryParse(prm[0], out x) ? x : 0f;
             float y = float.TryParse(prm[1], out y) ? y : 0f;
-            //float z = float.TryParse(prm[2], out z) ? z : 0f;
+
+            currentPositionPercent.x = x;
+            currentPositionPercent.y = y;
+
             bool isabs = prm[2] == "1" ? true : false;
 
-            //rect.anchoredPosition = new Vector2(x, y);
-            rect.DOAnchorPos(new Vector2(x, y), 0.1f).SetRelative(!isabs);
+            
+            rect.DOAnchorPos(new Vector2(Screen.width * (x/100f), Screen.height * (y/100f)), 0.1f).SetRelative(!isabs);
 
         }
         public Vector3 GetRotationFromOuter()
@@ -351,6 +366,8 @@ namespace UserHandleSpace
         {
             RectTransform rect = GetRectTransform();
             Vector3 rot = rect.rotation.eulerAngles;
+            rot.x = 0f;
+            rot.y = 0f;
             rot.z = z;
             rect.DORotateQuaternion(Quaternion.Euler(rot), 0.1f);
         }

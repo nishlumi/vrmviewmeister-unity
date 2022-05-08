@@ -1298,10 +1298,14 @@ namespace UserHandleSpace
             currentProject.timeline.characters.Clear();
             */
 
+            //---clear materials in the project
+            currentProject.materialManager.Dispose();
+
+
             currentProject = null;
 
             //---new project
-            currentProject = new NativeAnimationProject();
+            currentProject = new NativeAnimationProject(initialFrameCount);
 
             //--fixed objects-------------------------------------------------------------------------------------------
             FirstAddFixedAvatar("SystemEffect", gameObject, gameObject, "SystemEffect", AF_TARGETTYPE.SystemEffect);
@@ -1370,6 +1374,7 @@ namespace UserHandleSpace
                 FirstAddAvatar(eff[i].name, eff[i], eff[i], "Effect", AF_TARGETTYPE.Effect);
             }
             */
+
         }
         public void OpenProject(string url)
         {
@@ -1395,6 +1400,9 @@ namespace UserHandleSpace
         }
         public void LoadProject(string param)
         {
+            //---reset current project (do not merge)
+            NewProject();
+
             AnimationProject proj = JsonUtility.FromJson<AnimationProject>(param);
             currentProject = ConvertProjectNative(proj);
 
@@ -1408,7 +1416,7 @@ namespace UserHandleSpace
         }
         private NativeAnimationProject ConvertProjectNative(AnimationProject proj)
         {
-            NativeAnimationProject nproj = new NativeAnimationProject();
+            NativeAnimationProject nproj = new NativeAnimationProject(initialFrameCount);
 
             IsExternalProject = proj.isSharing;
 
@@ -1421,6 +1429,7 @@ namespace UserHandleSpace
             nproj.isOpenAndEdit = true;
             nproj.timelineFrameLength = proj.timelineFrameLength;
             nproj.fps = proj.fps;
+            nproj.materialManager.SetFromRaw(proj.materialManager);
 
             //---set up Avatar
             nproj.casts = new List<NativeAnimationAvatar>();
@@ -1624,6 +1633,13 @@ namespace UserHandleSpace
         {
             string ret = "";
 
+            if (currentProject.isReadOnly || currentProject.isSharing) return "";
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
             AnimationSingleMotion asm = JsonUtility.FromJson<AnimationSingleMotion>(param);
             
             if (SingleMotionTargetRole != null)
@@ -1658,30 +1674,34 @@ namespace UserHandleSpace
 
                     foreach (AnimationSingleFrame fr in asm.frames)
                     {
-                        NativeAnimationFrame naframe = new NativeAnimationFrame();
-                        naframe.index = fr.index;
-                        naframe.finalizeIndex = fr.finalizeIndex;
-                        naframe.duration = fr.duration;
-                        naframe.key = fr.key;
-                        naframe.ease = fr.ease;
-                        naframe.useBodyInfo = UseBodyInfoType.TimelineCharacter;
-
-                        AnimationFrame aframe = new AnimationFrame();
-                        aframe.SetFromNative(naframe);
-
-                        foreach (string linedata in fr.movingData)
+                        if (fr.index < currentProject.timelineFrameLength)
                         {
-                            AnimationTargetParts atp = new AnimationTargetParts();
-                            atp = CsvToFrameData(naf, asm.targetType, linedata, atp);
-                            naframe.movingData.Add(atp);
+                            NativeAnimationFrame naframe = new NativeAnimationFrame();
+                            naframe.index = fr.index;
+                            naframe.finalizeIndex = fr.finalizeIndex;
+                            naframe.duration = fr.duration;
+                            naframe.key = fr.key;
+                            naframe.ease = fr.ease;
+                            naframe.useBodyInfo = UseBodyInfoType.TimelineCharacter;
 
-                            //---For returning HTML
-                            aframe.movingData.Add(linedata);
+                            AnimationFrame aframe = new AnimationFrame();
+                            aframe.SetFromNative(naframe);
+
+                            foreach (string linedata in fr.movingData)
+                            {
+                                AnimationTargetParts atp = new AnimationTargetParts();
+                                atp = CsvToFrameData(naf, asm.targetType, linedata, atp);
+                                naframe.movingData.Add(atp);
+
+                                //---For returning HTML
+                                aframe.movingData.Add(linedata);
+                            }
+
+                            naf.frames.Add(naframe);
+
+                            afa.frames.Add(aframe);
                         }
-
-                        naf.frames.Add(naframe);
-
-                        afa.frames.Add(aframe);
+                        
                     }
 
                     ret = JsonUtility.ToJson(afa);
@@ -1701,7 +1721,7 @@ namespace UserHandleSpace
         {
             string ret = "";
 
-            AnimationProject aniproj = new AnimationProject();
+            AnimationProject aniproj = new AnimationProject(initialFrameCount);
             aniproj.isSharing = currentProject.isSharing;
             aniproj.isReadOnly = currentProject.isReadOnly;
             aniproj.isNew = false;
@@ -1710,6 +1730,7 @@ namespace UserHandleSpace
             aniproj.baseDuration = currentProject.baseDuration;
             aniproj.timelineFrameLength = currentProject.timelineFrameLength;
             aniproj.meta = currentProject.meta.SCopy();
+            aniproj.materialManager.SetFromNative(currentProject.materialManager);
             //---avatar
             currentProject.casts.ForEach(avatar =>
             {

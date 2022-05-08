@@ -691,23 +691,31 @@ namespace UserHandleSpace
                     foreach (Material mat in mats)
                     {
                         string keyname = item.name + "_" + mat.name;
-                        if (userSharedMaterials.ContainsKey(keyname))
+                        string newkeyname = "";
+                        int dupCount = 0;
+                        string suffix = "";
+                        while (userSharedMaterials.ContainsKey(keyname+suffix))
+                        {
+                            dupCount++;
+                            suffix = "(" + dupCount.ToString() + ")";
+                        }
+                        /*if (userSharedMaterials.ContainsKey(keyname))
                         {
                             keyname += DateTime.Now.ToFileTime().ToString();
-                        }
+                        }*/
                         //userSharedMaterials & userSharedTextureFiles & backupTextureFiles always match key-name.
 
-                        
-                        userSharedMaterials.Add(keyname, mat);
+                        newkeyname = keyname + suffix;
+                        userSharedMaterials.Add(newkeyname, mat);
 
                         MaterialProperties matp = new MaterialProperties();
                         matp.texturePath = "";
-                        userSharedTextureFiles.Add(keyname, matp);
+                        userSharedTextureFiles.Add(newkeyname, matp);
 
                         MaterialProperties backmatp = new MaterialProperties();
                         backmatp.realTexture = mat.GetTexture("_MainTex");
                         backmatp.texturePath = matp.texturePath;
-                        backupTextureFiles.Add(keyname, backmatp);
+                        backupTextureFiles.Add(newkeyname, backmatp);
                     }
                 }
             }
@@ -949,7 +957,7 @@ namespace UserHandleSpace
                                 //---old texture nullize
                                 if (userSharedTextureFiles[fullkey].textureIsCamera == 0)
                                 { //---old is general texture
-                                    manim.materialManager.UnRefer(userSharedTextureFiles[fullkey].texturePath);
+                                    manim.UnReferMaterial(OneMaterialType.Texture, userSharedTextureFiles[fullkey].texturePath);
                                 }
                                 mat.SetTexture("_MainTex", null);
 
@@ -965,6 +973,12 @@ namespace UserHandleSpace
                             }
                             else if (vmat.texturePath == "")
                             { //---recover default texture
+                                //---old texture nullize
+                                if (userSharedTextureFiles[fullkey].textureIsCamera == 0)
+                                { //---old is general texture
+                                    manim.UnReferMaterial(OneMaterialType.Texture, userSharedTextureFiles[fullkey].texturePath);
+
+                                }
                                 mat.SetTexture("_MainTex", null);
                                 mat.SetTexture("_MainTex", backupTextureFiles[fullkey].realTexture);
                                 userSharedTextureFiles[fullkey].texturePath = vmat.texturePath;
@@ -979,12 +993,12 @@ namespace UserHandleSpace
                                 //---nullize old texture
                                 if (userSharedTextureFiles[fullkey].textureIsCamera == 0)
                                 {
-                                    manim.materialManager.UnRefer(userSharedTextureFiles[fullkey].texturePath);
+                                    manim.UnReferMaterial(OneMaterialType.Texture, userSharedTextureFiles[fullkey].texturePath);
                                 }
                                 mat.SetTexture("_MainTex", null);
 
                                 //---set new texture
-                                NativeAP_OneMaterial nap = manim.materialManager.FindTexture(vmat.texturePath);
+                                NativeAP_OneMaterial nap = manim.FindTexture(vmat.texturePath);
                                 if (nap != null)
                                 {
                                     mat.SetTexture("_MainTex", nap.ReferTexture2D());
@@ -1149,7 +1163,7 @@ namespace UserHandleSpace
                                 //---old texture nullize
                                 if (userSharedTextureFiles[mat_name].textureIsCamera == 0)
                                 { //---old is general texture
-                                    manim.materialManager.UnRefer(userSharedTextureFiles[mat_name].texturePath);
+                                    manim.UnReferMaterial(OneMaterialType.Texture, userSharedTextureFiles[mat_name].texturePath);
                                 }
                                 mat.SetTexture("_MainTex", null);
 
@@ -1165,6 +1179,12 @@ namespace UserHandleSpace
                             }
                             else if (value == "")
                             { //---recover default texture
+                                //---old texture nullize
+                                if (userSharedTextureFiles[mat_name].textureIsCamera == 0)
+                                { //---old is general texture
+                                    manim.UnReferMaterial(OneMaterialType.Texture, userSharedTextureFiles[mat_name].texturePath);
+                                }
+
                                 mat.SetTexture("_MainTex", null);
                                 mat.SetTexture("_MainTex", backupTextureFiles[mat_name].realTexture);
                                 userSharedTextureFiles[mat_name].texturePath = value;
@@ -1186,12 +1206,12 @@ namespace UserHandleSpace
                                 //---nullize old texture
                                 if (userSharedTextureFiles[mat_name].textureIsCamera == 0)
                                 {
-                                    manim.materialManager.UnRefer(userSharedTextureFiles[mat_name].texturePath);
+                                    manim.UnReferMaterial(OneMaterialType.Texture, userSharedTextureFiles[mat_name].texturePath);
                                 }
                                 mat.SetTexture("_MainTex", null);
 
                                 //---set new texture
-                                NativeAP_OneMaterial nap = manim.materialManager.FindTexture(value);
+                                NativeAP_OneMaterial nap = manim.FindTexture(value);
                                 if (nap != null)
                                 {
                                     mat.SetTexture("_MainTex", nap.ReferTexture2D());

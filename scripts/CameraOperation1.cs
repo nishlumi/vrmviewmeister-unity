@@ -60,8 +60,11 @@ public class CameraOperation1 : MonoBehaviour
         distance_camera2viewpoint = configLab.GetFloatVal("distance_camera_viewpoint", 2.5f);
 #if !UNITY_EDITOR && UNITY_WEBGL
         WebGLInput.captureAllKeyboardInput = false;
-        GameObject.Find("Canvas").transform.Find("Toolbar").gameObject.SetActive(false);
-        GameObject.Find("newUI").SetActive(false);
+        GameObject futureHide = GameObject.Find("Canvas").transform.Find("futureHide").gameObject;
+        if (futureHide != null) futureHide.SetActive(false);
+
+        GameObject newUI = GameObject.Find("newUI").gameObject;
+        if (newUI != null) newUI.SetActive(false);
 #endif
     }
 

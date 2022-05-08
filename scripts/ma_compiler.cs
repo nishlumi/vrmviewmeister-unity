@@ -450,15 +450,15 @@ namespace UserHandleSpace
                 RectTransform rectt = targetObjects.avatar.avatar.GetComponent<RectTransform>();
                 if (movedata.animationType == AF_MOVETYPE.Translate)
                 {
-
-                    Vector2 v2 = new Vector2(movedata.position.x, movedata.position.y);
+                    
+                    Vector2 v2 = new Vector2(Screen.width * (movedata.position.x/100f), Screen.height * (movedata.position.y/100f));
                     if (options.isExecuteForDOTween == 1) seq.Join(rectt.DOAnchorPos(v2, frame.duration));
                     else rectt.anchoredPosition = v2;
                 }
                 else if (movedata.animationType == AF_MOVETYPE.Rotate)
                 {
                     //---2D object is Z-dimension only.
-                    Vector3 v3 = new Vector3(rectt.rotation.eulerAngles.x, rectt.rotation.eulerAngles.y, movedata.rotation.z);
+                    Vector3 v3 = new Vector3(movedata.rotation.x, movedata.rotation.y, movedata.rotation.z);
                     if (options.isExecuteForDOTween == 1) seq.Join(rectt.DORotate(v3, frame.duration));
                     else rectt.rotation = Quaternion.Euler(v3);
                 }
@@ -2167,18 +2167,22 @@ namespace UserHandleSpace
             {
                 //---transform is RectTransform
                 RectTransform rectt = nav.avatar.avatar.GetComponent<RectTransform>();
+                OperateLoadedUImage olu = nav.avatar.avatar.GetComponent<OperateLoadedUImage>();
+                Vector2 v2 = olu.GetPosition();
 
                 AnimationTargetParts[] ikp = new AnimationTargetParts[3];
                 ikp[0] = new AnimationTargetParts();
                 ikp[0].animationType = AF_MOVETYPE.Translate;
                 ikp[0].vrmBone = ParseIKBoneType.IKParent;
-                ikp[0].position = rectt.anchoredPosition3D;
+                ikp[0].position = new Vector3(v2.x, v2.y, 0f); // rectt.anchoredPosition3D;
                 frame.movingData.Add(ikp[0]);
 
                 ikp[1] = new AnimationTargetParts();
                 ikp[1].animationType = AF_MOVETYPE.Rotate;
                 ikp[1].vrmBone = ParseIKBoneType.IKParent;
-                ikp[1].rotation = rectt.rotation.eulerAngles;
+                Vector3 rot2d = Vector3.zero;
+                rot2d.z = rectt.rotation.eulerAngles.z;
+                ikp[1].rotation = rot2d;
                 frame.movingData.Add(ikp[1]);
 
                 if ((nav.avatar.type == AF_TARGETTYPE.OtherObject) || (nav.avatar.type == AF_TARGETTYPE.Image))

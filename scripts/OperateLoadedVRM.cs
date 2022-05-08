@@ -127,6 +127,29 @@ namespace UserHandleSpace
         {
 
         }
+        private void OnDestroy()
+        {
+            foreach (KeyValuePair<string, Material> kvp in userSharedMaterials)
+            {
+                Material mat = kvp.Value;
+                { //---nullize old texture ( not destroy here )
+                    if (userSharedTextureFiles.ContainsKey(kvp.Key))
+                    {
+                        if ((userSharedTextureFiles[kvp.Key].textureIsCamera == 0) && (userSharedTextureFiles[kvp.Key].texturePath != ""))
+                        {
+                            manim.UnReferMaterial(OneMaterialType.Texture, userSharedTextureFiles[kvp.Key].texturePath);
+                        }
+
+                        mat.SetTexture("_MainTex", null);
+                    }
+
+                }
+                mat = null;
+            }
+            userSharedMaterials.Clear();
+            userSharedTextureFiles.Clear();
+            backupTextureFiles.Clear();
+        }
         public VRMImporterContext GetContext()
         {
             return context;

@@ -257,7 +257,7 @@ namespace UserHandleSpace
         }
         public void RelaseEffectRef()
         {
-            Addressables.ReleaseInstance(targetEffect);
+            if (targetEffect != null) Addressables.ReleaseInstance(targetEffect);
         }
         public EffectCurrentStates GetCurrentEffect()
         {
