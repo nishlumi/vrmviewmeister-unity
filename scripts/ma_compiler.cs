@@ -448,12 +448,19 @@ namespace UserHandleSpace
             else if ((targetObjects.targetType == AF_TARGETTYPE.Text) || (targetObjects.targetType == AF_TARGETTYPE.UImage))
             {
                 RectTransform rectt = targetObjects.avatar.avatar.GetComponent<RectTransform>();
+                OperateLoadedUImage olui = targetObjects.avatar.avatar.GetComponent<OperateLoadedUImage>();
+
                 if (movedata.animationType == AF_MOVETYPE.Translate)
                 {
                     
                     Vector2 v2 = new Vector2(Screen.width * (movedata.position.x/100f), Screen.height * (movedata.position.y/100f));
                     if (options.isExecuteForDOTween == 1) seq.Join(rectt.DOAnchorPos(v2, frame.duration));
                     else rectt.anchoredPosition = v2;
+
+                    if (options.isBuildDoTween == 0)
+                    {
+                        olui.currentPositionPercent = new Vector2(movedata.position.x, movedata.position.y);
+                    }
                 }
                 else if (movedata.animationType == AF_MOVETYPE.Rotate)
                 {
@@ -872,19 +879,30 @@ namespace UserHandleSpace
             OperateLoadedOther olo = naa.avatar.GetComponent<OperateLoadedOther>();
             if (movedata.animationType == AF_MOVETYPE.AnimStart)
             {
+
                 if (options.isExecuteForDOTween == 1)
                 {
                     seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
                      {
+                         olo.SetTargetClip(movedata.animName);
+                         olo.SetWrapMode(movedata.animLoop);
+                         olo.SetSpeedAnimation(movedata.animSpeed);
+
+                         olo.SeekPlayAnimation(movedata.animSeek);
                          olo.PlayAnimation();
                          olo.SetPlayFlagAnimation(UserAnimationState.Play);
                      }, false));
                 }
-                /*if (options.isBuildDoTween == 0)
+                if (options.isBuildDoTween == 0)
                 {
-                    olo.PlayAnimation();
-                    olo.SetPlayFlagAnimation(UserAnimationState.Play);
-                }*/
+                    olo.SetTargetClip(movedata.animName);
+                    olo.SetWrapMode(movedata.animLoop);
+                    olo.SetSpeedAnimation(movedata.animSpeed);
+
+                    //olo.PlayAnimation();
+                    olo.SeekPlayAnimation(movedata.animSeek);
+                    olo.SetPlayFlagAnimation(movedata.animPlaying);
+                }
             }
             else if (movedata.animationType == AF_MOVETYPE.AnimStop)
             {
@@ -896,31 +914,42 @@ namespace UserHandleSpace
                         olo.SetPlayFlagAnimation(UserAnimationState.Stop);
                     }, false));
                 }
-                /*if (options.isBuildDoTween == 0)
+                if (options.isBuildDoTween == 0)
                 {
-                    olo.StopAnimation();
-                    olo.SetPlayFlagAnimation(UserAnimationState.Stop);
-                }*/
+                    olo.SetTargetClip(movedata.animName);
+                    olo.SetWrapMode(movedata.animLoop);
+                    olo.SetSpeedAnimation(movedata.animSpeed);
+
+                    //olo.StopAnimation();
+                    olo.SetPlayFlagAnimation(movedata.animPlaying);
+                }
             }
             else if (movedata.animationType == AF_MOVETYPE.AnimSeek)
             {
-
-                if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => olo.SeekPosition, x => olo.SeekPosition = x, movedata.animSeek, frame.duration));
-                else olo.SeekPosition = movedata.animSeek;
-
 
                 if (options.isExecuteForDOTween == 1)
                 {
                     seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
                     {
+                        olo.SetTargetClip(movedata.animName);
+                        olo.SetWrapMode(movedata.animLoop);
+                        olo.SetSpeedAnimation(movedata.animSpeed);
+
                         olo.SetPlayFlagAnimation(UserAnimationState.Seeking);
                     }, false));
                 }
-                /*if (options.isBuildDoTween == 0)
+                if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => olo.SeekPosition, x => olo.SeekPosition = x, movedata.animSeek, frame.duration));
+                else olo.SeekPosition = movedata.animSeek;
+
+                if (options.isBuildDoTween == 0)
                 {
-                    //olo.SeekPlayAnimation();
-                    olo.SetPlayFlagAnimation(UserAnimationState.Seeking);
-                }*/
+                    olo.SetTargetClip(movedata.animName);
+                    olo.SetWrapMode(movedata.animLoop);
+                    olo.SetSpeedAnimation(movedata.animSpeed);
+
+                    //olo.SeekPlayAnimation(movedata.animSeek);
+                    olo.SetPlayFlagAnimation(movedata.animPlaying);
+                }
             }
             else if (movedata.animationType == AF_MOVETYPE.AnimPause)
             {
@@ -932,11 +961,15 @@ namespace UserHandleSpace
                         olo.SetPlayFlagAnimation(UserAnimationState.Pause);
                     }, false));
                 }
-                /*if (options.isBuildDoTween == 0)
+                if (options.isBuildDoTween == 0)
                 {
-                    olo.PauseAnimation();
-                    olo.SetPlayFlagAnimation(UserAnimationState.Pause);
-                }*/
+                    olo.SetTargetClip(movedata.animName);
+                    olo.SetWrapMode(movedata.animLoop);
+                    olo.SetSpeedAnimation(movedata.animSpeed);
+
+                    //olo.PauseAnimation();
+                    olo.SetPlayFlagAnimation(movedata.animPlaying);
+                }
             }
             else if (movedata.animationType == AF_MOVETYPE.AnimProperty)
             {
@@ -948,11 +981,11 @@ namespace UserHandleSpace
                         olo.SetWrapMode(movedata.animLoop);
                     }, false));
                 }
-                /*if (options.isBuildDoTween == 0)
+                if (options.isBuildDoTween == 0)
                 {
                     olo.SetTargetClip(movedata.animName);
                     olo.SetWrapMode(movedata.animLoop);
-                }*/
+                }
 
                 if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => olo.GetSpeedAnimation(), x => olo.SetSpeedAnimation(x), movedata.animSpeed, frame.duration));
                 else olo.SetSpeedAnimation(movedata.animSpeed);
@@ -967,10 +1000,10 @@ namespace UserHandleSpace
                         olo.SetPlayFlagAnimation(UserAnimationState.Playing);
                     }, false));
                 }
-                /*if (options.isBuildDoTween == 0)
+                if (options.isBuildDoTween == 0)
                 {
-                    olo.SetPlayFlagAnimation(UserAnimationState.Playing);
-                }*/
+                    olo.SetPlayFlagAnimation(movedata.animPlaying);
+                }
             }
             
             else if (movedata.animationType == AF_MOVETYPE.ObjectTexture)
@@ -1099,7 +1132,13 @@ namespace UserHandleSpace
             Camera cam = naa.avatar.GetComponent<Camera>();
             if (movedata.animationType == AF_MOVETYPE.Camera)
             {
-
+                if (options.isExecuteForDOTween == 1)
+                {
+                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                    {
+                        olc.SetCameraPlaying(movedata.cameraPlaying);
+                    }, false));
+                }
             }
             else if (movedata.animationType == AF_MOVETYPE.CameraOn)
             {
@@ -1334,14 +1373,13 @@ namespace UserHandleSpace
             NativeAnimationAvatar naa = targetObjects.avatar;
             OperateLoadedEffect ole = naa.avatar.GetComponent<OperateLoadedEffect>();
 
-            //if (options.isBuildDoTween == 0)
             if (options.isExecuteForDOTween == 1)
             {
                 if (movedata.animationType == AF_MOVETYPE.AnimStart)
                 {
-                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                    seq.Join(DOVirtual.DelayedCall(frame.duration, async () =>
                     {
-                        ole.SetEffect(movedata.effectGenre + "," + movedata.effectName);
+                        await ole.SetEffectRef("Effects/" + movedata.effectGenre + "/" + movedata.effectName);
                         if (movedata.animLoop == 1)
                         {
                             ole.PlayEffect(1);
@@ -1378,8 +1416,10 @@ namespace UserHandleSpace
                 }
                 else if (movedata.animationType == AF_MOVETYPE.Rest)
                 {
-                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                    seq.Join(DOVirtual.DelayedCall(frame.duration, async () =>
                     {
+                        await ole.SetEffectRef("Effects/" + movedata.effectGenre + "/" + movedata.effectName);
+
                         //ole.SetPlayFlagEffect(UserAnimationState.Playing);
                         ole.SetPlayFlagEffect(movedata.animPlaying);
 
@@ -1396,6 +1436,26 @@ namespace UserHandleSpace
                 }
                 
             }
+            if (options.isBuildDoTween == 0)
+            {
+                if (movedata.animationType == AF_MOVETYPE.Collider)
+                {
+                    ole.IsVRMCollider = movedata.isVRMCollider == 1 ? true : false;
+                    ole.ResetColliderTarget(movedata.VRMColliderTarget);
+                    ole.VRMColliderSize = movedata.VRMColliderSize;
+                }
+                else
+                {
+                    DOVirtual.DelayedCall(0.001f, async () =>
+                    {
+                        await ole.SetEffectRef("Effects/" + movedata.effectGenre + "/" + movedata.effectName);
+                        ole.SetPlayFlagEffect(movedata.animPlaying);
+                    });
+
+                    
+                }
+            }
+
 
             if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => ole.VRMColliderSize, x => ole.VRMColliderSize = x, movedata.VRMColliderSize, frame.duration));
             else ole.VRMColliderSize = movedata.VRMColliderSize;
@@ -1485,7 +1545,11 @@ namespace UserHandleSpace
 
                 if (options.isBuildDoTween == 0)
                 {
-                    os.SelectStage(movedata.stageType);
+                    DOVirtual.DelayedCall(0.001f, async () =>
+                    {
+                        await os.SelectStageRef(movedata.stageType);
+                    });
+                    
 
                     if (os.GetActiveStageType() == StageKind.Default)
                     {
@@ -2433,7 +2497,7 @@ namespace UserHandleSpace
                     atobj2.animName = olo.GetTargetClip();
                     atobj2.animLoop = olo.GetWrapMode();
                         
-                    frame.movingData.Add(atobj2);
+                    //frame.movingData.Add(atobj2);
                 }
 
                 if (options.isPropertyOnly != 1)
@@ -2441,7 +2505,12 @@ namespace UserHandleSpace
 
                     AnimationTargetParts atobj = new AnimationTargetParts();
 
+                    atobj.animSpeed = olo.GetSpeedAnimation();
+                    atobj.animName = olo.GetTargetClip();
+                    atobj.animLoop = olo.GetWrapMode();
+
                     atobj.animPlaying = olo.GetPlayFlagAnimation();
+                    atobj.animSeek = olo.GetSeekPosAnimation();
                     if (olo.GetPlayFlagAnimation() == UserAnimationState.Play)
                     {
                         atobj.animationType = AF_MOVETYPE.AnimStart;
@@ -2453,7 +2522,7 @@ namespace UserHandleSpace
                     else if (olo.GetPlayFlagAnimation() == UserAnimationState.Seeking)
                     {
                         atobj.animationType = AF_MOVETYPE.AnimSeek;
-                        atobj.animSeek = olo.GetSeekPosAnimation();
+                        
                     }
                     else if (olo.GetPlayFlagAnimation() == UserAnimationState.Pause)
                     {
@@ -2507,15 +2576,19 @@ namespace UserHandleSpace
             {
                 AnimationTargetParts atcam1 = new AnimationTargetParts();
 
-                if (olc.GetCameraPlaying() == 1)
+                if (olc.GetCameraPlaying() == UserAnimationState.Play)
                 {
                     atcam1.animationType = AF_MOVETYPE.CameraOn;
                 }
-                else
+                else if (olc.GetCameraPlaying() == UserAnimationState.Playing)
+                {
+                    atcam1.animationType = AF_MOVETYPE.Camera;
+                }
+                else if (olc.GetCameraPlaying() == UserAnimationState.Stop)
                 {
                     atcam1.animationType = AF_MOVETYPE.CameraOff;
                 }
-                atcam1.cameraPlaying = olc.GetCameraPlaying();
+                atcam1.cameraPlaying = (int)olc.GetCameraPlaying();
                 frame.movingData.Add(atcam1);
             }
             if (options.isDefineOnly != 1)

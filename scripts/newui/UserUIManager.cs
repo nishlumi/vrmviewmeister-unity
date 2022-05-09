@@ -407,7 +407,8 @@ namespace UserUISpace
             //manim.StopAllTimeline();
             GameObject animatearea = GameObject.Find("AnimateArea");
             UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
-            StartCoroutine(fmc.DownloadAAS("default"));
+            StartCoroutine(fmc.ListGetAAS("effect"));
+
         }
 
         //===============================================================================================

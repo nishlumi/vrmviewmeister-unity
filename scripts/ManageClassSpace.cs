@@ -1266,6 +1266,8 @@ namespace UserHandleSpace
         /// <returns></returns>
         public Texture2D ReferTexture2D()
         {
+            if (effectiveObject == null) return null;
+
             refCount++;
             return (Texture2D)effectiveObject;
         }
@@ -1276,6 +1278,8 @@ namespace UserHandleSpace
         /// <returns></returns>
         public int UnRefer()
         {
+            if (effectiveObject == null) return 0;
+
             refCount--;
             return refCount;
         }

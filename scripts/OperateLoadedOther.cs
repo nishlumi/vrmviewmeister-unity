@@ -248,11 +248,12 @@ namespace UserHandleSpace
                     GetWrapMode().ToString()
                     + "\t" + 
                     jsclip
-
+                    + "\t" +
+                    GetTargetClip()
                 ;
 
-                Debug.Log("OtherObject indicated properties=");
-                Debug.Log(ret);
+                //Debug.Log("OtherObject indicated properties=");
+                //Debug.Log(ret);
             }
             else
             {
@@ -586,13 +587,17 @@ namespace UserHandleSpace
             }
             if (transform.TryGetComponent<Animation>(out anim))
             {
-                foreach (AnimationState state in anim)
+                if (anim.clip != null)
                 {
-                    if (anim.clip.name == state.clip.name)
+                    foreach (AnimationState state in anim)
                     {
-                        state.speed = to;
+                        if (anim.clip.name == state.clip.name)
+                        {
+                            state.speed = to;
+                        }
                     }
                 }
+                
 
             }
         }
@@ -666,7 +671,7 @@ namespace UserHandleSpace
                 if (value > -1f)
                 {
                     animationRemainTime = value;
-                    anim.clip.SampleAnimation(transform.gameObject, animationRemainTime);
+                    if (anim.clip != null) anim.clip.SampleAnimation(transform.gameObject, animationRemainTime);
                 }
 
             }

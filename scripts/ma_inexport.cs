@@ -98,7 +98,7 @@ namespace UserHandleSpace
             int boneParts;
             
             int.TryParse(lst[CSV_PARTS], out boneParts);
-            string optParts = lst[CSV_OPTPARTS].ToLower();
+            string optParts = lst[CSV_OPTPARTS]; //.ToLower();
 
             //int movetype;
             //movetype = int.TryParse(lst[CSV_ANIMTYPE], out movetype) ? movetype : 0;
@@ -352,10 +352,13 @@ namespace UserHandleSpace
                 //---Each parse
                 if (targetType == AF_TARGETTYPE.OtherObject)
                 {
+                    atp.animName = optParts;
                     if (movetype == "animstart")
                     {
                         atp.animationType = AF_MOVETYPE.AnimStart;
                         atp.animPlaying = UserAnimationState.Play;
+                        float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+                        atp.animSeek = vec3[0];
                     }
                     else if (movetype == "animstop")
                     {
@@ -420,6 +423,11 @@ namespace UserHandleSpace
                     {
                         atp.animationType = AF_MOVETYPE.CameraOn;
                         atp.cameraPlaying = (int)UserAnimationState.Play;
+                    }
+                    else if (movetype == "camera")
+                    {
+                        atp.animationType = AF_MOVETYPE.Camera;
+                        atp.cameraPlaying = (int)UserAnimationState.Playing;
                     }
                     else if (movetype == "cameraoff")
                     {
@@ -880,7 +888,8 @@ namespace UserHandleSpace
                     if (atp.animationType == AF_MOVETYPE.AnimStart)
                     {
                         ret.Add("animstart");
-                        ret.Add("0");
+                        ret.Add("1");
+                        ret.Add(atp.animSeek.ToString());
                     }
                     else if (atp.animationType == AF_MOVETYPE.AnimStop)
                     {
@@ -968,13 +977,19 @@ namespace UserHandleSpace
                     {
                         ret.Add("cameraon");
                         ret.Add("1");
-                        ret.Add(((int)atp.cameraPlaying).ToString());
+                        ret.Add(atp.cameraPlaying.ToString());
+                    }
+                    else if (atp.animationType == AF_MOVETYPE.Camera)
+                    {
+                        ret.Add("camera");
+                        ret.Add("1");
+                        ret.Add(atp.cameraPlaying.ToString());
                     }
                     else if (atp.animationType == AF_MOVETYPE.CameraOff)
                     {
                         ret.Add("cameraoff");
                         ret.Add("1");
-                        ret.Add(((int)atp.cameraPlaying).ToString());
+                        ret.Add(atp.cameraPlaying.ToString());
                     }
                     else if (atp.animationType == AF_MOVETYPE.CameraProperty)
                     {

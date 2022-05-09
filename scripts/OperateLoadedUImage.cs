@@ -233,15 +233,17 @@ namespace UserHandleSpace
         {
             RectTransform rect = GetRectTransform();
 
-            Vector2 pos = rect.anchoredPosition;
+            Vector2 pos = currentPositionPercent; // rect.anchoredPosition;
             Vector3 rot = rect.rotation.eulerAngles;
             Vector2 siz = rect.sizeDelta;
             Vector2 sca = new Vector2(rect.localScale.x, rect.localScale.y);
             string ret = "";
-            ret = pos.x + "," + pos.y + "," + 0f + "%"
-                + rot.x + "," + rot.y + "," + rot.z + "%"
-                + siz.x + "," + siz.y + "," + 0f + "%"
-                + sca.x + "," + sca.y + "," + 0f;
+
+            ret = pos.x.ToString() + "," + pos.y.ToString() + ",0" +  "%"
+                + rot.x.ToString() + "," + rot.y.ToString() + "," + rot.z.ToString() + "%"
+                + siz.x.ToString() + "," + siz.y.ToString() + ",0"  + "%"
+                + sca.x.ToString() + "," + sca.y.ToString() + ",0" 
+            ;
 
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(ret);

@@ -429,13 +429,37 @@ namespace UserVRMSpace
                 DestroyEffect(ovrm.GetEffectiveActiveAvatar().name);
             }
         }
+        public IEnumerator ListGetAAS(string param)
+        {
+            var opHandle = Addressables.LoadResourceLocationsAsync(param);
+            yield return opHandle;
+
+            List<string> arr = new List<string>();
+            if (opHandle.Status == AsyncOperationStatus.Succeeded &&
+                opHandle.Result != null &&
+                opHandle.Result.Count > 0)
+            {
+                for (int i = 0; i < opHandle.Result.Count; i++)
+                {
+                    //Debug.Log("address is: " + opHandle.Result[i].PrimaryKey);
+                    arr.Add(opHandle.Result[i].PrimaryKey);
+                }
+                
+            }
+            Addressables.Release(opHandle);
+
+            string ret = string.Join('\t', arr);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif            
+        }
         public IEnumerator DownloadAAS(string param)
         {
             GameObject npd = GameObject.Find("newProgressDlg");
             UserUIProgressDlg uui = npd.GetComponent<UserUIProgressDlg>();
 
             AsyncOperationHandle<long> getDownloadSize = Addressables.GetDownloadSizeAsync(param);
-            Debug.Log("download size=" + getDownloadSize.Result.ToString());
+            //Debug.Log("download size=" + getDownloadSize.Result.ToString());
 
             yield return getDownloadSize.Result;
 
@@ -449,7 +473,7 @@ namespace UserVRMSpace
             while (dHandle.Status == AsyncOperationStatus.None)
             {
                 float percentageComplete = dHandle.GetDownloadStatus().Percent;
-                Debug.Log("percent=" + percentageComplete.ToString());
+                //Debug.Log("percent=" + percentageComplete.ToString());
                 if (percentageComplete > progress * 1.1)
                 {
                     progress = percentageComplete;

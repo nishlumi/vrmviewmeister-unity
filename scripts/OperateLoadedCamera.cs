@@ -19,7 +19,7 @@ namespace UserHandleSpace
         [DllImport("__Internal")]
         private static extern void ReceiveFloatVal(float val);
 
-        public int cameraPlayFlag;  //1 - on, 0 - off
+        public UserAnimationState cameraPlayFlag;  //1 - play, 0 - stop, 2 - playing, 3 - seeking, 4 - pause
 
         public int cameraRenderFlag;    //1 - renderTexture, 0 - camera self
         public Vector2 RenderSize;
@@ -28,7 +28,7 @@ namespace UserHandleSpace
 
         private void Awake()
         {
-            cameraPlayFlag = 0;
+            cameraPlayFlag = UserAnimationState.Stop;
 
             targetType = AF_TARGETTYPE.Camera;
             RenderSize = new Vector2(200f, 200f);
@@ -53,7 +53,7 @@ namespace UserHandleSpace
             string ret = "";
             Camera lt = transform.gameObject.GetComponent<Camera>();
 
-            int pflag = GetCameraPlaying(0);
+            int pflag = (int)GetCameraPlaying(0);
             string js = lt.rect.x.ToString() + "," + lt.rect.y.ToString() + "," + lt.rect.width.ToString() + "," + lt.rect.height.ToString();
 
             ret = pflag.ToString() + "\t" + lt.fieldOfView.ToString() + "\t" + lt.depth.ToString() + "\t" + js + "\t" + ((int)lt.clearFlags).ToString() + 
@@ -84,18 +84,18 @@ namespace UserHandleSpace
             cam.enabled = false;
 
         }
-        public int GetCameraPlaying(int is_contacthtml = 1)
+        public UserAnimationState GetCameraPlaying(int is_contacthtml = 1)
         {
 #if !UNITY_EDITOR && UNITY_WEBGL
         if (is_contacthtml == 1) {
-            ReceiveIntVal(cameraPlayFlag);
+            ReceiveIntVal((int)cameraPlayFlag);
         }
 #endif
             return cameraPlayFlag;
         }
         public void SetCameraPlaying(int flag)
         {
-            cameraPlayFlag = flag;
+            cameraPlayFlag = (UserAnimationState)flag;
         }
         public void SetClearFlag(int param)
         {

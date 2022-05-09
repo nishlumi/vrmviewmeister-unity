@@ -233,12 +233,18 @@ namespace UserHandleSpace
 
         public async System.Threading.Tasks.Task<GameObject> SetEffectRef(string param)
         {
+            string[] prm = param.Split("/");
+            if ((EffectNames[0] == prm[1]) && (EffectNames[1] == prm[2])) return null;
+            if ((prm[0] == "") || (prm[1] == "")) return null;
+
+            EffectNames[0] = prm[1];
+            EffectNames[1] = prm[2];
+
             RelaseEffectRef();
 
             //---addressable
             AsyncOperationHandle<GameObject> targetEffectHandle = Addressables.InstantiateAsync(param);
 
-            
 
             //targetEffectHandle.Completed += instantiate_Completed;
 
