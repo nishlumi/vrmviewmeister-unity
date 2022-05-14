@@ -509,6 +509,7 @@ namespace UserHandleSpace
         /// </summary>
         public void GetIndicatedPropertyFromOuter()
         {
+            const string SEPSTR = "\t";
             string ret = "";
 
             LeftHandPoseController ctl = GetComponent<LeftHandPoseController>();
@@ -525,25 +526,28 @@ namespace UserHandleSpace
 
             string movemode = (isMoveMode == true) ? "1" : "0";
             // 1st sep ... \t
-            // 2nd sep ... \r\n
+            // 2nd sep ... =
             //             ,
+            // blendshape
+            //             ,
+            //            name=value
 
             ret = "l," + ctl.currentPose.ToString() + "," + ctl.handPoseValue.ToString()
-                + "%" +
-                "r," + ctr.currentPose.ToString() + "," + ctr.handPoseValue.ToString()
-                + "\t" + 
+                    + "=" +
+                    "r," + ctr.currentPose.ToString() + "," + ctr.handPoseValue.ToString()
+                + SEPSTR + 
                 blendshape
-                + "\t" + 
+                + SEPSTR + 
                 eflag.ToString()
-                + "\t" + 
+                + SEPSTR + 
                 equipjs
-                + "\t" + 
+                + SEPSTR + 
                 gravityjs
-                + "\t" +
+                + SEPSTR +
                 GetHeadLock().ToString() 
-                + "\t" +
+                + SEPSTR +
                 matjs
-                + "\t" +
+                + SEPSTR +
                 movemode
 
             ;

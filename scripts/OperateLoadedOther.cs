@@ -220,7 +220,7 @@ namespace UserHandleSpace
             List<string> list = ListUserMaterial();
             List<string> animclips = ListAnimationClips();
             string js = string.Join("\r\n", list.ToArray());
-            string jsclip = string.Join(',', animclips);
+            string jsclip = string.Join('=', animclips);
             if (type == 1)
             {
                 int pflag = IsPlayingAnimation();
@@ -228,8 +228,11 @@ namespace UserHandleSpace
                 float seek = animationRemainTime;
 
                 // 1st sep ... \t
-                // 2nd sep ... \r\n
-                //             ,
+                // material
+                // child sep 1 ... \r\n
+                //           2 ... =
+                //           3 ... ,
+                // animation clip ... =
 
                 ret = "o"
                     + "\t" +

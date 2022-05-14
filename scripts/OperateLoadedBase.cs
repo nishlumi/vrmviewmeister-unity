@@ -827,7 +827,7 @@ namespace UserHandleSpace
         /// <returns></returns>
         public virtual string ListGetOneUserMaterial(string param)
         {
-            const string SEPSTR = "\t";
+            const string SEPSTR = "=";
             string ret = "";
 
             //Debug.Log("param=" + param);
@@ -1469,8 +1469,11 @@ namespace UserHandleSpace
                         if (mat.shader.name.ToLower() == "fx/water4")
                         {
                             string[] arr = value.Split("\t");
-                            string v4 = "{'x':" + arr[0] + ",'y':" + arr[1] + ",'z':" + arr[2] + ",'w':" + arr[3] + "}";
-                            Vector4 vec = JsonUtility.FromJson<Vector4>(v4);
+                            float x = float.TryParse(arr[0], out x) ? x : 0f;
+                            float y = float.TryParse(arr[1], out y) ? y : 0f;
+                            float z = float.TryParse(arr[2], out z) ? z : 0f;
+                            float w = float.TryParse(arr[3], out w) ? w : 0f;
+                            Vector4 vec = new Vector4(x, y, z, w);
                             mat.SetVector("_GAmplitude", vec);
                         }
                     }
@@ -1479,8 +1482,11 @@ namespace UserHandleSpace
                         if (mat.shader.name.ToLower() == "fx/water4")
                         {
                             string[] arr = value.Split("\t");
-                            string v4 = "{'x':" + arr[0] + ",'y':" + arr[1] + ",'z':" + arr[2] + ",'w':" + arr[3] + "}";
-                            Vector4 vec = JsonUtility.FromJson<Vector4>(v4);
+                            float x = float.TryParse(arr[0], out x) ? x : 0f;
+                            float y = float.TryParse(arr[1], out y) ? y : 0f;
+                            float z = float.TryParse(arr[2], out z) ? z : 0f;
+                            float w = float.TryParse(arr[3], out w) ? w : 0f;
+                            Vector4 vec = new Vector4(x, y, z, w);
                             mat.SetVector("_GFrequency", vec);
                         }
                     }
@@ -1489,8 +1495,11 @@ namespace UserHandleSpace
                         if (mat.shader.name.ToLower() == "fx/water4")
                         {
                             string[] arr = value.Split("\t");
-                            string v4 = "{'x':" + arr[0] + ",'y':" + arr[1] + ",'z':" + arr[2] + ",'w':" + arr[3] + "}";
-                            Vector4 vec = JsonUtility.FromJson<Vector4>(v4);
+                            float x = float.TryParse(arr[0], out x) ? x : 0f;
+                            float y = float.TryParse(arr[1], out y) ? y : 0f;
+                            float z = float.TryParse(arr[2], out z) ? z : 0f;
+                            float w = float.TryParse(arr[3], out w) ? w : 0f;
+                            Vector4 vec = new Vector4(x, y, z, w);
                             mat.SetVector("_GSteepness", vec);
                         }
                     }
@@ -1499,8 +1508,11 @@ namespace UserHandleSpace
                         if (mat.shader.name.ToLower() == "fx/water4")
                         {
                             string[] arr = value.Split("\t");
-                            string v4 = "{'x':" + arr[0] + ",'y':" + arr[1] + ",'z':" + arr[2] + ",'w':" + arr[3] + "}";
-                            Vector4 vec = JsonUtility.FromJson<Vector4>(v4);
+                            float x = float.TryParse(arr[0], out x) ? x : 0f;
+                            float y = float.TryParse(arr[1], out y) ? y : 0f;
+                            float z = float.TryParse(arr[2], out z) ? z : 0f;
+                            float w = float.TryParse(arr[3], out w) ? w : 0f;
+                            Vector4 vec = new Vector4(x, y, z, w);
                             mat.SetVector("_GSpeed", vec);
                         }
                     }
@@ -1509,8 +1521,11 @@ namespace UserHandleSpace
                         if (mat.shader.name.ToLower() == "fx/water4")
                         {
                             string[] arr = value.Split("\t");
-                            string v4 = "{'x':" + arr[0] + ",'y':" + arr[1] + ",'z':" + arr[2] + ",'w':" + arr[3] + "}";
-                            Vector4 vec = JsonUtility.FromJson<Vector4>(v4);
+                            float x = float.TryParse(arr[0], out x) ? x : 0f;
+                            float y = float.TryParse(arr[1], out y) ? y : 0f;
+                            float z = float.TryParse(arr[2], out z) ? z : 0f;
+                            float w = float.TryParse(arr[3], out w) ? w : 0f;
+                            Vector4 vec = new Vector4(x, y, z, w);
                             mat.SetVector("_GDirectionAB", vec);
                         }
                     }
@@ -1519,8 +1534,11 @@ namespace UserHandleSpace
                         if (mat.shader.name.ToLower() == "fx/water4")
                         {
                             string[] arr = value.Split("\t");
-                            string v4 = "{'x':" + arr[0] + ",'y':" + arr[1] + ",'z':" + arr[2] + ",'w':" + arr[3] + "}";
-                            Vector4 vec = JsonUtility.FromJson<Vector4>(v4);
+                            float x = float.TryParse(arr[0], out x) ? x : 0f;
+                            float y = float.TryParse(arr[1], out y) ? y : 0f;
+                            float z = float.TryParse(arr[2], out z) ? z : 0f;
+                            float w = float.TryParse(arr[3], out w) ? w : 0f;
+                            Vector4 vec = new Vector4(x, y, z, w);
                             mat.SetVector("_GDirectionCD", vec);
                         }
                     }
