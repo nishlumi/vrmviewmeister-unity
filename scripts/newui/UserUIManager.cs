@@ -97,6 +97,9 @@ namespace UserUISpace
             menu_new_strlst.Add("Image");
             menu_new_strlst.Add("UImage");
             menu_new_strlst.Add("Text");
+            menu_new_strlst.Add("Blank Object Cube");
+            menu_new_strlst.Add("Blank Object Sphere");
+            menu_new_strlst.Add("Blank Object Plane");
             ListView tlb_menunew_listview = CreateVListView(menu_new_strlst, tlb_menu_new, "tlb_menunew_listview");
             tlb_menunew_listview.onSelectedIndicesChange += inx =>
             {
@@ -124,6 +127,12 @@ namespace UserUISpace
                             Newobj_UImage_OnClick(); break;
                         case 8:
                             Newobj_Text_OnClick(); break;
+                        case 9:
+                            Newobj_Blank_OnClick(PrimitiveType.Cube); break;
+                        case 10:
+                            Newobj_Blank_OnClick(PrimitiveType.Sphere); break;
+                        case 11:
+                            Newobj_Blank_OnClick(PrimitiveType.Plane); break;
                     }
                 }
             };
@@ -310,6 +319,16 @@ namespace UserUISpace
 
             Newobj_OnClick();
         }
+
+        void Newobj_Blank_OnClick(PrimitiveType type)
+        {
+            GameObject animatearea = GameObject.Find("AnimateArea");
+            UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
+            fmc.CreateBlankCube(type);
+
+            Newobj_OnClick();
+        }
+
         void HideMenu_OnClick()
         {
             VisualElement panel = rootElement.Q<VisualElement>("objlistpanel");

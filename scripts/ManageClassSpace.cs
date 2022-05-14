@@ -20,26 +20,43 @@ namespace UserHandleSpace
     //  Material and General class
     //===============================================================================================================
     [Serializable]
-    public class MaterialProperties
+    public class MaterialPropertiesBase
     {
         public string name = "";
         public string shaderName = "";
+        //---standard / VRM/MToon
         public Color color = Color.white;
-        public float cullmode = 0;
         public float blendmode = 0;
         public int textureIsCamera = 0;
         public string textureRole = "";
         public string texturePath = "";
-        public Texture realTexture = null;
+        public Color emissioncolor = Color.white;
+        //---standard
         public float metallic = 0;
         public float glossiness = 0;
-        public Color emissioncolor = Color.white;
+        //---VRM/MToon
+        public float cullmode = 0;
         public Color shadetexcolor = Color.white;
         public float shadingtoony = 0;
         public Color rimcolor = Color.white;
         public float rimfresnel = 0;
         public float srcblend = 0;
         public float dstblend = 0;
+        //---FX/Water4
+        public float fresnelScale = 0.75f;
+        public Color reflectionColor = new Color(0.54f, 0.95f, 0.99f, 0.5f);
+        public Color specularColor = new Color(0.72f, 0.72f, 0.72f, 1f);
+        public Vector4 waveAmplitude = new Vector4(0.3f, 0.35f, 0.25f, 0.25f);
+        public Vector4 waveFrequency = new Vector4(1.3f, 1.35f, 1.25f, 1.25f);
+        public Vector4 waveSteepness = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+        public Vector4 waveSpeed = new Vector4(1.2f, 1.375f, 1.1f, 1.5f);
+        public Vector4 waveDirectionAB = new Vector4(0.3f, 0.85f, 0.85f, 0.25f);
+        public Vector4 waveDirectionCD = new Vector4(0.1f, 0.9f, 0.5f, 0.5f);
+    }
+    [Serializable]
+    public class MaterialProperties : MaterialPropertiesBase
+    {
+        public Texture realTexture = null;
     }
 
     //===============================================================================================================

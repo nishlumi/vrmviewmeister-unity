@@ -737,11 +737,14 @@ namespace UserHandleSpace
                 MaterialProperties matp = new MaterialProperties();
 
                 matp.name = kvp.Key;
-                matp.color = mat.color;
+                
                 matp.shaderName = mat.shader.name;
-                matp.emissioncolor = mat.GetColor("_EmissionColor");
+                
                 if (mat.shader.name.ToLower() == "vrm/mtoon")
                 {
+                    matp.color = mat.color;
+                    matp.emissioncolor = mat.GetColor("_EmissionColor");
+
                     matp.cullmode = mat.GetFloat("_CullMode");
                     matp.blendmode = mat.GetFloat("_BlendMode");
                     matp.shadetexcolor = mat.GetColor("_ShadeColor");
@@ -750,17 +753,41 @@ namespace UserHandleSpace
                     matp.rimfresnel = mat.GetFloat("_RimFresnelPower");
                     matp.srcblend = mat.GetFloat("_SrcBlend");
                     matp.dstblend = mat.GetFloat("_DstBlend");
+
+                    matp.texturePath = userSharedTextureFiles[kvp.Key].texturePath;
+                    matp.textureRole = userSharedTextureFiles[kvp.Key].textureRole;
+                    matp.textureIsCamera = userSharedTextureFiles[kvp.Key].textureIsCamera;
+
                 }
                 else if (mat.shader.name.ToLower() == "standard")
                 {
+                    matp.color = mat.color;
+                    matp.emissioncolor = mat.GetColor("_EmissionColor");
+
                     matp.cullmode = 0;
                     matp.blendmode = mat.GetFloat("_Mode");
                     matp.metallic = mat.GetFloat("_Metallic");
                     matp.glossiness = mat.GetFloat("_Glossiness");
+
+                    matp.texturePath = userSharedTextureFiles[kvp.Key].texturePath;
+                    matp.textureRole = userSharedTextureFiles[kvp.Key].textureRole;
+                    matp.textureIsCamera = userSharedTextureFiles[kvp.Key].textureIsCamera;
+
                 }
-                matp.texturePath = userSharedTextureFiles[kvp.Key].texturePath;
-                matp.textureRole = userSharedTextureFiles[kvp.Key].textureRole;
-                matp.textureIsCamera = userSharedTextureFiles[kvp.Key].textureIsCamera;
+                else if (mat.shader.name.ToLower() == "fx/water4")
+                {
+                    matp.fresnelScale = mat.GetFloat("_FresnelScale");
+                    matp.color = mat.GetColor("_BaseColor");
+                    matp.reflectionColor = mat.GetColor("_ReflectionColor");
+                    matp.specularColor = mat.GetColor("_SpecularColor");
+
+                    matp.waveAmplitude = mat.GetVector("_GAmplitude");
+                    matp.waveFrequency = mat.GetVector("_GFrequency");
+                    matp.waveSteepness = mat.GetVector("_GSteepness");
+                    matp.waveSpeed = mat.GetVector("_GSpeed");
+                    matp.waveDirectionAB = mat.GetVector("_GDirectionAB");
+                    matp.waveDirectionCD = mat.GetVector("_GDirectionCD");
+                }
 
                 ret.Add(matp);
             }
@@ -800,6 +827,7 @@ namespace UserHandleSpace
         /// <returns></returns>
         public virtual string ListGetOneUserMaterial(string param)
         {
+            const string SEPSTR = "\t";
             string ret = "";
 
             //Debug.Log("param=" + param);
@@ -814,43 +842,67 @@ namespace UserHandleSpace
                 if (mat.shader.name.ToLower() == "vrm/mtoon")
                 {
                     ret = (
-                        param + "," +
-                        mat.shader.name + "," +
-                        ColorUtility.ToHtmlStringRGBA(mat.color) + "," +
-                        mat.GetFloat("_CullMode").ToString() + "," +
-                        mat.GetFloat("_BlendMode").ToString() + "," +
-                        texturePath + "," +
-
-                        "0" + "," +
-                        "0" + "," +
-                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_EmissionColor")) + "," +
-                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_ShadeColor")) + "," +
-                        mat.GetFloat("_ShadeToony").ToString() + "," +
-                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_RimColor")) + "," +
-                        mat.GetFloat("_RimFresnelPower").ToString() + "," +
-                        mat.GetFloat("_SrcBlend").ToString() + "," +
-                        mat.GetFloat("_DstBlend")
+                        param + SEPSTR +
+                        mat.shader.name + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(mat.color) + SEPSTR +
+                        mat.GetFloat("_CullMode").ToString() + SEPSTR +
+                        mat.GetFloat("_BlendMode").ToString() + SEPSTR +
+                        texturePath + SEPSTR +
+                        //---6
+                        "0" + SEPSTR +
+                        "0" + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_EmissionColor")) + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_ShadeColor")) + SEPSTR +
+                        mat.GetFloat("_ShadeToony").ToString() + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_RimColor")) + SEPSTR +
+                        mat.GetFloat("_RimFresnelPower").ToString() + SEPSTR +
+                        mat.GetFloat("_SrcBlend").ToString() + SEPSTR +
+                        mat.GetFloat("_DstBlend").ToString()
                     );
                 }
-                else
+                else if (mat.shader.name.ToLower() == "standard")
                 {
                     ret = (
-                        param + "," +
-                        mat.shader.name + "," +
-                        ColorUtility.ToHtmlStringRGBA(mat.color) + "," +
-                        "0" + "," +
-                        mat.GetFloat("_Mode").ToString() + "," +
-                        texturePath + "," +
-
-                        mat.GetFloat("_Metallic").ToString() + "," +
-                        mat.GetFloat("_Glossiness").ToString() + "," +
-                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_EmissionColor")) + "," +
-                        ColorUtility.ToHtmlStringRGBA(Color.white) + "," +
-                        "0" + "," +
-                        ColorUtility.ToHtmlStringRGBA(Color.white) + "," +
-                        "0" + "," +
-                        "1" + "," +
+                        param + SEPSTR +
+                        mat.shader.name + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(mat.color) + SEPSTR +
+                        "0" + SEPSTR +
+                        mat.GetFloat("_Mode").ToString() + SEPSTR +
+                        texturePath + SEPSTR +
+                        //---6
+                        mat.GetFloat("_Metallic").ToString() + SEPSTR +
+                        mat.GetFloat("_Glossiness").ToString() + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_EmissionColor")) + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(Color.white) + SEPSTR +
+                        "0" + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(Color.white) + SEPSTR +
+                        "0" + SEPSTR +
+                        "1" + SEPSTR +
                         "0"
+                    );
+                }
+                else if (mat.shader.name.ToLower() == "fx/water4")
+                {
+                    Vector4 wa = mat.GetVector("_GAmplitude");
+                    Vector4 wf = mat.GetVector("_GFrequency");
+                    Vector4 wt = mat.GetVector("_GSteepness");
+                    Vector4 ws = mat.GetVector("_GSpeed");
+                    Vector4 wdab = mat.GetVector("_GDirectionAB");
+                    Vector4 wdcd = mat.GetVector("_GDirectionCD");
+                    ret = (
+                        param + SEPSTR +
+                        mat.shader.name + SEPSTR +
+                        mat.GetFloat("_FresnelScale").ToString() + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_BaseColor")) + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_ReflectionColor")) + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_SpecularColor")) + SEPSTR +
+                        //---6
+                        wa.x.ToString() + "," + wa.y.ToString() + "," + wa.z.ToString() + "," + wa.w.ToString() + SEPSTR +
+                        wf.x.ToString() + "," + wf.y.ToString() + "," + wf.z.ToString() + "," + wf.w.ToString() + SEPSTR +
+                        wt.x.ToString() + "," + wt.y.ToString() + "," + wt.z.ToString() + "," + wt.w.ToString() + SEPSTR +
+                        ws.x.ToString() + "," + ws.y.ToString() + "," + ws.z.ToString() + "," + ws.w.ToString() + SEPSTR +
+                        wdab.x.ToString() + "," + wdab.y.ToString() + "," + wdab.z.ToString() + "," + wdab.w.ToString() + SEPSTR +
+                        wdcd.x.ToString() + "," + wdcd.y.ToString() + "," + wdcd.z.ToString() + "," + wdcd.w.ToString()
                     );
                 }
             }
@@ -910,7 +962,15 @@ namespace UserHandleSpace
                     }
                     else if (propname.ToLower() == "color")
                     {
-                        mat.SetColor("_Color", vmat.color);
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            mat.SetColor("_BaseColor", vmat.color);
+                        }
+                        else if ((mat.shader.name.ToLower() == "standard") || (mat.shader.name.ToLower() == "vrm/mtoon"))
+                        {
+                            mat.SetColor("_Color", vmat.color);
+                        }
+                        
                     }
                     else if (propname.ToLower() == "renderingtype")
                     {
@@ -1073,6 +1133,69 @@ namespace UserHandleSpace
                             mat.SetFloat("_DstBlend", vmat.dstblend);
                         }
                     }
+                    else if (propname.ToLower() == "fresnelscale")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            mat.SetFloat("_FresnelScale", vmat.fresnelScale);
+                        }
+                    }
+                    else if (propname.ToLower() == "reflectioncolor")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            mat.SetColor("_ReflectionColor", vmat.reflectionColor);
+                        }
+                    }
+                    else if (propname.ToLower() == "specularcolor")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            mat.SetColor("_SpecularColor", vmat.specularColor);
+                        }
+                    }
+                    else if (propname.ToLower() == "waveamplitude")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            mat.SetVector("_GAmplitude", vmat.waveAmplitude);
+                        }
+                    }
+                    else if (propname.ToLower() == "wavefrequency")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            mat.SetVector("_GFrequency", vmat.waveFrequency);
+                        }
+                    }
+                    else if (propname.ToLower() == "wavesteepness")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            mat.SetVector("_GSteepness", vmat.waveSteepness);
+                        }
+                    }
+                    else if (propname.ToLower() == "wavespeed")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            mat.SetVector("_GSpeed", vmat.waveSpeed);
+                        }
+                    }
+                    else if (propname.ToLower() == "wavedirectionab")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            mat.SetVector("_GDirectionAB", vmat.waveDirectionAB);
+                        }
+                    }
+                    else if (propname.ToLower() == "wavedirectioncd")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            mat.SetVector("_GDirectionCD", vmat.waveDirectionCD);
+                        }
+                    }
                 }
             }
         }
@@ -1113,7 +1236,14 @@ namespace UserHandleSpace
                         if (ColorUtility.TryParseHtmlString(value, out col))
                         {
                             //mat.color = col;
-                            mat.SetColor("_Color", col);
+                            if ((mat.shader.name.ToLower() == "standard") || (mat.shader.name.ToLower() == "vrm/mtoon"))
+                            {
+                                mat.SetColor("_Color", col);
+                            }
+                            else if (mat.shader.name.ToLower() =="fx/water4")
+                            {
+                                mat.SetColor("_BaseColor", col);
+                            }
                         }
                     }
                     else if (propname.ToLower() == "renderingtype")
@@ -1303,6 +1433,97 @@ namespace UserHandleSpace
                             mat.SetFloat("_DstBlend", fv);
                         }
                     }
+                    else if (propname.ToLower() == "fresnelscale")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            mat.SetFloat("_FresnelScale", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "reflectioncolor")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            Color col;
+                            if (ColorUtility.TryParseHtmlString(value, out col))
+                            {
+                                mat.SetColor("_ReflectionColor", col);
+                            }
+                            
+                        }
+                    }
+                    else if (propname.ToLower() == "specularcolor")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            Color col;
+                            if (ColorUtility.TryParseHtmlString(value, out col))
+                            {
+                                mat.SetColor("_SpecularColor", col);
+                            }
+                        }
+                    }
+                    else if (propname.ToLower() == "waveamplitude")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            string[] arr = value.Split("\t");
+                            string v4 = "{'x':" + arr[0] + ",'y':" + arr[1] + ",'z':" + arr[2] + ",'w':" + arr[3] + "}";
+                            Vector4 vec = JsonUtility.FromJson<Vector4>(v4);
+                            mat.SetVector("_GAmplitude", vec);
+                        }
+                    }
+                    else if (propname.ToLower() == "wavefrequency")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            string[] arr = value.Split("\t");
+                            string v4 = "{'x':" + arr[0] + ",'y':" + arr[1] + ",'z':" + arr[2] + ",'w':" + arr[3] + "}";
+                            Vector4 vec = JsonUtility.FromJson<Vector4>(v4);
+                            mat.SetVector("_GFrequency", vec);
+                        }
+                    }
+                    else if (propname.ToLower() == "wavesteepness")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            string[] arr = value.Split("\t");
+                            string v4 = "{'x':" + arr[0] + ",'y':" + arr[1] + ",'z':" + arr[2] + ",'w':" + arr[3] + "}";
+                            Vector4 vec = JsonUtility.FromJson<Vector4>(v4);
+                            mat.SetVector("_GSteepness", vec);
+                        }
+                    }
+                    else if (propname.ToLower() == "wavespeed")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            string[] arr = value.Split("\t");
+                            string v4 = "{'x':" + arr[0] + ",'y':" + arr[1] + ",'z':" + arr[2] + ",'w':" + arr[3] + "}";
+                            Vector4 vec = JsonUtility.FromJson<Vector4>(v4);
+                            mat.SetVector("_GSpeed", vec);
+                        }
+                    }
+                    else if (propname.ToLower() == "wavedirectionab")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            string[] arr = value.Split("\t");
+                            string v4 = "{'x':" + arr[0] + ",'y':" + arr[1] + ",'z':" + arr[2] + ",'w':" + arr[3] + "}";
+                            Vector4 vec = JsonUtility.FromJson<Vector4>(v4);
+                            mat.SetVector("_GDirectionAB", vec);
+                        }
+                    }
+                    else if (propname.ToLower() == "wavedirectioncd")
+                    {
+                        if (mat.shader.name.ToLower() == "fx/water4")
+                        {
+                            string[] arr = value.Split("\t");
+                            string v4 = "{'x':" + arr[0] + ",'y':" + arr[1] + ",'z':" + arr[2] + ",'w':" + arr[3] + "}";
+                            Vector4 vec = JsonUtility.FromJson<Vector4>(v4);
+                            mat.SetVector("_GDirectionCD", vec);
+                        }
+                    }
                 }
             }
 
@@ -1331,31 +1552,60 @@ namespace UserHandleSpace
                             mat.shader = target;
                         }
                     }, false));
-                    seq.Join(DOVirtual.DelayedCall(duration, () =>
-                    {
-                        SetUserMaterial(mat_name + ",maintex," + value.texturePath);
-                    }, false));
 
-                    seq.Join(mat.DOColor(value.color, duration));
+                    
                     if (value.shaderName.ToLower() == "standard")
                     {
-                        seq.Join(mat.DOFloat(value.blendmode, "_Mode", duration));
-                        seq.Join(mat.DOFloat(value.metallic, "_Metallic", duration));
-                        seq.Join(mat.DOFloat(value.glossiness, "_Glossiness", duration));
+                        seq.Join(DOVirtual.DelayedCall(duration, () =>
+                        {
+                            SetUserMaterial(mat_name + ",maintex," + value.texturePath);
+                        }, false));
+
+
+                        if (mat.HasProperty("_Color")) seq.Join(mat.DOColor(value.color, duration));
+                        if (mat.HasProperty("_Mode")) seq.Join(mat.DOFloat(value.blendmode, "_Mode", duration));
+                        if (mat.HasProperty("_Metallic")) seq.Join(mat.DOFloat(value.metallic, "_Metallic", duration));
+                        if (mat.HasProperty("_Glossiness")) seq.Join(mat.DOFloat(value.glossiness, "_Glossiness", duration));
+
+                        seq.Join(DOVirtual.DelayedCall(duration, () => mat.EnableKeyword("EMISSION"), false));
+                        if (mat.HasProperty("_EmissionColor")) seq.Join(mat.DOColor(value.emissioncolor, "_EmissionColor", duration));
+
                     }
                     else if (value.shaderName.ToLower() == "vrm/mtoon")
                     {
-                        seq.Join(mat.DOFloat(value.blendmode, "_BlendMode", duration));
-                        seq.Join(mat.DOFloat(value.cullmode, "_CullMode", duration));
-                        seq.Join(mat.DOColor(value.shadetexcolor, "_ShadeColor", duration));
-                        seq.Join(mat.DOFloat(value.shadingtoony, "_ShadeToony", duration));
-                        seq.Join(mat.DOColor(value.rimcolor, "_RimColor", duration));
-                        seq.Join(mat.DOFloat(value.rimfresnel, "_RimFresnelPower", duration));
-                        seq.Join(mat.DOFloat(value.srcblend, "_SrcBlend", duration));
-                        seq.Join(mat.DOFloat(value.dstblend, "_DstBlend", duration));
+                        seq.Join(DOVirtual.DelayedCall(duration, () =>
+                        {
+                            SetUserMaterial(mat_name + ",maintex," + value.texturePath);
+                        }, false));
+
+
+                        if (mat.HasProperty("_Color")) seq.Join(mat.DOColor(value.color, duration));
+                        if (mat.HasProperty("_BlendMode")) seq.Join(mat.DOFloat(value.blendmode, "_BlendMode", duration));
+                        if (mat.HasProperty("_CullMode")) seq.Join(mat.DOFloat(value.cullmode, "_CullMode", duration));
+                        if (mat.HasProperty("_ShadeColor")) seq.Join(mat.DOColor(value.shadetexcolor, "_ShadeColor", duration));
+                        if (mat.HasProperty("_ShadeToony")) seq.Join(mat.DOFloat(value.shadingtoony, "_ShadeToony", duration));
+                        if (mat.HasProperty("_RimColor")) seq.Join(mat.DOColor(value.rimcolor, "_RimColor", duration));
+                        if (mat.HasProperty("_RimFresnelPower")) seq.Join(mat.DOFloat(value.rimfresnel, "_RimFresnelPower", duration));
+                        if (mat.HasProperty("_SrcBlend")) seq.Join(mat.DOFloat(value.srcblend, "_SrcBlend", duration));
+                        if (mat.HasProperty("_DstBlend")) seq.Join(mat.DOFloat(value.dstblend, "_DstBlend", duration));
+
+                        seq.Join(DOVirtual.DelayedCall(duration, () => mat.EnableKeyword("EMISSION"), false));
+                        if (mat.HasProperty("_EmissionColor")) seq.Join(mat.DOColor(value.emissioncolor, "_EmissionColor", duration));
+
                     }
-                    seq.Join(DOVirtual.DelayedCall(duration, () => mat.EnableKeyword("EMISSION"), false));
-                    seq.Join(mat.DOColor(value.emissioncolor, "_EmissionColor", duration));
+                    else if (value.shaderName.ToLower() == "fx/water4")
+                    {
+                        if (mat.HasProperty("_FresnelScale")) seq.Join(mat.DOFloat(value.fresnelScale, "_FresnelScale", duration));
+                        if (mat.HasProperty("_BaseColor")) seq.Join(mat.DOColor(value.color, "_BaseColor", duration));
+                        if (mat.HasProperty("_ReflectionColor")) seq.Join(mat.DOColor(value.reflectionColor, "_ReflectionColor", duration));
+                        if (mat.HasProperty("_SpecularColor")) seq.Join(mat.DOColor(value.specularColor, "_SpecularColor", duration));
+                        if (mat.HasProperty("_GAmplitude")) seq.Join(mat.DOVector(value.waveAmplitude, "_GAmplitude", duration));
+                        if (mat.HasProperty("_GFrequency")) seq.Join(mat.DOVector(value.waveFrequency, "_GFrequency", duration));
+                        if (mat.HasProperty("_GSteepness")) seq.Join(mat.DOVector(value.waveSteepness, "_GSteepness", duration));
+                        if (mat.HasProperty("_GSpeed")) seq.Join(mat.DOVector(value.waveSpeed, "_GSpeed", duration));
+                        if (mat.HasProperty("_GDirectionAB")) seq.Join(mat.DOVector(value.waveDirectionAB, "_GDirectionAB", duration));
+                        if (mat.HasProperty("_GDirectionCD")) seq.Join(mat.DOVector(value.waveDirectionCD, "_GDirectionCD", duration));
+                    }
 
                 }
             }

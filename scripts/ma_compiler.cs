@@ -1278,75 +1278,153 @@ namespace UserHandleSpace
             NativeAnimationAvatar naa = targetObjects.avatar;
 
             OperateLoadedAudio ola = naa.avatar.GetComponent<OperateLoadedAudio>();
-            seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
-            {
-                ola.SetAudio(movedata.audioName);
-            }, false));
-            //ola.SetAudio(movedata.audioName);
+            
 
-            //if (options.isBuildDoTween == 0)
-            if (options.isExecuteForDOTween == 1)
-            {
+            if (options.isBuildDoTween == 0)
+            { //---mainly preview operation------------------------
+                //ola.IsSE = movedata.isSE == 1 ? true : false;
+
                 if (movedata.animationType == AF_MOVETYPE.AnimStart)
                 {
-                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                    ola.SetAudio(movedata.audioName);
+                    ola.SetSeekSeconds(movedata.seekTime);
+                    ola.SetPlayFlag(movedata.animPlaying);
+
+                    if (ola.IsSE)
                     {
-                        if (movedata.isSE == 1)
-                        {
-                            ola.PlaySe();
-                        }
-                        else
-                        {
-                            ola.PlayAudio();
-                            ola.SetPlayFlag(UserAnimationState.Play);
-                        }
-                    }, false));
-                    
+                        ola.PlaySe();
+                    }
+                    else
+                    {
+                        ola.PlayAudio();
+                    }
                 }
                 else if (movedata.animationType == AF_MOVETYPE.AnimPause)
                 {
-                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
-                    {
-                        ola.PauseAudio();
-                        ola.SetPlayFlag(UserAnimationState.Pause);
-                    }, false));   
+                    ola.SetAudio(movedata.audioName);
+                    ola.SetSeekSeconds(movedata.seekTime);
+                    ola.SetPlayFlag(movedata.animPlaying);
+
+                    ola.PauseAudio();
                 }
                 else if (movedata.animationType == AF_MOVETYPE.AnimSeek)
                 {
-                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
-                    {
-                        if (movedata.seekTime != -1f)
-                        {
-                            ola.SetSeekSeconds(movedata.seekTime);
-                        }
-                        ola.SetPlayFlag(UserAnimationState.Seeking);
-                    }, false));
-                    
+                    ola.SetAudio(movedata.audioName);
+                    ola.SetSeekSeconds(movedata.seekTime);
+                    ola.SetPlayFlag(movedata.animPlaying);
+
                 }
                 else if (movedata.animationType == AF_MOVETYPE.AnimStop)
                 {
-                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
-                    {
-                        ola.StopAudio();
-                        ola.SetPlayFlag(UserAnimationState.Stop);
-                    }, false));
-                    
+                    ola.SetAudio(movedata.audioName);
+                    ola.SetSeekSeconds(movedata.seekTime);
+                    ola.SetPlayFlag(movedata.animPlaying);
+
+                    ola.StopAudio();
+
                 }
                 else if (movedata.animationType == AF_MOVETYPE.Rest)
                 {
-                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
-                    {
-                        ola.SetPlayFlag(UserAnimationState.Playing);
-                    }, false));
-                    
-                }
+                    ola.SetAudio(movedata.audioName);
+                    ola.SetSeekSeconds(movedata.seekTime);
+                    ola.SetPlayFlag(movedata.animPlaying);
 
+                }
             }
+            else
+            { //---just animation only-------------------------------------
+                if (options.isExecuteForDOTween == 1)
+                {
+                    /*seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                    {
+                        ola.IsSE = movedata.isSE == 1 ? true : false;
+                        ola.SetAudio(movedata.audioName);
+                    }, false));*/
+                    if (movedata.animationType == AF_MOVETYPE.AnimStart)
+                    {
+                        seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                        {
+                            //ola.IsSE = movedata.isSE == 1 ? true : false;
+                            ola.SetAudio(movedata.audioName);
+
+                            ola.SetSeekSeconds(movedata.seekTime);
+                            if (ola.IsSE)
+                            {
+                                ola.PlaySe();
+                            }
+                            else
+                            {
+                                ola.PlayAudio();
+                            }
+                            ola.SetPlayFlag(UserAnimationState.Play);
+                        }, false));
+
+                    }
+                    else if (movedata.animationType == AF_MOVETYPE.AnimPause)
+                    {
+                        seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                        {
+                            //ola.IsSE = movedata.isSE == 1 ? true : false;
+                            ola.SetAudio(movedata.audioName);
+
+                            ola.SetSeekSeconds(movedata.seekTime);
+                            ola.PauseAudio();
+                            ola.SetPlayFlag(UserAnimationState.Pause);
+                        }, false));
+                    }
+                    else if (movedata.animationType == AF_MOVETYPE.AnimSeek)
+                    {
+                        seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                        {
+                            //ola.IsSE = movedata.isSE == 1 ? true : false;
+                            ola.SetAudio(movedata.audioName);
+
+                            ola.SetSeekSeconds(movedata.seekTime);
+                            ola.SetPlayFlag(UserAnimationState.Seeking);
+                        }, false));
+
+                    }
+                    else if (movedata.animationType == AF_MOVETYPE.AnimStop)
+                    {
+                        seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                        {
+                            //ola.IsSE = movedata.isSE == 1 ? true : false;
+                            ola.SetAudio(movedata.audioName);
+
+                            ola.SetSeekSeconds(movedata.seekTime);
+                            ola.StopAudio();
+                            ola.SetPlayFlag(UserAnimationState.Stop);
+                        }, false));
+
+                    }
+                    else if (movedata.animationType == AF_MOVETYPE.Rest)
+                    {
+                        seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                        {
+                            //ola.IsSE = movedata.isSE == 1 ? true : false;
+                            ola.SetAudio(movedata.audioName);
+
+                            ola.SetSeekSeconds(movedata.seekTime);
+                            ola.SetPlayFlag(UserAnimationState.Playing);
+                        }, false));
+
+                    }
+
+                }
+            }
+            
 
 
             if (movedata.animationType == AF_MOVETYPE.AudioProperty)
             {
-                //if (options.isBuildDoTween == 0)
+                if (options.isBuildDoTween == 0)
+                {
+                    ola.SetLoop(movedata.isLoop);
+                    ola.SetMute(movedata.isMute);
+
+                    ola.SetPitch(movedata.pitch);
+                    ola.SetVolume(movedata.volume);
+                }
                 if (options.isExecuteForDOTween == 1)
                 {
                     seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
@@ -1359,6 +1437,7 @@ namespace UserHandleSpace
                     }, false));
                 }
 
+                //---preview and just animation also-------------------
                 if (options.isExecuteForDOTween == 1) seq.Join(ola.audioPlayer.DOPitch(movedata.pitch, frame.duration));
                 else ola.SetPitch(movedata.pitch);
 
@@ -2695,6 +2774,9 @@ namespace UserHandleSpace
                 atp.isSE = ola.GetIsSE() ? 1 : 0;
 
 
+                atp.seekTime = ola.GetSeekSeconds();
+                atp.animPlaying = ola.GetPlayFlag();
+
                 if (ola.GetPlayFlag() == UserAnimationState.Stop)  //---stop
                 {
                     atp.animationType = AF_MOVETYPE.AnimStop;
@@ -2714,17 +2796,6 @@ namespace UserHandleSpace
                 else if (ola.GetPlayFlag() == UserAnimationState.Seeking)//---seek
                 {
                     atp.animationType = AF_MOVETYPE.AnimSeek;
-
-
-                    if (ola.GetSeekFlag() == 1)
-                    {
-                        atp.seekTime = ola.GetSeekSeconds();
-                    }
-                    else
-                    {
-                        atp.seekTime = -1f;
-                    }
-
                 }
                 frame.movingData.Add(atp);
             }
@@ -2745,6 +2816,7 @@ namespace UserHandleSpace
                 frame.movingData.Add(atprop);
 
             }
+
 
 
 

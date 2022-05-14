@@ -1394,8 +1394,12 @@ namespace UserVRMSpace
             GameObject ikhp = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
 
             GameObject copyprim = (GameObject)Resources.Load(pritype[(int)ptype]);
-            GameObject oth = Instantiate(copyprim, copyprim.transform.position, Quaternion.identity, managa.AvatarArea.transform);  //GameObject.CreatePrimitive(ptype);
+            GameObject copyoth = Instantiate(copyprim, copyprim.transform.position, Quaternion.identity, managa.AvatarArea.transform);  //GameObject.CreatePrimitive(ptype);
+            copyoth.name = "BlankObject";
 
+            GameObject oth = new GameObject();
+
+            copyoth.transform.SetParent(oth.transform);
 
             oth.transform.SetParent(managa.AvatarArea.transform);
             oth.name = "obj_" + DateTime.Now.ToFileTime().ToString();  //_loadedObjectFileName == "" ? oth.name : _loadedObjectFileName;

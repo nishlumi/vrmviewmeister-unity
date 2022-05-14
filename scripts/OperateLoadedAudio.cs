@@ -15,6 +15,8 @@ namespace UserHandleSpace
         private static extern void ReceiveIntVal(int val);
         [DllImport("__Internal")]
         private static extern void ReceiveFloatVal(float val);
+        [DllImport("__Internal")]
+        private static extern void SendPlayEndAudio(string val);
 
         private Dictionary<string, AudioClip> userAudioList;
 
@@ -28,12 +30,18 @@ namespace UserHandleSpace
         //1 - seek on, 0 - seek off(default)
         private int audioSeekFlag;
 
+        ManageAnimation manim;
+        private bool playEndFlag;
+        private bool playBeginFlag;
+        private float seekTimePosition;
+
         private void Awake()
         {
             userAudioList = new Dictionary<string, AudioClip>();
             audioSeekFlag = 0;
             audioStatFlag = 0;
-
+            playEndFlag = true;
+            playBeginFlag = false;
 
 
             targetType = AF_TARGETTYPE.Audio;
@@ -41,7 +49,7 @@ namespace UserHandleSpace
         // Start is called before the first frame update
         void Start()
         {
-            ManageAnimation mana = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+            manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
             //mana.FirstAddFixedAvatar(gameObject.name, gameObject, gameObject, gameObject.name, AF_TARGETTYPE.Audio);
 
         }
@@ -49,7 +57,37 @@ namespace UserHandleSpace
         // Update is called once per frame
         void Update()
         {
+            if (!manim.IsPlaying)
+            {
+                if (audioPlayer.clip == null) return;
 
+                if (audioPlayer.isPlaying)
+                {
+
+                    
+                }
+                else
+                {
+                    if (playBeginFlag && (audioPlayer.time == 0f))  //Here is PLAY FINISHED!!! (no push StopAudio())
+                    { 
+                        // playing audio is finished (no play audio not come here)
+                        if (!playEndFlag)
+                        {
+                            string val = (IsSE == true ? "s" : "b") + "\t" + targetAudioName + "\t" + audioPlayer.time.ToString() + "\t" + GetAudioLength().ToString();
+#if !UNITY_EDITOR && UNITY_WEBGL
+                            SendPlayEndAudio(val);
+#endif
+                            playEndFlag = true;
+                            playBeginFlag = false;
+                            audioPlayer.time = 0f;
+                            seekTimePosition = 0f;
+                            Debug.Log("audioPlayer callend=" + audioPlayer.time.ToString());
+
+                        }
+                    }
+                }
+            }
+            
         }
 
 
@@ -138,12 +176,15 @@ namespace UserHandleSpace
         }
         public void SetAudio(string name)
         {
+            if (name == targetAudioName) return;
+
             AudioClip ac;
             if (userAudioList.TryGetValue(name, out ac))
             {
                 audioPlayer.clip = ac;
                 targetAudio = ac;
                 targetAudioName = name;
+                audioPlayer.time = 0f;
             }
 
         }
@@ -212,7 +253,28 @@ namespace UserHandleSpace
         {
             if (audioPlayer.clip != null)
             {
-                audioPlayer.Play();
+                if (!playBeginFlag)
+                {
+                    playEndFlag = false;
+                    playBeginFlag = true;
+                    if (seekTimePosition > 0f)
+                    {
+                        audioPlayer.time = seekTimePosition;
+                    }
+                    
+                    audioPlayer.Play();
+                    
+                    
+                }
+                else
+                {
+                    if (!playEndFlag)
+                    {
+                        //---not finished, but not playing. Therefore pause
+                        // Only call from HTML, recover pause (Unpause)
+                        //PauseAudio();
+                    }
+                }
             }
         }
         public void PauseAudio()
@@ -225,13 +287,21 @@ namespace UserHandleSpace
         }
         public void StopAudio()
         {
-            audioPlayer.Stop();
-
+            if (audioPlayer.isPlaying)
+            {
+                audioPlayer.Stop();
+                playEndFlag = true;
+                playBeginFlag = false;
+                audioPlayer.time = 0;
+                seekTimePosition = 0;
+            }
         }
         public void PlaySe()
         {
             if (targetAudio != null)
             {
+                playEndFlag = false;
+                playBeginFlag = true;
                 audioPlayer.PlayOneShot(targetAudio, audioPlayer.volume);
             }
         }
@@ -239,6 +309,8 @@ namespace UserHandleSpace
         {
             if (targetAudio != null)
             {
+                playEndFlag = false;
+                playBeginFlag = true;
                 audioPlayer.PlayOneShot(targetAudio, vol);
             }
         }
@@ -247,6 +319,8 @@ namespace UserHandleSpace
             AudioClip ac;
             if (userAudioList.TryGetValue(name, out ac))
             {
+                playEndFlag = false;
+                playBeginFlag = true;
                 audioPlayer.PlayOneShot(ac, vol);
             }
         }
@@ -257,6 +331,8 @@ namespace UserHandleSpace
             AudioClip ac;
             if (userAudioList.TryGetValue(prm[0], out ac))
             {
+                playEndFlag = false;
+                playBeginFlag = true;
                 audioPlayer.PlayOneShot(ac, vol);
             }
         }
@@ -298,18 +374,20 @@ namespace UserHandleSpace
         //=============================================================================
         public void SetSeekSeconds(float time)
         {
-            audioPlayer.time = time;
+            seekTimePosition = time;
+            if (audioPlayer.isPlaying)
+            {
+                audioPlayer.time = time;
+            }
         }
         public float GetSeekSeconds()
         {
-            float ret = 0f;
-            if (audioPlayer.clip != null) ret = audioPlayer.time;
-            return ret;
+            return seekTimePosition;
         }
         public void GetSeekSecondsFromOuter()
         {
 #if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveFloatVal(audioPlayer.time);
+            ReceiveFloatVal(GetSeekSeconds());
 #endif
         }
         //=============================================================================

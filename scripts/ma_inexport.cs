@@ -35,7 +35,64 @@ namespace UserHandleSpace
             }
             return vec3;
         }
+        private string SerializeMaterial(MaterialProperties mat)
+        {
+            const string CST_SEPSTR_PROP = "=";
 
+            string ln = "";
+
+            //---standard
+            if (mat.shaderName.ToLower() == "standard")
+            {
+                ln = mat.name + CST_SEPSTR_PROP +
+                    mat.shaderName + CST_SEPSTR_PROP +
+                    "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
+                    mat.blendmode.ToString() + CST_SEPSTR_PROP +
+                    mat.texturePath + CST_SEPSTR_PROP +
+                    mat.metallic.ToString() + CST_SEPSTR_PROP +
+                    mat.glossiness + CST_SEPSTR_PROP +
+                    "#" + ColorUtility.ToHtmlStringRGBA(mat.emissioncolor)
+                ;
+            }
+            //---VRM/MToon
+            else if (mat.shaderName.ToLower() == "vrm/mtoon")
+            {
+                ln = mat.name + CST_SEPSTR_PROP +
+                    mat.shaderName + CST_SEPSTR_PROP +
+                    "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
+                    mat.cullmode.ToString() + CST_SEPSTR_PROP +
+                    mat.blendmode.ToString() + CST_SEPSTR_PROP +
+                    mat.texturePath + CST_SEPSTR_PROP +
+                    "#" + ColorUtility.ToHtmlStringRGBA(mat.emissioncolor) + CST_SEPSTR_PROP +
+                    "#" + ColorUtility.ToHtmlStringRGBA(mat.shadetexcolor) + CST_SEPSTR_PROP +
+                    mat.shadingtoony.ToString() + CST_SEPSTR_PROP +
+                    "#" + ColorUtility.ToHtmlStringRGBA(mat.rimcolor) + CST_SEPSTR_PROP +
+                    mat.rimfresnel.ToString() + CST_SEPSTR_PROP +
+                    mat.srcblend.ToString() + CST_SEPSTR_PROP +
+                    mat.dstblend.ToString()
+                ;
+            }
+            //---FX/Water4
+            else if (mat.shaderName.ToLower() == "fx/water4")
+            {
+                ln = mat.name + CST_SEPSTR_PROP +
+                    mat.shaderName + CST_SEPSTR_PROP +
+                    "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
+                    mat.fresnelScale.ToString() + CST_SEPSTR_PROP +
+                    "#" + ColorUtility.ToHtmlStringRGBA(mat.reflectionColor) + CST_SEPSTR_PROP +
+                    "#" + ColorUtility.ToHtmlStringRGBA(mat.specularColor) + CST_SEPSTR_PROP +
+                    //---6
+                    mat.waveAmplitude.x + CST_SEPSTR_PROP + mat.waveAmplitude.y + CST_SEPSTR_PROP + mat.waveAmplitude.z + CST_SEPSTR_PROP + mat.waveAmplitude.w + CST_SEPSTR_PROP +
+                    mat.waveFrequency.x + CST_SEPSTR_PROP + mat.waveFrequency.y + CST_SEPSTR_PROP + mat.waveFrequency.z + CST_SEPSTR_PROP + mat.waveFrequency.w + CST_SEPSTR_PROP +
+                    mat.waveSteepness.x + CST_SEPSTR_PROP + mat.waveSteepness.y + CST_SEPSTR_PROP + mat.waveSteepness.z + CST_SEPSTR_PROP + mat.waveSteepness.w + CST_SEPSTR_PROP +
+                    mat.waveSpeed.x     + CST_SEPSTR_PROP + mat.waveSpeed.y     + CST_SEPSTR_PROP + mat.waveSpeed.z     + CST_SEPSTR_PROP + mat.waveSpeed.w     + CST_SEPSTR_PROP +
+                    mat.waveDirectionAB.x + CST_SEPSTR_PROP + mat.waveDirectionAB.y + CST_SEPSTR_PROP + mat.waveDirectionAB.z + CST_SEPSTR_PROP + mat.waveDirectionAB.w + CST_SEPSTR_PROP +
+                    mat.waveDirectionCD.x + CST_SEPSTR_PROP + mat.waveDirectionCD.y + CST_SEPSTR_PROP + mat.waveDirectionCD.z + CST_SEPSTR_PROP + mat.waveDirectionCD.w
+                ;
+            }
+
+            return ln;
+        }
         private bool SetObjectMaterial(string rawstr, List<MaterialProperties> matProp, string sepprop, string sepitem)
         {
             bool ret = false;
@@ -47,6 +104,85 @@ namespace UserHandleSpace
 
                 mat.name = matc[0];
                 mat.shaderName = matc[1];
+
+                if (mat.shaderName.ToLower() == "standard")
+                {
+                    mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
+                    mat.blendmode = float.TryParse(matc[3], out mat.blendmode) ? mat.blendmode : 0;
+                    mat.texturePath = matc[4];
+
+                    mat.metallic = float.TryParse(matc[5], out mat.metallic) ? mat.metallic : 0;
+                    mat.glossiness = float.TryParse(matc[6], out mat.glossiness) ? mat.glossiness : 0;
+                    mat.emissioncolor = ColorUtility.TryParseHtmlString(matc[7], out mat.emissioncolor) ? mat.emissioncolor : Color.white;
+
+                }
+                else if (mat.shaderName.ToLower() == "vrm/mtoon")
+                {
+                    mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
+                    mat.cullmode = float.TryParse(matc[3], out mat.cullmode) ? mat.cullmode : 0;
+                    mat.blendmode = float.TryParse(matc[4], out mat.blendmode) ? mat.blendmode : 0;
+                    mat.texturePath = matc[5];
+
+                    mat.emissioncolor = ColorUtility.TryParseHtmlString(matc[6], out mat.emissioncolor) ? mat.emissioncolor : Color.white;
+                    mat.shadetexcolor = ColorUtility.TryParseHtmlString(matc[7], out mat.shadetexcolor) ? mat.shadetexcolor : Color.white;
+                    mat.shadingtoony = float.TryParse(matc[8], out mat.shadingtoony) ? mat.shadingtoony : 0;
+                    mat.rimcolor = ColorUtility.TryParseHtmlString(matc[9], out mat.rimcolor) ? mat.rimcolor : Color.white;
+                    mat.rimfresnel = float.TryParse(matc[10], out mat.rimfresnel) ? mat.rimfresnel : 0;
+                    mat.srcblend = float.TryParse(matc[11], out mat.srcblend) ? mat.srcblend : 0;
+                    mat.dstblend = float.TryParse(matc[12], out mat.dstblend) ? mat.dstblend : 0;
+
+                }
+                else if (mat.shaderName.ToLower() == "fx/water4")
+                {
+                    mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
+                    mat.fresnelScale = float.TryParse(matc[3], out mat.fresnelScale) ? mat.fresnelScale : 0;
+                    mat.reflectionColor = ColorUtility.TryParseHtmlString(matc[4], out mat.reflectionColor) ? mat.reflectionColor : Color.white;
+                    mat.specularColor = ColorUtility.TryParseHtmlString(matc[5], out mat.specularColor) ? mat.specularColor : Color.white;
+                    {
+                        float x = float.TryParse(matc[6], out x) ? x : 0;
+                        float y = float.TryParse(matc[7], out y) ? y : 0;
+                        float z = float.TryParse(matc[8], out z) ? z : 0;
+                        float w = float.TryParse(matc[9], out w) ? w : 0;
+                        mat.waveAmplitude = new Vector4(x, y, z, w);
+                    }
+                    {
+                        float x = float.TryParse(matc[10], out x) ? x : 0;
+                        float y = float.TryParse(matc[11], out y) ? y : 0;
+                        float z = float.TryParse(matc[12], out z) ? z : 0;
+                        float w = float.TryParse(matc[13], out w) ? w : 0;
+                        mat.waveFrequency = new Vector4(x, y, z, w);
+                    }
+                    {
+                        float x = float.TryParse(matc[14], out x) ? x : 0;
+                        float y = float.TryParse(matc[15], out y) ? y : 0;
+                        float z = float.TryParse(matc[16], out z) ? z : 0;
+                        float w = float.TryParse(matc[17], out w) ? w : 0;
+                        mat.waveSteepness = new Vector4(x, y, z, w);
+                    }
+                    {
+                        float x = float.TryParse(matc[18], out x) ? x : 0;
+                        float y = float.TryParse(matc[19], out y) ? y : 0;
+                        float z = float.TryParse(matc[20], out z) ? z : 0;
+                        float w = float.TryParse(matc[21], out w) ? w : 0;
+                        mat.waveSpeed = new Vector4(x, y, z, w);
+                    }
+                    {
+                        float x = float.TryParse(matc[22], out x) ? x : 0;
+                        float y = float.TryParse(matc[23], out y) ? y : 0;
+                        float z = float.TryParse(matc[24], out z) ? z : 0;
+                        float w = float.TryParse(matc[25], out w) ? w : 0;
+                        mat.waveDirectionAB = new Vector4(x, y, z, w);
+                    }
+                    {
+                        float x = float.TryParse(matc[26], out x) ? x : 0;
+                        float y = float.TryParse(matc[27], out y) ? y : 0;
+                        float z = float.TryParse(matc[28], out z) ? z : 0;
+                        float w = float.TryParse(matc[29], out w) ? w : 0;
+                        mat.waveDirectionCD = new Vector4(x, y, z, w);
+                    }
+
+                }
+                /*
                 mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
                 mat.cullmode = float.TryParse(matc[3], out mat.cullmode) ? mat.cullmode : 0;
                 mat.blendmode = float.TryParse(matc[4], out mat.blendmode) ? mat.blendmode : 0;
@@ -60,6 +196,7 @@ namespace UserHandleSpace
                 mat.rimfresnel = float.TryParse(matc[12], out mat.rimfresnel) ? mat.rimfresnel : 0;
                 mat.srcblend = float.TryParse(matc[13], out mat.srcblend) ? mat.srcblend : 0;
                 mat.dstblend = float.TryParse(matc[14], out mat.dstblend) ? mat.dstblend : 0;
+                */
                 matProp.Add(mat);
             }
             if (matProp.Count > 0) ret = true;
@@ -492,39 +629,48 @@ namespace UserHandleSpace
                         atp.animationType = AF_MOVETYPE.AnimStart;
                         atp.audioName = optParts;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
-                        atp.isSE = (int)vec3[0];
+                        //atp.isSE = (int)vec3[0];
+                        atp.seekTime = vec3[1];
                     }
                     else if (movetype == "animstop")
                     {
                         atp.animationType = AF_MOVETYPE.AnimStop;
+                        atp.audioName = optParts;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
-                        atp.isSE = (int)vec3[0];
+                        //atp.isSE = (int)vec3[0];
+                        atp.seekTime = vec3[1];
                     }
                     else if (movetype == "animpause")
                     {
                         atp.animationType = AF_MOVETYPE.AnimPause;
+                        atp.audioName = optParts;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
-                        atp.isSE = (int)vec3[0];
+                        //atp.isSE = (int)vec3[0];
+                        atp.seekTime = vec3[1];
                     }
                     else if (movetype == "animseek")
                     {
                         atp.animationType = AF_MOVETYPE.AnimSeek;
+                        atp.audioName = optParts;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
-                        atp.isSE = (int)vec3[0];
+                        //atp.isSE = (int)vec3[0];
                         atp.seekTime = vec3[1];
 
                     }
                     else if (movetype == "rest")
                     {
                         atp.animationType = AF_MOVETYPE.Rest;
+                        atp.audioName = optParts;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
-                        atp.isSE = (int)vec3[0];
+                        //atp.isSE = (int)vec3[0];
+                        atp.seekTime = vec3[1];
                     }
                     else if (movetype == "audioprop")
                     {
                         atp.animationType = AF_MOVETYPE.AudioProperty;
+                        atp.audioName = optParts;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
-                        atp.isSE = (int)vec3[0];
+                        //atp.isSE = (int)vec3[0];
                         atp.isLoop = (int)vec3[1];
                         atp.isMute = (int)vec3[2];
                         atp.pitch = vec3[3];
@@ -858,7 +1004,9 @@ namespace UserHandleSpace
                         List<string> lst = new List<string>();
                         foreach (MaterialProperties mat in atp.matProp)
                         {
-                            string ln = mat.name + CST_SEPSTR_PROP + 
+                            string ln = SerializeMaterial(mat);
+                            /*
+                            ln = mat.name + CST_SEPSTR_PROP + 
                                 mat.shaderName + CST_SEPSTR_PROP +
                                 "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
                                 mat.cullmode.ToString() + CST_SEPSTR_PROP +
@@ -875,7 +1023,7 @@ namespace UserHandleSpace
                                 mat.dstblend.ToString() + CST_SEPSTR_PROP +
                                 mat.srcblend.ToString() + CST_SEPSTR_PROP +
                                 mat.dstblend.ToString()
-                            ;
+                            ;*/
                             lst.Add(ln);
                         }
                         ret.Add(string.Join(CST_SEPSTR_ITEM, lst));
@@ -932,7 +1080,10 @@ namespace UserHandleSpace
                         List<string> lst = new List<string>();
                         foreach (MaterialProperties mat in atp.matProp)
                         {
-                            string ln = mat.name + CST_SEPSTR_PROP +
+                            string ln = SerializeMaterial(mat);
+                            
+                            /*
+                            ln = mat.name + CST_SEPSTR_PROP +
                                 mat.shaderName + CST_SEPSTR_PROP +
                                 "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
                                 mat.cullmode.ToString() + CST_SEPSTR_PROP +
@@ -946,8 +1097,17 @@ namespace UserHandleSpace
                                 "#" + ColorUtility.ToHtmlStringRGBA(mat.rimcolor) + CST_SEPSTR_PROP +
                                 mat.rimfresnel.ToString() + CST_SEPSTR_PROP +
                                 mat.srcblend.ToString() + CST_SEPSTR_PROP +
-                                mat.dstblend.ToString()
-                            ;
+                                mat.dstblend.ToString() + CST_SEPSTR_PROP +
+                                mat.fresnelScale.ToString() + CST_SEPSTR_PROP +
+                                "#" + ColorUtility.ToHtmlStringRGBA(mat.reflectionColor)  + CST_SEPSTR_PROP +
+                                "#" + ColorUtility.ToHtmlStringRGBA(mat.specularColor) + CST_SEPSTR_PROP +
+                                mat.waveAmplitude.x + CST_SEPSTR_PROP + mat.waveAmplitude.y + CST_SEPSTR_PROP + mat.waveAmplitude.z + CST_SEPSTR_PROP + mat.waveAmplitude.w + CST_SEPSTR_PROP +
+                                mat.waveFrequency.x + CST_SEPSTR_PROP + mat.waveFrequency.y + CST_SEPSTR_PROP + mat.waveFrequency.z + CST_SEPSTR_PROP + mat.waveFrequency.w + CST_SEPSTR_PROP +
+                                mat.waveSteepness.x + CST_SEPSTR_PROP + mat.waveSteepness.y + CST_SEPSTR_PROP + mat.waveSteepness.z + CST_SEPSTR_PROP + mat.waveSteepness.w + CST_SEPSTR_PROP +
+                                mat.waveSpeed.x + CST_SEPSTR_PROP + mat.waveSpeed.y + CST_SEPSTR_PROP + mat.waveSpeed.z + CST_SEPSTR_PROP + mat.waveSpeed.w + CST_SEPSTR_PROP +
+                                mat.waveDirectionAB.x + CST_SEPSTR_PROP + mat.waveDirectionAB.y + CST_SEPSTR_PROP + mat.waveDirectionAB.z + CST_SEPSTR_PROP + mat.waveDirectionAB.w + CST_SEPSTR_PROP +
+                                mat.waveDirectionCD.x + CST_SEPSTR_PROP + mat.waveDirectionCD.y + CST_SEPSTR_PROP + mat.waveDirectionCD.z + CST_SEPSTR_PROP + mat.waveDirectionCD.w
+                            ;*/
                             lst.Add(ln);
                         }
                         ret.Add(string.Join(CST_SEPSTR_ITEM, lst));
@@ -1068,20 +1228,23 @@ namespace UserHandleSpace
                     if (atp.animationType == AF_MOVETYPE.AnimStart)
                     {
                         ret.Add("animstart");
-                        ret.Add("1");
+                        ret.Add("2");
                         ret.Add(atp.isSE.ToString());
+                        ret.Add(atp.seekTime.ToString());
                     }
                     else if (atp.animationType == AF_MOVETYPE.AnimPause)
                     {
                         ret.Add("animpause");
-                        ret.Add("1");
+                        ret.Add("2");
                         ret.Add(atp.isSE.ToString());
+                        ret.Add(atp.seekTime.ToString());
                     }
                     else if (atp.animationType == AF_MOVETYPE.AnimStop)
                     {
                         ret.Add("animstop");
-                        ret.Add("1");
+                        ret.Add("2");
                         ret.Add(atp.isSE.ToString());
+                        ret.Add(atp.seekTime.ToString());
                     }
                     else if (atp.animationType == AF_MOVETYPE.AnimSeek)
                     {
@@ -1095,6 +1258,7 @@ namespace UserHandleSpace
                         ret.Add("rest");
                         ret.Add("1");
                         ret.Add(atp.isSE.ToString());
+                        ret.Add(atp.seekTime.ToString());
                     }
                     else if (atp.animationType == AF_MOVETYPE.AudioProperty)
                     {
