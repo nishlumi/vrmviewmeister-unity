@@ -495,6 +495,8 @@ namespace UserVRMSpace
                     cik.solver.useRotationLimits = true;
                     cik.solver.maxIterations = 2;
 
+                    //2022.05.17 -- Leave control to UserHandleOperation (DummyIK) 
+                    cik.enabled = false;
                 }
                 else if (hans.name.IndexOf("LookAt") > -1)
                 {

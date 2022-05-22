@@ -30,15 +30,19 @@ namespace UserHandleSpace
         private static extern void sendBackupTransform(byte[] thumbnail, int size, string info);
 
 
-        public string[] IKbones = { "IKParent", "EyeViewHandle", "Head", "LookAt", "Aim", "Chest", "Pelvis", "LeftLowerArm", "LeftHand",
-            "RightLowerArm","RightHand","LeftLowerLeg","LeftLeg","RightLowerLeg","RightLeg"
+        public string[] IKbones = { "IKParent", "EyeViewHandle",
+                    "Head", "LookAt", "Aim", "Chest", "Pelvis",
+                    "LeftShoulder","LeftLowerArm", "LeftHand",
+                    "RightShoulder","RightLowerArm","RightHand",
+                    "LeftLowerLeg","LeftLeg",
+                    "RightLowerLeg","RightLeg",
         };
         /*
         public string[] IKbones = { "IKParent", "EyeViewHandle", "Head", "LookAt", "Aim", "Chest", "Pelvis", "LeftShoulder", "LeftLowerArm", "LeftHand",
             "RightShoulder","RightLowerArm","RightHand","LeftUpperLeg","LeftLowerLeg","LeftLeg","RightUpperLeg","RightLowerLeg","RightLeg"
         };
         */
-        const int IKbonesCount = 15;
+        const int IKbonesCount = 17;
 
         const int BODYINFO_COUNT = 9;
         const int HEIGHT_X = 0;
@@ -90,9 +94,13 @@ namespace UserHandleSpace
             }
             else
             {
-                IKbones = new string[] { 
-                            "IKParent", "EyeViewHandle", "Head", "LookAt", "Aim", "Chest", "Pelvis", "LeftLowerArm", "LeftHand",
-                    "RightLowerArm","RightHand","LeftLowerLeg","LeftLeg","RightLowerLeg","RightLeg"
+                IKbones = new string[] {
+                    "IKParent", "EyeViewHandle",
+                    "Head", "LookAt", "Aim", "Chest", "Pelvis",
+                    "LeftShoulder","LeftLowerArm", "LeftHand",
+                    "RightShoulder","RightLowerArm","RightHand",
+                    "LeftLowerLeg","LeftLeg",
+                    "RightLowerLeg","RightLeg"
                 };
             }
         }
@@ -379,7 +387,9 @@ namespace UserHandleSpace
                     "IKParent", 
                     "Pelvis","Chest","Head", "Aim", "LookAt",
 
+                    "LeftShoulder",
                     "LeftHand", "LeftLowerArm",
+                    "RightShoulder",
                     "RightHand", "RightLowerArm",
                     "LeftLeg", "LeftLowerLeg",
                     "RightLeg", "RightLowerLeg",
@@ -983,7 +993,9 @@ namespace UserHandleSpace
                 (int)ParseIKBoneType.EyeViewHandle, (int)ParseIKBoneType.Head,
                 (int)ParseIKBoneType.LookAt, (int)ParseIKBoneType.Aim, 
                 (int)ParseIKBoneType.Chest, (int)ParseIKBoneType.Pelvis,
+                (int)ParseIKBoneType.LeftShoulder,
                 (int)ParseIKBoneType.LeftHand, (int)ParseIKBoneType.LeftLowerArm,
+                (int)ParseIKBoneType.RightShoulder,
                 (int)ParseIKBoneType.RightHand, (int)ParseIKBoneType.RightLowerArm,
                 (int)ParseIKBoneType.LeftLeg, (int)ParseIKBoneType.RightLeg,
                 (int)ParseIKBoneType.LeftLowerLeg, (int)ParseIKBoneType.RightLowerLeg

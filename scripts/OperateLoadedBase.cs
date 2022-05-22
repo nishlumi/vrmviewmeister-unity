@@ -706,6 +706,12 @@ namespace UserHandleSpace
                         //userSharedMaterials & userSharedTextureFiles & backupTextureFiles always match key-name.
 
                         newkeyname = keyname + suffix;
+                        //---change Shader, exclude: Standard, VRM/MToon, FX/Water4
+                        if ((mat.shader.name != "Standard") && (mat.shader.name != "VRM/MToon") && (mat.shader.name != "FX/Water4"))
+                        {
+                            mat.shader = Shader.Find("Standard");
+                        }
+
                         userSharedMaterials.Add(newkeyname, mat);
 
                         MaterialProperties matp = new MaterialProperties();

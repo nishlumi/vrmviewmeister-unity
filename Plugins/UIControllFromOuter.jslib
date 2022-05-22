@@ -106,6 +106,13 @@ var UIControllFromOuterPlugin = {
 			AppQueue.fixedExecute(mykey,value);
 		});
 	},
+	IntervalLoadingProject : function (val) {
+		var mykey =  "intervalLoadingProject_unity2html";
+		
+		AppDB.temp.setItem(mykey,val).then(function(value){
+			AppQueue.fixedExecute(mykey,value);
+		});
+	},
 	ReceiveObjectVal : function (val) {
 		var str = UTF8ToString(val);
 		var js = JSON.parse(str);

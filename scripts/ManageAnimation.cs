@@ -41,10 +41,15 @@ namespace UserHandleSpace
         private static extern void ReceiveFloatVal(float val);
 
 
-        static string[] IKBoneNames = {  "IKParent", "EyeViewHandle", "Head", "LookAt", "Aim", "Chest", "Pelvis", "LeftLowerArm", "LeftHand",
-            "RightLowerArm","RightHand","LeftLowerLeg","LeftLeg","RightLowerLeg","RightLeg"
+        static string[] IKBoneNames = {  
+            "IKParent", "EyeViewHandle", 
+            "Head", "LookAt", "Aim", "Chest", "Pelvis", 
+            "LeftShoulder","LeftLowerArm", "LeftHand",
+            "RightShoulder","RightLowerArm","RightHand",
+            "LeftLowerLeg","LeftLeg",
+            "RightLowerLeg","RightLeg"
         };
-        const int IKbonesCount = 15;
+        const int IKbonesCount = 17;
 
         const int HEIGHT_X = 0;
         const int HEIGHT_Y = 1;
@@ -229,8 +234,12 @@ namespace UserHandleSpace
             else
             {
                 IKBoneNames = new string []{
-                    "IKParent", "EyeViewHandle", "Head", "LookAt", "Aim", "Chest", "Pelvis", "LeftLowerArm", "LeftHand",
-                    "RightLowerArm","RightHand","LeftLowerLeg","LeftLeg","RightLowerLeg","RightLeg"
+                    "IKParent", "EyeViewHandle",
+                    "Head", "LookAt", "Aim", "Chest", "Pelvis",
+                    "LeftShoulder","LeftLowerArm", "LeftHand",
+                    "RightShoulder","RightLowerArm","RightHand",
+                    "LeftLowerLeg","LeftLeg",
+                    "RightLowerLeg","RightLeg"
                 };
             }
         }
@@ -1162,7 +1171,7 @@ namespace UserHandleSpace
         /// <param name="type"></param>
         /// <param name="bodyheight"></param>
         /// <param name="bodyinfo"></param>
-        public NativeAnimationAvatar FirstAddAvatar2(out bool isOverWrite, string id, GameObject avatar, GameObject ikparent, string RoleName, AF_TARGETTYPE type, float[] bodyheight = null,  List < Vector3> bodyinfo = null)
+        public NativeAnimationAvatar FirstAddAvatarForVRM(out bool isOverWrite, string id, GameObject avatar, GameObject ikparent, string RoleName, AF_TARGETTYPE type, float[] bodyheight = null,  List < Vector3> bodyinfo = null)
         {
             isOverWrite = false;
             if ((currentProject != null) && (currentProject.isSharing || currentProject.isReadOnly)) return (NativeAnimationAvatar)null;
@@ -1272,6 +1281,72 @@ namespace UserHandleSpace
 
             return nav;
         }
+        /// <summary>
+        /// Set up each avatar object to connect animation project (necessary automatically attach)
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="avatar"></param>
+        /// <param name="ikparent"></param>
+        /// <param name="RoleName"></param>
+        /// <param name="type"></param>
+        /// <param name="path"></param>
+        public NativeAnimationAvatar FirstAddAvatarForFileObject(out bool isOverWrite, string id, GameObject avatar, GameObject ikparent, string RoleName, AF_TARGETTYPE type, string path)
+        {
+            isOverWrite = false;
+            bool isExists = false;
+
+            if ((currentProject != null) && (currentProject.isSharing || currentProject.isReadOnly)) return (NativeAnimationAvatar)null;
+
+            NativeAnimationAvatar nav = currentProject.casts.Find(match =>
+            {
+                if ((match.path == path) && (match.type == type)) return true;
+                return false;
+            });
+            if ((nav != null) && (nav.avatar == null))
+            { //---already this time the each object exists in the project (And unallocated)
+                nav.avatarId = id;
+                nav.avatar = avatar;
+                nav.ikparent = ikparent;
+                // (*) roleName inherits the previous name.
+                //nav.roleName = RoleName + "_" + DateTime.Now.ToFileTime().ToString();  //"(" + GetCountTypeOf(type) + ")";
+
+                isExists = true;
+                isOverWrite = true;
+            }
+            else
+            {
+                nav = new NativeAnimationAvatar();
+                nav.avatarId = id;
+                nav.avatar = avatar;
+                nav.ikparent = ikparent;
+                nav.type = type;
+                nav.roleName = RoleName + "_" + DateTime.Now.ToFileTime().ToString();  //"(" + GetCountTypeOf(type) + ")";
+                nav.roleTitle = nav.roleName;
+                nav.path = path;
+            }
+
+            //---for timeline.characters
+            NativeAnimationFrameActor naf = null;
+            naf = GetFrameActorFromRole(nav.roleName, nav.type);
+            if (naf == null)
+            {
+                naf = new NativeAnimationFrameActor();
+                naf.targetId = id;
+                naf.targetRole = nav.roleName;
+                naf.targetType = type;
+                naf.avatar = nav;
+
+            }
+            if (!isExists)
+            {
+                currentProject.casts.Add(nav);
+
+                //---for timeline.characters
+                currentProject.timeline.characters.Add(naf);
+            }            
+
+            return nav;
+        }
 
         /// <summary>
         /// To set role title of cast for the avatar
@@ -1324,6 +1399,8 @@ namespace UserHandleSpace
                     //---change reference to avatar object.
                     avatar.avatar = tmpav.avatar;
                     avatar.ikparent = tmpav.ikparent;
+                    avatar.path = tmpav.path;
+                    avatar.ext = tmpav.ext;
 
                     //---update bodyInfoList current avatar body info.
                     /*
@@ -1372,6 +1449,8 @@ namespace UserHandleSpace
                         avatar.avatarId = "";
                         avatar.avatar = null;
                         avatar.ikparent = null;
+                        avatar.path = "";
+                        avatar.ext = "";
                     }
                 }
                 else if(prm[1] == "avatar")
@@ -1381,6 +1460,8 @@ namespace UserHandleSpace
                         avatar.avatarId = "";
                         avatar.avatar = null;
                         avatar.ikparent = null;
+                        avatar.path = "";
+                        avatar.ext = "";
                     }
                 }
             }

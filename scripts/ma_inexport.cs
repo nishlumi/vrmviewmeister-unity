@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.UI;
@@ -14,6 +15,9 @@ namespace UserHandleSpace
 {
     public partial class ManageAnimation
     {
+        [DllImport("__Internal")]
+        private static extern void IntervalLoadingProject(float val);
+
         private float[] TryParseFloatArray(string[] lst, int start, int size)
         {
             float[] vec3 = new float[size];
@@ -99,8 +103,13 @@ namespace UserHandleSpace
             string[] arr = rawstr.Split(sepitem);
             foreach (string matstr in arr)
             {
+                if (matstr == "") continue;
+
                 MaterialProperties mat = new MaterialProperties();
                 string[] matc = matstr.Split(sepprop);
+
+                //---most less is 8 items.
+                if (matc.Length < 8) continue;
 
                 mat.name = matc[0];
                 mat.shaderName = matc[1];
@@ -550,6 +559,7 @@ namespace UserHandleSpace
                         atp.power = vec3[5];
                         atp.spotAngle = vec3[6];
                         atp.lightRenderMode = (LightRenderMode)vec3[7];
+                        atp.lightType = (LightType)vec3[8];
                     }
                 }
                 else if (targetType == AF_TARGETTYPE.Camera)
@@ -1118,7 +1128,7 @@ namespace UserHandleSpace
                     ret.Add(((int)atp.vrmBone).ToString());
                     ret.Add("");
                     ret.Add("lightprop");
-                    ret.Add("8");
+                    ret.Add("9");
                     ret.Add(atp.range.ToString());
                     ret.Add(atp.color.r.ToString());
                     ret.Add(atp.color.g.ToString());
@@ -1127,6 +1137,7 @@ namespace UserHandleSpace
                     ret.Add(atp.power.ToString());
                     ret.Add(atp.spotAngle.ToString());
                     ret.Add(((int)atp.lightRenderMode).ToString());
+                    ret.Add(((int)atp.lightType).ToString());
 
                 }
                 else if (targetType == AF_TARGETTYPE.Camera)
@@ -1588,13 +1599,18 @@ namespace UserHandleSpace
             //---after settings
             SetFps(currentProject.fps);
 
+
+            AnimationProject retproj = Body_SaveProject(currentProject);
+            string ret = JsonUtility.ToJson(retproj);
 #if !UNITY_EDITOR && UNITY_WEBGL
-        ReceiveStringVal(param);
+            ReceiveStringVal(ret);
 #endif
 
         }
         private NativeAnimationProject ConvertProjectNative(AnimationProject proj)
         {
+            OpennigAnimationProject oapro = new OpennigAnimationProject();
+
             NativeAnimationProject nproj = new NativeAnimationProject(initialFrameCount);
 
             IsExternalProject = proj.isSharing;
@@ -1613,25 +1629,49 @@ namespace UserHandleSpace
             //---set up Avatar
             nproj.casts = new List<NativeAnimationAvatar>();
             //nproj.casts.Clear();
+
             //---re-save old casts in current project
-            for (var i = 0; i < currentProject.casts.Count; i++)
+            /*for (var i = 0; i < proj.casts.Count; i++)
             {
-                NativeAnimationAvatar naa = currentProject.casts[i];
+                AnimationAvatar naa = proj.casts[i];
                 if ( //---leaving type: VRM, OtherObject, Light, Camera, Image, UImage, Text, Effect
                     (naa.type == AF_TARGETTYPE.VRM) || (naa.type == AF_TARGETTYPE.OtherObject) ||
-                    (naa.type == AF_TARGETTYPE.Light) || (naa.type == AF_TARGETTYPE.Camera) ||
-                    (naa.type == AF_TARGETTYPE.Image) || (naa.type == AF_TARGETTYPE.UImage) ||
-                    (naa.type == AF_TARGETTYPE.Text) || (naa.type == AF_TARGETTYPE.Effect)
+                    (naa.type == AF_TARGETTYPE.Image) || (naa.type == AF_TARGETTYPE.UImage)
                 )
                 {
-                    nproj.casts.Add(naa);
+                    if (naa.type == AF_TARGETTYPE.OtherObject)
+                    {
+                        if (naa.path != "%BLANK%")
+                        {
+                            fullVal++;
+                        }
+                    }
+                    else
+                    {
+                        fullVal++;
+                    }
+                        
                 }
-            }
+            }*/
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+            IntervalLoadingProject(0);
+#endif
+            float percentv = 100f / (float)proj.casts.Count;
+            float cur = 0;
+            float curval = 0;
             //---load from the file
-            proj.casts.ForEach((avatar) =>
+            foreach (AnimationAvatar avatar in proj.casts) 
             {
+
+                //---normal use input
                 nproj.casts.Add(ParseEffectiveAvatar(avatar));
-            });
+                cur++;
+                curval = percentv * cur;
+#if !UNITY_EDITOR && UNITY_WEBGL
+            //IntervalLoadingProject(curval);
+#endif
+            }
 
             //---set up each frames of timelines.
             //---re-save frame actor and old timeline in current project
@@ -1693,8 +1733,11 @@ namespace UserHandleSpace
             nav.type = avatar.type;
             nav.avatarId = avatar.avatarId;
             nav.path = avatar.path;
+            nav.ext = avatar.ext;
+            nav.avatarTitle = avatar.avatarTitle;
             Array.Copy(avatar.bodyHeight, nav.bodyHeight, avatar.bodyHeight.Length);
 
+            //---Search by avatar ID, link successfully.
             if (avatar.avatarId != "")
             { 
                 NativeAnimationAvatar tmp = GetEffectiveAvatarObjects(avatar.avatarId, avatar.type);
@@ -1704,6 +1747,7 @@ namespace UserHandleSpace
                     nav.ikparent = tmp.ikparent;
                 }
             }
+            //---Search by role title
             NativeAnimationAvatar hitav = GetCastByNameInProject(avatar.roleTitle);
             if ((hitav != null) && 
                 ((avatar.type != AF_TARGETTYPE.SystemEffect) && (avatar.type != AF_TARGETTYPE.Audio) && (avatar.type != AF_TARGETTYPE.Stage))
@@ -1712,8 +1756,9 @@ namespace UserHandleSpace
                 NativeAnimationFrameActor nact = GetFrameActorFromRole(hitav.roleName, hitav.type);
                 if (nact != null)
                 {
+                    //---if existed avatar don't has key-frame data, overwrite to JSON-based data.
                     if (nact.frames.Count == 0)
-                    { //---if existed avatar don't has key-frame data, overwrite to JSON-based data.
+                    { 
                         DetachAvatarFromRole(avatar.roleName + "," + "role");
                         nav.avatar = hitav.avatar;
                         nav.ikparent = hitav.ikparent;
@@ -1722,17 +1767,144 @@ namespace UserHandleSpace
                 }
             }
 
+            //---finally, Open and recover effective object.
+            OpeningNativeAnimationAvatar oap = GenerateEachTypeObject(nav);
+
+            if ((oap != null) && (oap.cast != null))
+            {
+                nav.avatarId = oap.cast.avatarId;
+                nav.avatar = oap.cast.avatar;
+                nav.ikparent = oap.cast.ikparent;
+                nav.avatarTitle = oap.baseInfo.Title;                
+
+            }
 
             return nav;
         }
-        private NativeAnimationAvatar ParseEffectiveAvatar(string role, string actorId, AF_TARGETTYPE type)
+        
+        /// <summary>
+        /// Open and recover the effective object, finally link role with avatar.
+        /// </summary>
+        /// <param name="nav"></param>
+        private OpeningNativeAnimationAvatar GenerateEachTypeObject(NativeAnimationAvatar nav)
         {
-            NativeAnimationAvatar nav = new NativeAnimationAvatar(); //GetTargetObjects(avatarId, type);
-            nav.roleName = role;
-            nav.type = type;
-            //nav.bodyHeight = avatar.bodyHeight;
+            FileMenuCommands fmc = GetComponent<FileMenuCommands>();
+            OpeningNativeAnimationAvatar ret = null;
 
-            return nav;
+            switch (nav.type)
+            {
+                case AF_TARGETTYPE.VRM:
+                    if (nav.path == "")
+                    {
+                        ret = new OpeningNativeAnimationAvatar();
+                        ret.cast = new NativeAnimationAvatar();
+                        ret.baseInfo = new BasicObjectInformation();
+                        ret.cast.type = nav.type;
+                        ret.cast.avatarId = "";
+                        ret.cast.avatar = null;
+                        ret.cast.ikparent = null;
+                        ret.baseInfo.id = nav.avatarId;
+                        ret.baseInfo.roleName = nav.roleName;
+                        ret.baseInfo.roleTitle = nav.roleTitle;
+                        ret.baseInfo.type = Enum.GetName(typeof(AF_TARGETTYPE), nav.type);
+                    }
+                    else
+                    {
+                        Debug.Log(nav.avatarId + "/" + nav.path);
+                        //ret = fmc.LoadVRM(nav.path);
+                        //ret = fmc.AcceptLoadVRMUnity();
+                        
+                    }
+                    
+                    break;
+                case AF_TARGETTYPE.OtherObject:
+                    if (nav.path == "%BLANK%")
+                    {
+                        int ptype = int.TryParse(nav.ext, out ptype) ? ptype : 0;
+                        ret = fmc.Body_CreateBlankCube((PrimitiveType)ptype);
+                    }
+                    else
+                    {
+                        if (nav.path == "")
+                        {
+                            ret = new OpeningNativeAnimationAvatar();
+                            ret.cast = new NativeAnimationAvatar();
+                            ret.baseInfo = new BasicObjectInformation();
+                            ret.cast.type = nav.type;
+                            ret.cast.avatarId = "";
+                            ret.cast.avatar = null;
+                            ret.cast.ikparent = null;
+                            ret.baseInfo.id = nav.avatarId;
+                            ret.baseInfo.roleName = nav.roleName;
+                            ret.baseInfo.roleTitle = nav.roleTitle;
+                            ret.baseInfo.type = Enum.GetName(typeof(AF_TARGETTYPE), nav.type);
+                        }
+                        else
+                        {
+                            //ret = fmc.LoadOtherObject(nav.path);
+                        }
+                        
+                    }
+                    
+                    break;
+                case AF_TARGETTYPE.Light:
+                    ret = fmc.Body_OpenLightObject("spot");
+                    break;
+                case AF_TARGETTYPE.Camera:
+                    ret = fmc.Body_CreateCameraObject("");
+                    break;
+                case AF_TARGETTYPE.Image:
+                    if (nav.path == "")
+                    {
+                        ret = new OpeningNativeAnimationAvatar();
+                        ret.cast = new NativeAnimationAvatar();
+                        ret.baseInfo = new BasicObjectInformation();
+                        ret.cast.type = nav.type;
+                        ret.cast.avatarId = "";
+                        ret.cast.avatar = null;
+                        ret.cast.ikparent = null;
+                        ret.baseInfo.id = nav.avatarId;
+                        ret.baseInfo.roleName = nav.roleName;
+                        ret.baseInfo.roleTitle = nav.roleTitle;
+                        ret.baseInfo.type = Enum.GetName(typeof(AF_TARGETTYPE), nav.type);
+                    }
+                    else
+                    {
+                        //ret = fmc.LoadImageFile(nav.path);
+                    }
+                    
+                    break;
+                case AF_TARGETTYPE.UImage:
+                    if (nav.path == "")
+                    {
+                        ret = new OpeningNativeAnimationAvatar();
+                        ret.cast = new NativeAnimationAvatar();
+                        ret.baseInfo = new BasicObjectInformation();
+                        ret.cast.type = nav.type;
+                        ret.cast.avatarId = "";
+                        ret.cast.avatar = null;
+                        ret.cast.ikparent = null;
+                        ret.baseInfo.id = nav.avatarId;
+                        ret.baseInfo.roleName = nav.roleName;
+                        ret.baseInfo.roleTitle = nav.roleTitle;
+                        ret.baseInfo.type = Enum.GetName(typeof(AF_TARGETTYPE), nav.type);
+                    }
+                    else
+                    {
+                        //ret = fmc.LoadUImageFile(nav.path);
+                    }
+                    
+                    break;
+                case AF_TARGETTYPE.Text:
+                    ret = fmc.Body_OpenText("ABC,tl");
+                    break;
+                case AF_TARGETTYPE.Effect:
+                    ret = fmc.Body_CreateSingleEffect();
+                    break;
+
+            }
+            
+            return ret;
         }
         /// <summary>
         /// Convert AnimationFrame to NativeAnimationFrame
@@ -1892,26 +2064,20 @@ namespace UserHandleSpace
 //  Save functions
 //===========================================================================================================================
 
-        /// <summary>
-        /// To save animation project data.
-        /// </summary>
-        /// <returns>JSON format of AnimationProject</returns>
-        public string SaveProject()
+        public AnimationProject Body_SaveProject(NativeAnimationProject napro)
         {
-            string ret = "";
-
             AnimationProject aniproj = new AnimationProject(initialFrameCount);
-            aniproj.isSharing = currentProject.isSharing;
-            aniproj.isReadOnly = currentProject.isReadOnly;
+            aniproj.isSharing = napro.isSharing;
+            aniproj.isReadOnly = napro.isReadOnly;
             aniproj.isNew = false;
-            aniproj.isOpenAndEdit = currentProject.isOpenAndEdit;
+            aniproj.isOpenAndEdit = napro.isOpenAndEdit;
             aniproj.mkey = DateTime.Now.ToFileTime();
-            aniproj.baseDuration = currentProject.baseDuration;
-            aniproj.timelineFrameLength = currentProject.timelineFrameLength;
-            aniproj.meta = currentProject.meta.SCopy();
-            aniproj.materialManager.SetFromNative(currentProject.materialManager);
+            aniproj.baseDuration = napro.baseDuration;
+            aniproj.timelineFrameLength = napro.timelineFrameLength;
+            aniproj.meta = napro.meta.SCopy();
+            aniproj.materialManager.SetFromNative(napro.materialManager);
             //---avatar
-            currentProject.casts.ForEach(avatar =>
+            napro.casts.ForEach(avatar =>
             {
                 AnimationAvatar aa = new AnimationAvatar();
 
@@ -1920,7 +2086,7 @@ namespace UserHandleSpace
             });
 
             //---timeline characters
-            foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
+            foreach (NativeAnimationFrameActor actor in napro.timeline.characters)
             {
                 AnimationFrameActor rawactor = new AnimationFrameActor();
                 rawactor.SetFromNative(actor);
@@ -1962,14 +2128,24 @@ namespace UserHandleSpace
                 });
             });*/
 
+            return aniproj;
+        }
+        /// <summary>
+        /// To save animation project data.
+        /// </summary>
+        /// <returns>JSON format of AnimationProject</returns>
+        public string SaveProject()
+        {
+            string ret = "";
+
+            AnimationProject aniproj = Body_SaveProject(currentProject);
+
             ret = JsonUtility.ToJson(aniproj);
 #if !UNITY_EDITOR && UNITY_WEBGL
         
             ReceiveStringVal(ret);
         
 #endif
-
-
             return ret;
         }
 

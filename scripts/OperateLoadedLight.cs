@@ -81,6 +81,28 @@ namespace UserHandleSpace
         }
 
         //--------------------------------------------------------------------
+        public void SetLightType ( LightType type )
+        {
+            Light lt = transform.gameObject.GetComponent<Light>();
+            lt.type = type;
+        }
+        public void SetLightTypeFromOuter(int param)
+        {
+            SetLightType((LightType)param);
+        }
+        public LightType GetLightType()
+        {
+            Light lt = transform.gameObject.GetComponent<Light>();
+            return lt.type;
+        }
+        public void GetLightTypeFromOuter()
+        {
+            LightType ret = GetLightType();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal((int)ret);
+#endif
+        }
+        //--------------------------------------------------------------------
         public float GetRange()
         {
             Light lt = transform.gameObject.GetComponent<Light>();

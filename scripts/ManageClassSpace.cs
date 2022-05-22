@@ -142,14 +142,16 @@ namespace UserHandleSpace
         Aim,
         Chest,
         Pelvis,
+        LeftShoulder,
         LeftLowerArm,
         LeftHand,
+        RightShoulder,
         RightLowerArm,
         RightHand,
         LeftLowerLeg,
         LeftLeg,
         RightLowerLeg,
-        RightLeg
+        RightLeg,
     };
     public enum RangeIKBoneType
     {
@@ -408,8 +410,10 @@ namespace UserHandleSpace
         Aim,
         Chest,
         Pelvis,
+        LeftShoulder,
         LeftLowerArm,
         LeftHand,
+        RightShoulder,
         RightLowerArm,
         RightHand,
         LeftLowerLeg,
@@ -1036,10 +1040,12 @@ namespace UserHandleSpace
         public string roleName = "";
         public string roleTitle = "";
         public string avatarId = "";
+        public string avatarTitle = "";
         public AF_TARGETTYPE type = AF_TARGETTYPE.Unknown;
         public float[] bodyHeight = new float[3];
         public List<Vector3> bodyInfoList = new List<Vector3>();
         public string path = "";
+        public string ext = "";
 
         public AnimationAvatar SCopy()
         {
@@ -1065,6 +1071,7 @@ namespace UserHandleSpace
             avatarId = nav.avatarId;
             type = nav.type;
             path = nav.path;
+            ext = nav.ext;
             if (bodyHeight != null)
             {
                 Array.Copy(nav.bodyHeight, bodyHeight, nav.bodyHeight.Length);
@@ -1616,6 +1623,27 @@ namespace UserHandleSpace
         }
     }
 
+    [Serializable]
+    public class OpennigAnimationProject
+    {
+        public List<UserVRMSpace.BasicObjectInformation> castInfo;
+        public AnimationProject project;
+        public OpennigAnimationProject()
+        {
+            castInfo = new List<UserVRMSpace.BasicObjectInformation>();
+            project = null;
+        }
+    }
+    public class OpeningNativeAnimationAvatar
+    {
+        public NativeAnimationAvatar cast;
+        public UserVRMSpace.BasicObjectInformation baseInfo;
+        public OpeningNativeAnimationAvatar ()
+        {
+            cast = null;
+            baseInfo = null;
+        }
+    }
     //==============================================================
     //  Animation other option class
     //==============================================================

@@ -320,7 +320,47 @@ namespace UserHandleSpace
                 }
                 seq.Play();
             }
-            
+            //2022.05.17 entrust the management from CCDIK
+            if (PartsName == "head")
+            {
+                Transform neck = animator.GetBoneTransform(HumanBodyBones.Neck);
+                seq.Join(neck.DORotate(transform.rotation.eulerAngles, 0.1f));
+                //neck.DORotateQuaternion(Quaternion.LookRotation(transform.localPosition),0.1f);
+            }
+            if (PartsName == "aim")
+            {
+                Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
+                GameObject ikhead = transform.parent.Find("Head").gameObject;
+
+                ikhead.transform.DOMove(head.transform.position, 0.1f);
+            }
+            if (PartsName == "chest")
+            {
+                Transform leftshoulder = animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
+                Transform rightshoulder = animator.GetBoneTransform(HumanBodyBones.RightShoulder);
+
+                GameObject ikleft = transform.parent.Find("LeftShoulder").gameObject;
+                GameObject ikright = transform.parent.Find("RightShoulder").gameObject;
+
+                ikleft.transform.DOMoveX(leftshoulder.transform.position.x+0.09f, 0.1f);
+                ikleft.transform.DOMoveY(leftshoulder.transform.position.y, 0.1f);
+                ikleft.transform.DOMoveZ(leftshoulder.transform.position.z, 0.1f);
+                ikright.transform.DOMoveX(rightshoulder.transform.position.x-0.09f, 0.1f);
+                ikright.transform.DOMoveY(rightshoulder.transform.position.y, 0.1f);
+                ikright.transform.DOMoveZ(rightshoulder.transform.position.z, 0.1f);
+
+            }
+            if (PartsName == "leftshoulder")
+            {
+                Transform leftshoulder = animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
+                seq.Join(leftshoulder.DORotate(transform.rotation.eulerAngles, 0.1f));
+            }
+            if (PartsName == "rightshoulder")
+            {
+                Transform rightshoulder = animator.GetBoneTransform(HumanBodyBones.RightShoulder);
+                seq.Join(rightshoulder.DORotate(transform.rotation.eulerAngles, 0.1f));
+            }
+
             oldPosition = this.transform.localPosition;
             oldRotation = this.transform.localRotation;
 

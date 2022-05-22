@@ -2268,7 +2268,9 @@ namespace UserHandleSpace
                         (int)ParseIKBoneType.Pelvis,(int)ParseIKBoneType.Chest,
                         (int)ParseIKBoneType.Head,(int)ParseIKBoneType.Aim,(int)ParseIKBoneType.LookAt, 
 
+                        (int)ParseIKBoneType.LeftShoulder,
                         (int)ParseIKBoneType.LeftHand, (int)ParseIKBoneType.LeftLowerArm,
+                        (int)ParseIKBoneType.RightShoulder,
                         (int)ParseIKBoneType.RightHand, (int)ParseIKBoneType.RightLowerArm,
 
                         (int)ParseIKBoneType.LeftLeg, (int)ParseIKBoneType.LeftLowerLeg,
