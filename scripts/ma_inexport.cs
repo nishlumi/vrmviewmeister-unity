@@ -2198,6 +2198,11 @@ namespace UserHandleSpace
 #endif
             return ret;
         }
+
+        public void AutomaticRegisterContinuousFrames(string param)
+        {
+
+        }
     }
 
 }
