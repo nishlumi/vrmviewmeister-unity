@@ -1364,7 +1364,7 @@ namespace UserVRMSpace
             string ext = prm[2];
             //Debug.Log("filename=[" + filename + "]");
             //Debug.Log("ext=[" + ext + "]");
-            _loadedObjectFileName = TriLibCore.Utils.FileUtils.GetFilenameWithoutExtension(filename);
+            _loadedObjectFileName = filename;
 
             var webRequest = AssetDownloader.CreateWebRequest(url.Replace("blob:",""));
             AssetDownloader.LoadModelFromUri(webRequest, 
@@ -1397,11 +1397,11 @@ namespace UserVRMSpace
         private IEnumerator LoadOtherObject_Body(bool isBackHTML, string url)
         {
             //Debug.Log(url);
-            string[] prm = url.Split(',');
+            string[] prm = url.Split('\t');
             string uri = prm[0];
             string filename = prm[1];
             string ext = TriLibCore.Utils.FileUtils.GetFileExtension(filename, false); // System.IO.Path.GetExtension(filename);
-            _loadedObjectFileName = TriLibCore.Utils.FileUtils.GetFilenameWithoutExtension(filename);
+            _loadedObjectFileName = filename;
 
             using (UnityWebRequest www = UnityWebRequest.Get(uri))
             {
@@ -2101,7 +2101,7 @@ namespace UserVRMSpace
         }
         public IEnumerator LoadImageuri(string url, bool is_ui, bool isBackHTML)
         {
-            string[] prm = url.Split(',');
+            string[] prm = url.Split('\t');
             string uri = prm[0];
             string filename = prm[1];
             string ext = TriLibCore.Utils.FileUtils.GetFileExtension(filename, false); // System.IO.Path.GetExtension(filename);
