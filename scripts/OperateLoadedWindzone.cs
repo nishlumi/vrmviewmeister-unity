@@ -25,10 +25,18 @@ namespace UserHandleSpace
         private string[] exWindBoneComment = { "Bust" };
         private string[] exWindBoneName = { "Bust" };
 
+        //---backup 
+        private float[] bkup_durations = { 0.01f, 0.02f };
+        private float bkup_power = 0f;
+        private Vector3 bkup_dir;
+        private float bkup_fraquency;
+
         // Start is called before the first frame update
         void Start()
         {
             manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+
+            GetDefault();
         }
 
         // Update is called once per frame
@@ -53,6 +61,22 @@ namespace UserHandleSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(ret);
 #endif
+        }
+        public void GetDefault()
+        {
+            bkup_power = windPower;
+            bkup_durations[0] = windDurationMin;
+            bkup_durations[1] = windDurationMax;
+            bkup_fraquency = windFrequency;
+            bkup_dir = GetWindDir();
+        }
+        public void SetDefault()
+        {
+            windPower = bkup_power;
+            SetWindDurationMin(bkup_durations[0]);
+            SetWindDurationMax(bkup_durations[1]);
+            SetWindFrequency(bkup_fraquency);
+            SetWindDir(bkup_dir);
         }
         //----------------------------------------------------------------------
         public float windDurationMin

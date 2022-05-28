@@ -295,6 +295,16 @@ namespace UserHandleSpace
             vibrato = 10;
             elasiticity = 1f;
         }
+        public void Copy(AvatarPunchEffect src)
+        {
+            isEnable = src.isEnable;
+            translationType = src.translationType;
+            punch.x = src.punch.x;
+            punch.y = src.punch.y;
+            punch.z = src.punch.z;
+            vibrato = src.vibrato;
+            elasiticity = src.elasiticity;
+        }
 
     }
 
@@ -315,6 +325,15 @@ namespace UserHandleSpace
             vibrato = 10;
             randomness = 90;
             fadeOut = 1;
+        }
+        public void Copy(AvatarShakeEffect src)
+        {
+            isEnable = src.isEnable;
+            translationType = src.translationType;
+            strength = src.strength;
+            vibrato = src.vibrato;
+            randomness = src.randomness;
+            fadeOut = src.fadeOut;
         }
     }
 
@@ -1069,6 +1088,7 @@ namespace UserHandleSpace
             roleName = nav.roleName;
             roleTitle = nav.roleTitle;
             avatarId = nav.avatarId;
+            avatarTitle = nav.avatarTitle;
             type = nav.type;
             path = nav.path;
             ext = nav.ext;

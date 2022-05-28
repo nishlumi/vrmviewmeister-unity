@@ -214,7 +214,7 @@ namespace UserVRMSpace
         private OpeningNativeAnimationAvatar openingNative;
 
         private GameObject _loadedGameObject;
-        //private string _loadedObjectFileName = "";
+        private string _loadedObjectFileName = "";
 
         private ConfigSettingLabs configLab;
 
@@ -969,6 +969,7 @@ namespace UserVRMSpace
             NativeAnimationAvatar tmpnav = new NativeAnimationAvatar();
             tmpnav.avatar = contextRoot;
             tmpnav.avatarId = contextRoot.name;
+            tmpnav.avatarTitle = pendingVRMmeta.Title;
             tmpnav.ikparent = ikparent;
             openingNative.cast = tmpnav;           
 
@@ -1083,8 +1084,10 @@ namespace UserVRMSpace
             //    Destroy(_loadedGameObject);
             //}
             assetLoaderContext.RootGameObject.SetActive(false);
-            //_loadedObjectFileName = assetLoaderContext.Filename;
-            //_loadedGameObject.name = _loadedObjectFileName;
+            if (assetLoaderContext.Filename != null)
+            {
+                _loadedObjectFileName = assetLoaderContext.Filename;
+            }
 
         }
         private void OnProgress(AssetLoaderContext assetLoaderContext, float progress)
@@ -1098,7 +1101,6 @@ namespace UserVRMSpace
 
             GameObject oth = (assetLoaderContext.RootGameObject);
             oth.SetActive(true);
-            //_loadedObjectFileName = assetLoaderContext.Filename;
             oth.tag = "OtherPlayer";
             oth.layer = LayerMask.NameToLayer("Player");
             OperateLoadedOther ol = oth.AddComponent<OperateLoadedOther>();
@@ -1124,20 +1126,22 @@ namespace UserVRMSpace
             OtherObjectInformation obi = OnShowedOtherObject(oth);
 
             //---change ID to timestamp 
-            ol.Title = oth.name;
-            obi.Title = oth.name;
             oth.name = "obj_" + DateTime.Now.ToFileTime().ToString();  //_loadedObjectFileName == "" ? oth.name : _loadedObjectFileName;
             ikcube.name = "ikparent_" + oth.name;
 
             obi.id = oth.name;
-
+            obi.Title = _loadedObjectFileName; // oth.name;
             obi.fileExt = assetLoaderContext.FileExtension;
             obi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.OtherObject);
 
+            ol.Title = obi.Title;
+
+
             bool isOverwrite = false; // n - new, o - overwrite
 
-            //ManageAnimation mana = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
-            NativeAnimationAvatar nav = managa.FirstAddAvatarForFileObject(out isOverwrite, oth.name, oth, ikcube, "OtherObject", AF_TARGETTYPE.OtherObject, assetLoaderContext.Filename);
+            NativeAnimationAvatar nav = managa.FirstAddAvatarForFileObject(out isOverwrite, oth.name, oth, ikcube, "OtherObject", AF_TARGETTYPE.OtherObject, obi.Title);
+            nav.ext = assetLoaderContext.FileExtension;
+            nav.path = assetLoaderContext.Filename;
             obi.roleName = nav.roleName;
             obi.roleTitle = nav.roleTitle;
 
@@ -1150,16 +1154,14 @@ namespace UserVRMSpace
             ovrm.AddAvatarBox(oth.name, null, ikcube);
 
             string fext = assetLoaderContext.FileExtension;
-            nav.ext = assetLoaderContext.FileExtension;
-            nav.path = assetLoaderContext.Filename;
-
             fext = (fext == "") ? "OTH:OBJECT" : "OTH:" + fext.ToUpper();
+
             ol.objectType = fext;
 
             NativeAnimationAvatar tmpnav = new NativeAnimationAvatar();
             tmpnav.avatar = oth;
             tmpnav.avatarId = oth.name;
-            tmpnav.avatarTitle = oth.name;
+            tmpnav.avatarTitle = obi.Title;
             tmpnav.ikparent = ikcube;
             openingNative.cast = tmpnav;
             openingNative.baseInfo = obi;
@@ -1362,6 +1364,7 @@ namespace UserVRMSpace
             string ext = prm[2];
             //Debug.Log("filename=[" + filename + "]");
             //Debug.Log("ext=[" + ext + "]");
+            _loadedObjectFileName = TriLibCore.Utils.FileUtils.GetFilenameWithoutExtension(filename);
 
             var webRequest = AssetDownloader.CreateWebRequest(url.Replace("blob:",""));
             AssetDownloader.LoadModelFromUri(webRequest, 
@@ -1398,6 +1401,8 @@ namespace UserVRMSpace
             string uri = prm[0];
             string filename = prm[1];
             string ext = TriLibCore.Utils.FileUtils.GetFileExtension(filename, false); // System.IO.Path.GetExtension(filename);
+            _loadedObjectFileName = TriLibCore.Utils.FileUtils.GetFilenameWithoutExtension(filename);
+
             using (UnityWebRequest www = UnityWebRequest.Get(uri))
             {
                 DownloadHandlerBuffer dhb = new DownloadHandlerBuffer();
@@ -1572,10 +1577,16 @@ namespace UserVRMSpace
             ol.objectType = ptype.ToString();
             ikcube.GetComponent<OtherObjectDummyIK>().relatedAvatar = oth;
 
+            int existCnt = managa.CheckRoleTitleExist(ptype.ToString(), AF_TARGETTYPE.OtherObject);
+            if (existCnt > 0)
+            {
+                ol.Title = ptype.ToString() + "_" + existCnt;
+            }
+
             //---material save
             OtherObjectInformation obi = OnShowedOtherObject(oth);
             obi.id = oth.name;
-            obi.Title = ptype.ToString();
+            obi.Title = ol.Title;
             obi.fileExt = ((int)ptype).ToString();
             obi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.OtherObject);
 
@@ -1587,6 +1598,10 @@ namespace UserVRMSpace
             NativeAnimationAvatar nav = new NativeAnimationAvatar();
             nav.avatar = oth;
             nav.ikparent = ikcube;
+            nav.avatarId = oth.name;
+            nav.avatarTitle = obi.Title;
+            nav.roleTitle = obi.Title;
+
 
             oap.cast = nav;
             oap.baseInfo = obi;
@@ -1601,9 +1616,12 @@ namespace UserVRMSpace
             NativeAnimationAvatar nav = managa.FirstAddAvatar(tmpnav.cast.avatar.name, tmpnav.cast.avatar, tmpnav.cast.ikparent, "OtherObject", AF_TARGETTYPE.OtherObject);
             nav.path = "%BLANK%";
             nav.ext = ((int)ptype).ToString();
+            nav.roleTitle = tmpnav.cast.roleTitle;
+
 
             tmpnav.baseInfo.roleName = nav.roleName;
             tmpnav.baseInfo.roleTitle = nav.roleTitle;
+            tmpnav.baseInfo.Title = nav.roleTitle;
 
             string js = JsonUtility.ToJson(tmpnav.baseInfo);
             //Debug.Log(js);
@@ -1651,10 +1669,20 @@ namespace UserVRMSpace
             ol.relatedHandleParent = lt[1];
             ol.Title = param + " light";
 
+            int existCnt = managa.CheckRoleTitleExist(ol.Title, AF_TARGETTYPE.Light);
+            if (existCnt > 0)
+            {
+                ol.Title = ol.Title + "_" + existCnt.ToString();
+            }
+
 
             NativeAnimationAvatar nav = new NativeAnimationAvatar();
             nav.avatar = lt[0];
             nav.ikparent = lt[1];
+            nav.avatarId = lt[0].name;
+            nav.avatarTitle = ol.Title;
+            nav.roleTitle = ol.Title;
+
 
             OperateActiveVRM ovrm = managa.ikArea.GetComponent<OperateActiveVRM>();
             ovrm.EnableTransactionHandle(null, nav.ikparent);
@@ -1664,7 +1692,7 @@ namespace UserVRMSpace
             Light light = nav.avatar.GetComponent<Light>();
             BasicObjectInformation loi = new BasicObjectInformation();
             loi.id = nav.avatar.name;
-            loi.Title = Enum.GetName(typeof(LightType), light.type);
+            loi.Title = ol.Title; // Enum.GetName(typeof(LightType), light.type);
             loi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.Light);
             loi.motion.lightType = light.type;
             loi.motion.range = light.range;
@@ -1699,6 +1727,7 @@ namespace UserVRMSpace
             //ManageAnimation mana = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
             NativeAnimationAvatar nav = managa.FirstAddAvatar(tmpnav.cast.avatar.name, tmpnav.cast.avatar, tmpnav.cast.ikparent, "Light", AF_TARGETTYPE.Light);
             nav.ext = param;
+            nav.roleTitle = tmpnav.cast.roleTitle;
 
             tmpnav.baseInfo.roleName = nav.roleName;
             tmpnav.baseInfo.roleTitle = nav.roleTitle;
@@ -1776,21 +1805,29 @@ namespace UserVRMSpace
             ol.relatedHandleParent = lt[1];
             ol.Title = "Camera";
 
+            int existCnt = managa.CheckRoleTitleExist(ol.Title, AF_TARGETTYPE.Camera);
+            if (existCnt > 0)
+            {
+                ol.Title = ol.Title + "_" + existCnt.ToString();
+            }
+
             OperateActiveVRM ovrm = managa.ikArea.GetComponent<OperateActiveVRM>();
             ovrm.EnableTransactionHandle(null, lt[1]);
             ovrm.AddAvatarBox(lt[0].name, null, lt[1]);
 
             NativeAnimationAvatar nav = new NativeAnimationAvatar();
             nav.avatar = lt[0];
-            nav.avatarId = lt[0].name;
             nav.ikparent = lt[1];
+            nav.roleTitle = ol.Title;
+            nav.avatarId = lt[0].name;
+            nav.avatarTitle = ol.Title;
 
 
             Camera cam = nav.avatar.GetComponent<Camera>();
 
             CameraObjectInformation loi = new CameraObjectInformation();
             loi.id = nav.avatar.name;
-            loi.Title = "Camera";
+            loi.Title = ol.Title;
             loi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.Camera);
             loi.motion.fov = cam.fieldOfView;
             loi.motion.depth = cam.depth;
@@ -1893,19 +1930,28 @@ namespace UserVRMSpace
 
             txt.GetComponent<OperateLoadedText>().Title = "Text";
 
-            NativeAnimationAvatar nav = new NativeAnimationAvatar();
-            nav.avatar = txt;
-            nav.avatarId = txt.name;
-            nav.ikparent = null;
-
-            Text text = nav.avatar.GetComponent<Text>();
+            Text text = txt.GetComponent<Text>();
             TextObjectInformation toi = new TextObjectInformation();
-            toi.id = nav.avatar.name;
+            toi.id = txt.name;
             toi.Title = "Text";
             toi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.Text);
             toi.motion.fontSize = text.fontSize;
             toi.motion.fontStyle = text.fontStyle;
             toi.motion.textAlignment = text.alignment;
+
+            int existCnt = managa.CheckRoleTitleExist(toi.Title, AF_TARGETTYPE.Text);
+            if (existCnt > 0)
+            {
+                toi.Title = toi.Title + "_" + existCnt.ToString();
+            }
+
+            NativeAnimationAvatar nav = new NativeAnimationAvatar();
+            nav.avatar = txt;
+            nav.ikparent = null;
+            nav.avatarId = txt.name;
+            nav.avatarTitle = toi.Title;
+            nav.roleTitle = toi.Title;
+
 
             onav.cast = nav;
             onav.baseInfo = toi;
@@ -2126,39 +2172,40 @@ namespace UserVRMSpace
             //---return information to HTML
             ImageObjectInformation ioi = new ImageObjectInformation();
             ioi.id = img.name;
-            ioi.Title = "UImage";
             ioi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.UImage);
             ioi.location = "ui";
             ioi.width = tex.width;
             ioi.height = tex.height;
 
-
+            string fext = "UIMAGE";
+            //---Set up for Animation
+            bool isOverwrite = false;
+            //ManageAnimation mana = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+            NativeAnimationAvatar nav = managa.FirstAddAvatarForFileObject(out isOverwrite, img.name, img, null, "UImage", AF_TARGETTYPE.UImage, filename);
+            ioi.Title = nav.roleTitle;
+            ioi.roleName = nav.roleName;
+            ioi.roleTitle = nav.roleTitle;
+            ioi.isOverwrite = (isOverwrite ? "o" : "n");
             if (isBackHTML)
             {
-                string fext = "UIMAGE";
-                //---Set up for Animation
-                bool isOverwrite = false;
-                //ManageAnimation mana = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
-                NativeAnimationAvatar nav = managa.FirstAddAvatarForFileObject(out isOverwrite, img.name, img, null, "UImage", AF_TARGETTYPE.UImage, filename);
-                ioi.roleName = nav.roleName;
-                ioi.roleTitle = nav.roleTitle;
-                ioi.isOverwrite = (isOverwrite ? "o" : "n");
-
                 string js = JsonUtility.ToJson(ioi);
 #if !UNITY_EDITOR && UNITY_WEBGL
                 sendOtherObjectInfo(fext, js);
 #endif
-                lastLoadedAvatar = nav;
 
             }
+            lastLoadedAvatar = nav;
 
             NativeAnimationAvatar tmpnav = new NativeAnimationAvatar();
             tmpnav.avatar = img;
-            tmpnav.avatarId = img.name;
             tmpnav.ikparent = null;
+            tmpnav.avatarId = img.name;
+            tmpnav.avatarTitle = ioi.Title;
+            tmpnav.roleTitle = ioi.Title;
+
+
             openingNative.cast = tmpnav;
             openingNative.baseInfo = ioi;
-
 
             yield return null;
         }
@@ -2258,37 +2305,41 @@ namespace UserVRMSpace
             //---return information to HTML
             ImageObjectInformation ioi = new ImageObjectInformation();
             ioi.id = empt.name;
-            ioi.Title = "Image";
             ioi.location = "3d";
             ioi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.Image);
             ioi.width = tex.width;
             ioi.height = tex.height;
 
+            string fext = "IMAGE";
+            ol.objectType = fext;
+
+            //---Set up for Animation
+            bool isOverwrite = false;
+            //ManageAnimation mana = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+            NativeAnimationAvatar nav = managa.FirstAddAvatarForFileObject(out isOverwrite, empt.name, empt, ikcube, "Image", AF_TARGETTYPE.Image, filename);
+            ioi.Title = nav.roleTitle;
+            ioi.roleName = nav.roleName;
+            ioi.roleTitle = nav.roleTitle;
+            ioi.isOverwrite = (isOverwrite ? "o" : "n");
+
             if (isBackHTML)
             {
-                string fext = "IMAGE";
-                ol.objectType = fext;
-
-                //---Set up for Animation
-                bool isOverwrite = false;
-                //ManageAnimation mana = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
-                NativeAnimationAvatar nav = managa.FirstAddAvatarForFileObject(out isOverwrite, empt.name, empt, ikcube, "Image", AF_TARGETTYPE.Image, filename);
-                ioi.roleName = nav.roleName;
-                ioi.roleTitle = nav.roleTitle;
-                ioi.isOverwrite = (isOverwrite ? "o" : "n");
-
-
                 string js = JsonUtility.ToJson(ioi);
 #if !UNITY_EDITOR && UNITY_WEBGL
                 sendOtherObjectInfo(fext, js);
 #endif
 
-                lastLoadedAvatar = nav;
             }
+            lastLoadedAvatar = nav;
+
             NativeAnimationAvatar tmpnav = new NativeAnimationAvatar();
             tmpnav.avatar = empt;
-            tmpnav.avatarId = empt.name;
             tmpnav.ikparent = ikcube;
+            tmpnav.avatarId = empt.name;
+            tmpnav.avatarTitle = ioi.Title;
+            tmpnav.roleTitle = ioi.Title;
+
+
             openingNative.cast = tmpnav;
             openingNative.baseInfo = ioi;
 
@@ -2330,18 +2381,25 @@ namespace UserVRMSpace
             ole.relatedHandleParent = lt[1];
             ole.Title = "Effect";
 
+            int existCnt = managa.CheckRoleTitleExist(ole.Title, AF_TARGETTYPE.Effect);
+            if (existCnt > 0)
+            {
+                ole.Title = ole.Title + "_" + existCnt.ToString();
+            }
+
             OperateActiveVRM ovrm = managa.ikArea.GetComponent<OperateActiveVRM>();
             ovrm.EnableTransactionHandle(null, lt[1]);
             ovrm.AddAvatarBox(lt[0].name, null, lt[1]);
 
             NativeAnimationAvatar nav = new NativeAnimationAvatar();
             nav.avatar = lt[0];
-            nav.avatarId = lt[0].name;
             nav.ikparent = lt[1];
+            nav.avatarId = lt[0].name;
+            nav.avatarTitle = ole.Title;
 
             BasicObjectInformation boi = new BasicObjectInformation();
             boi.id = nav.avatar.name;
-            boi.Title = "Effect";
+            boi.Title = ole.Title;
             boi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.Effect);
 
             onav.cast = nav;

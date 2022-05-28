@@ -318,6 +318,75 @@ namespace UserHandleSpace
             NativeAnimationAvatar naa = targetObjects.avatar;
             OperateLoadedBase olb = naa.avatar.GetComponent<OperateLoadedBase>();
 
+            if (movedata.animationType == AF_MOVETYPE.Punch)
+            {
+                /*if (options.isExecuteForDOTween == 1)
+                {
+                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                     {
+                         olb.SetPunch(JsonUtility.ToJson(movedata.effectPunch));
+                     },false));
+                }*/
+                //if (targetObjects.compiled == 1)
+                {
+                    if (movedata.effectPunch.isEnable == 1)
+                    {
+                        if (movedata.effectPunch.translationType == AF_MOVETYPE.Translate)
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOPunchPosition(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
+                        }
+                        else if (movedata.effectPunch.translationType == AF_MOVETYPE.Rotate)
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOPunchRotation(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
+                        }
+                        else if (movedata.effectPunch.translationType == AF_MOVETYPE.Scale)
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOPunchScale(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
+                        }
+                    }
+
+                }
+
+                if (options.isBuildDoTween == 0)
+                {
+                    olb.SetPunch(movedata.effectPunch);
+                }
+            }
+            else if (movedata.animationType == AF_MOVETYPE.Shake)
+            {
+                /*if (options.isExecuteForDOTween == 1)
+                {
+                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                    {
+                        olb.SetShake(JsonUtility.ToJson(movedata.effectShake));
+                    }, false));
+                }*/
+                //if (targetObjects.compiled == 1)
+                {
+                    if (movedata.effectShake.isEnable == 1)
+                    {
+                        if (movedata.effectShake.translationType == AF_MOVETYPE.Translate)
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOShakePosition(frame.duration, movedata.effectShake.strength, movedata.effectShake.vibrato, movedata.effectShake.randomness, false, movedata.effectShake.fadeOut == 1 ? true : false));
+                        }
+                        else if (movedata.effectShake.translationType == AF_MOVETYPE.Rotate)
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOShakeRotation(frame.duration, movedata.effectShake.strength, movedata.effectShake.vibrato, movedata.effectShake.randomness, movedata.effectShake.fadeOut == 1 ? true : false));
+                        }
+                        else if (movedata.effectShake.translationType == AF_MOVETYPE.Scale)
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOShakeScale(frame.duration, movedata.effectShake.strength, movedata.effectShake.vibrato, movedata.effectShake.randomness, movedata.effectShake.fadeOut == 1 ? true : false));
+                        }
+                    }
+
+                }
+
+                if (options.isBuildDoTween == 0)
+                {
+                    olb.SetShake(movedata.effectShake);
+                }
+            }
+
             if (targetObjects.targetType == AF_TARGETTYPE.VRM)
             {
                 int index = (int)movedata.vrmBone;
@@ -513,8 +582,8 @@ namespace UserHandleSpace
                             else naa.avatar.transform.position = movedata.position;
                         }
                     }
-                    
 
+                    
                     {
                         if (movedata.jumpNum >= 1)
                         {
@@ -533,7 +602,7 @@ namespace UserHandleSpace
                         olb.SetJump(movedata.jumpPower.ToString() + "," + movedata.jumpNum.ToString());
                     }
                 }
-                if (movedata.animationType == AF_MOVETYPE.Rotate)
+                else if (movedata.animationType == AF_MOVETYPE.Rotate)
                 {
                     if (targetObjects.compiled == 1)
                     {
@@ -548,7 +617,7 @@ namespace UserHandleSpace
 
                     }
                 }
-                if (movedata.animationType == AF_MOVETYPE.Scale)
+                else if (movedata.animationType == AF_MOVETYPE.Scale)
                 {
                     if (targetObjects.compiled == 1)
                     {
@@ -564,74 +633,7 @@ namespace UserHandleSpace
                     }
                 }
             }
-            if (movedata.animationType == AF_MOVETYPE.Punch)
-            {
-                if (options.isExecuteForDOTween == 1)
-                {
-                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
-                     {
-                         olb.SetPunch(JsonUtility.ToJson(movedata.effectPunch));
-                     },false));
-                }
-                //if (targetObjects.compiled == 1)
-                {
-                    if (movedata.effectPunch.isEnable == 1)
-                    {
-                        if (movedata.effectPunch.translationType == AF_MOVETYPE.Translate)
-                        {
-                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOPunchPosition(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
-                        }
-                        else if (movedata.effectPunch.translationType == AF_MOVETYPE.Rotate)
-                        {
-                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOPunchRotation(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
-                        }
-                        else if (movedata.effectPunch.translationType == AF_MOVETYPE.Scale)
-                        {
-                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOPunchScale(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
-                        }
-                    }
-                       
-                }
-
-                /*if (options.isBuildDoTween == 0)
-                {
-                    olb.SetPunch(JsonUtility.ToJson(movedata.effectPunch));
-                }*/
-            }
-            if (movedata.animationType == AF_MOVETYPE.Shake)
-            {
-                if (options.isExecuteForDOTween == 1)
-                {
-                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
-                    {
-                        olb.SetShake(JsonUtility.ToJson(movedata.effectShake));
-                    }, false));
-                }
-                //if (targetObjects.compiled == 1)
-                {
-                    if (movedata.effectShake.isEnable == 1)
-                    {
-                        if (movedata.effectShake.translationType == AF_MOVETYPE.Translate)
-                        {
-                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOShakePosition(frame.duration,movedata.effectShake.strength,movedata.effectShake.vibrato,movedata.effectShake.randomness,false,movedata.effectShake.fadeOut == 1 ? true : false));
-                        }
-                        else if (movedata.effectShake.translationType == AF_MOVETYPE.Rotate)
-                        {
-                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOShakeRotation(frame.duration, movedata.effectShake.strength, movedata.effectShake.vibrato, movedata.effectShake.randomness, movedata.effectShake.fadeOut == 1 ? true : false));
-                        }
-                        else if (movedata.effectShake.translationType == AF_MOVETYPE.Scale)
-                        {
-                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOShakeScale(frame.duration, movedata.effectShake.strength, movedata.effectShake.vibrato, movedata.effectShake.randomness, movedata.effectShake.fadeOut == 1 ? true : false));
-                        }
-                    }
-
-                }
-                
-                /*if (options.isBuildDoTween == 0)
-                {
-                    olb.SetShake(JsonUtility.ToJson(movedata.effectShake));
-                }*/
-            }
+            
             return seq;
         }
 
@@ -2178,51 +2180,53 @@ namespace UserHandleSpace
             return aframe;
 
         }
-        private NativeAnimationFrame PackForCommon(NativeAnimationFrame frame, NativeAnimationFrameActor nav, AnimationRegisterOptions options, NativeAnimationFrame oldframe)
+        private NativeAnimationFrame PackForCommon(NativeAnimationFrame frame, NativeAnimationFrameActor nact, AnimationRegisterOptions options, NativeAnimationFrame oldframe)
         {
-            if (nav.targetType == AF_TARGETTYPE.VRM)
+            if (nact.targetType == AF_TARGETTYPE.VRM)
             {
                 if ((options.isBlendShapeOnly == 0) && (options.isHandOnly == 0) && (options.isTransformOnly == 0))
                 {
-                    OperateLoadedBase olb = nav.avatar.avatar.GetComponent<OperateLoadedBase>();
+                    OperateLoadedBase olb = nact.avatar.avatar.GetComponent<OperateLoadedBase>();
 
                     //---most common parts
                     AnimationTargetParts[] ikp = new AnimationTargetParts[3];
                     ikp[0] = new AnimationTargetParts();
                     ikp[0].animationType = AF_MOVETYPE.Translate;
                     ikp[0].vrmBone = ParseIKBoneType.IKParent;
-                    ikp[0].position = nav.avatar.ikparent.transform.position;
+                    ikp[0].position = nact.avatar.ikparent.transform.position;
                     //------position only: jump parts
                     ikp[0].jumpNum = olb.GetJumpNum();
                     ikp[0].jumpPower = olb.GetJumpPower();
                     ikp[1] = new AnimationTargetParts();
                     ikp[1].animationType = AF_MOVETYPE.Rotate;
                     ikp[1].vrmBone = ParseIKBoneType.IKParent;
-                    ikp[1].rotation = nav.avatar.ikparent.transform.rotation.eulerAngles;
+                    ikp[1].rotation = nact.avatar.ikparent.transform.rotation.eulerAngles;
                     ikp[2] = new AnimationTargetParts();
                     ikp[2].animationType = AF_MOVETYPE.Scale;
                     ikp[2].vrmBone = ParseIKBoneType.IKParent;
-                    ikp[2].scale = nav.avatar.avatar.transform.localScale;
+                    ikp[2].scale = nact.avatar.avatar.transform.localScale;
 
                     frame.movingData.Add(ikp[0]);
                     frame.movingData.Add(ikp[1]);
                     frame.movingData.Add(ikp[2]);
 
                     //---common effect parts
-                    if ((olb.GetPunch() != null) && olb.GetPunch().isEnable == 1)
+                    AvatarPunchEffect punch = olb.GetPunch();
+                    //if ((punch != null))
                     {
                         AnimationTargetParts pp = new AnimationTargetParts();
                         pp.animationType = AF_MOVETYPE.Punch;
                         pp.vrmBone = ParseIKBoneType.IKParent;
-                        pp.effectPunch = olb.GetPunch();
+                        pp.effectPunch = punch;
                         frame.movingData.Add(pp);
                     }
-                    if ((olb.GetShake() != null) && olb.GetShake().isEnable == 1)
+                    AvatarShakeEffect shake = olb.GetShake();
+                    //if ((shake != null))
                     {
                         AnimationTargetParts pp = new AnimationTargetParts();
                         pp.animationType = AF_MOVETYPE.Shake;
                         pp.vrmBone = ParseIKBoneType.IKParent;
-                        pp.effectShake = olb.GetShake();
+                        pp.effectShake = shake;
                         frame.movingData.Add(pp);
                     }
 
@@ -2230,7 +2234,7 @@ namespace UserHandleSpace
                     //---Transform for HumanBodyBones------------------------------------------
                     if (options.isCompileForLibrary == 1) 
                     {
-                        Animator animator = nav.avatar.avatar.GetComponent<Animator>();
+                        Animator animator = nact.avatar.avatar.GetComponent<Animator>();
                         foreach (HumanBodyBones hBone in Enum.GetValues(typeof(HumanBodyBones)))
                         {
                             if (hBone != HumanBodyBones.LastBone)
@@ -2283,7 +2287,7 @@ namespace UserHandleSpace
                     {
                         int i = sortedIndex[srti];
                         string ikname = IKBoneNames[i];
-                        Transform child = nav.avatar.ikparent.transform.Find(ikname);
+                        Transform child = nact.avatar.ikparent.transform.Find(ikname);
 
                         AnimationTargetParts[] atp = new AnimationTargetParts[3];
                         atp[0] = new AnimationTargetParts();
@@ -2308,11 +2312,11 @@ namespace UserHandleSpace
                 }
 
             }
-            else if ((nav.targetType == AF_TARGETTYPE.Text) || (nav.targetType == AF_TARGETTYPE.UImage))
+            else if ((nact.targetType == AF_TARGETTYPE.Text) || (nact.targetType == AF_TARGETTYPE.UImage))
             {
                 //---transform is RectTransform
-                RectTransform rectt = nav.avatar.avatar.GetComponent<RectTransform>();
-                OperateLoadedUImage olu = nav.avatar.avatar.GetComponent<OperateLoadedUImage>();
+                RectTransform rectt = nact.avatar.avatar.GetComponent<RectTransform>();
+                OperateLoadedUImage olu = nact.avatar.avatar.GetComponent<OperateLoadedUImage>();
                 Vector2 v2 = olu.GetPosition();
 
                 AnimationTargetParts[] ikp = new AnimationTargetParts[3];
@@ -2330,7 +2334,7 @@ namespace UserHandleSpace
                 ikp[1].rotation = rot2d;
                 frame.movingData.Add(ikp[1]);
 
-                if ((nav.avatar.type == AF_TARGETTYPE.OtherObject) || (nav.avatar.type == AF_TARGETTYPE.Image))
+                if ((nact.avatar.type == AF_TARGETTYPE.OtherObject) || (nact.avatar.type == AF_TARGETTYPE.Image))
                 {
                     ikp[2] = new AnimationTargetParts();
                     ikp[2].animationType = AF_MOVETYPE.Scale;
@@ -2339,9 +2343,9 @@ namespace UserHandleSpace
                     frame.movingData.Add(ikp[2]);
                 }
             }
-            else if (nav.targetType == AF_TARGETTYPE.Stage)
+            else if (nact.targetType == AF_TARGETTYPE.Stage)
             {
-                OperateStage os = nav.avatar.avatar.GetComponent<OperateStage>();
+                OperateStage os = nact.avatar.avatar.GetComponent<OperateStage>();
 
                 //---Here is other of VRM, RectTransform, Audio, SystemEffect
                 AnimationTargetParts[] ikp = new AnimationTargetParts[3];
@@ -2366,7 +2370,7 @@ namespace UserHandleSpace
             }
             else
             {
-                OperateLoadedBase olb = nav.avatar.avatar.GetComponent<OperateLoadedBase>();
+                OperateLoadedBase olb = nact.avatar.avatar.GetComponent<OperateLoadedBase>();
                 bool isEquip = false;
                 if (olb != null)
                 {
@@ -2381,7 +2385,7 @@ namespace UserHandleSpace
                     ikp[0] = new AnimationTargetParts();
                     ikp[0].animationType = AF_MOVETYPE.Translate;
                     ikp[0].vrmBone = ParseIKBoneType.IKParent;
-                    ikp[0].position = nav.avatar.ikparent.transform.position;
+                    ikp[0].position = nact.avatar.ikparent.transform.position;
                     //------position only: jump parts
                     ikp[0].jumpNum = olb.GetJumpNum();
                     ikp[0].jumpPower = olb.GetJumpPower();
@@ -2390,33 +2394,35 @@ namespace UserHandleSpace
                     ikp[1] = new AnimationTargetParts();
                     ikp[1].animationType = AF_MOVETYPE.Rotate;
                     ikp[1].vrmBone = ParseIKBoneType.IKParent;
-                    ikp[1].rotation = nav.avatar.ikparent.transform.rotation.eulerAngles;
+                    ikp[1].rotation = nact.avatar.ikparent.transform.rotation.eulerAngles;
                     frame.movingData.Add(ikp[1]);
 
-                    if ((nav.avatar.type == AF_TARGETTYPE.OtherObject) || (nav.avatar.type == AF_TARGETTYPE.Image))
+                    if ((nact.avatar.type == AF_TARGETTYPE.OtherObject) || (nact.avatar.type == AF_TARGETTYPE.Image))
                     {
                         ikp[2] = new AnimationTargetParts();
                         ikp[2].animationType = AF_MOVETYPE.Scale;
                         ikp[2].vrmBone = ParseIKBoneType.IKParent;
-                        ikp[2].scale = nav.avatar.avatar.transform.localScale;
+                        ikp[2].scale = nact.avatar.avatar.transform.localScale;
                         frame.movingData.Add(ikp[2]);
                     }
 
                     //---common effect parts
-                    if ((olb.GetPunch() != null) && olb.GetPunch().isEnable == 1)
+                    AvatarPunchEffect punch = olb.GetPunch();
+                    //if ((punch != null))
                     {
                         AnimationTargetParts pp = new AnimationTargetParts();
                         pp.animationType = AF_MOVETYPE.Punch;
                         pp.vrmBone = ParseIKBoneType.IKParent;
-                        pp.effectPunch = olb.GetPunch();
+                        pp.effectPunch.Copy(punch);
                         frame.movingData.Add(pp);
                     }
-                    if ((olb.GetShake() != null) && olb.GetShake().isEnable == 1)
+                    AvatarShakeEffect shake = olb.GetShake();
+                    //if ((shake != null))
                     {
                         AnimationTargetParts pp = new AnimationTargetParts();
                         pp.animationType = AF_MOVETYPE.Shake;
                         pp.vrmBone = ParseIKBoneType.IKParent;
-                        pp.effectShake = olb.GetShake();
+                        pp.effectShake.Copy(shake);
                         frame.movingData.Add(pp);
                     }
 

@@ -59,6 +59,10 @@ namespace UserHandleSpace
 
         private void Awake()
         {
+            effectPunch = new AvatarPunchEffect();
+            effectShake = new AvatarShakeEffect();
+
+
             targetType = AF_TARGETTYPE.Effect;
             EffectNames = new string[2];
             EffectNames[0] = "";

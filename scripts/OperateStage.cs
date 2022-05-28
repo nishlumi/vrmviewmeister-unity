@@ -173,6 +173,13 @@ namespace UserHandleSpace
             ReceiveStringVal(ret);
 #endif
         }
+        public async void SetDefault()
+        {
+            await SelectStageRef(0);
+            GetCameraOperation().SetDefaultSky();
+            GetSystemDirectionalLight().SetDefault();
+            GetWindzone().SetDefault();
+        }
 
         //----------------------------------------------------------------------------------------
         public List<string> ListStage()
@@ -240,6 +247,8 @@ namespace UserHandleSpace
                 {
                     ActiveStage = StageList[0];
                     ActiveStage.SetActive(true);
+                    Material mat = ActiveStage.GetComponent<Renderer>().materials[0];
+                    mat.color = Color.white;
                 }
                 else
                 {

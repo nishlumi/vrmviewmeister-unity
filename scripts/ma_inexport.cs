@@ -1466,7 +1466,15 @@ namespace UserHandleSpace
                             ola.RemoveAudio(item);
                         });
                     }
-                    
+
+                }
+                else if (cast.type == AF_TARGETTYPE.SystemEffect)
+                {
+                    cast.avatar.GetComponent<ManageSystemEffect>().SetDefault();
+                }
+                else if (cast.type == AF_TARGETTYPE.Stage)
+                {
+                    cast.avatar.GetComponent<OperateStage>().SetDefault();
                 }
                 else
                 {
@@ -1490,6 +1498,7 @@ namespace UserHandleSpace
 
             //---clear materials in the project
             currentProject.materialManager.Dispose();
+
 
 
             currentProject = null;
@@ -1772,10 +1781,11 @@ namespace UserHandleSpace
 
             if ((oap != null) && (oap.cast != null))
             {
-                nav.avatarId = oap.cast.avatarId;
+                //---from newly loaded avatar at this time 
                 nav.avatar = oap.cast.avatar;
                 nav.ikparent = oap.cast.ikparent;
-                nav.avatarTitle = oap.baseInfo.Title;                
+                nav.avatarId = oap.cast.avatarId;
+                nav.avatarTitle = oap.cast.avatarTitle;
 
             }
 
@@ -1822,6 +1832,7 @@ namespace UserHandleSpace
                     {
                         int ptype = int.TryParse(nav.ext, out ptype) ? ptype : 0;
                         ret = fmc.Body_CreateBlankCube((PrimitiveType)ptype);
+                        ret.cast.path = nav.path;
                     }
                     else
                     {
@@ -1848,7 +1859,7 @@ namespace UserHandleSpace
                     
                     break;
                 case AF_TARGETTYPE.Light:
-                    ret = fmc.Body_OpenLightObject("spot");
+                    ret = fmc.Body_OpenLightObject(nav.ext == "" ? "spot" : nav.ext);
                     break;
                 case AF_TARGETTYPE.Camera:
                     ret = fmc.Body_CreateCameraObject("");

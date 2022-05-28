@@ -44,6 +44,13 @@ public class CameraOperation1 : MonoBehaviour
     private float camera_keymove_speed;
     private float camera_keymove_speed_t;
 
+    //---for backup variables
+    private Color bkup_skyColor;
+    private CameraClearFlags bkup_clearFlags;
+    private string bkup_skyShader;
+    private List<BasicStringFloatList> bkup_skyMaterialFloat;
+    private List<BasicStringColorList> bkup_skyMaterialColor;
+
     [SerializeField]
     private Material[] skyMaterials = { };
 
@@ -66,6 +73,11 @@ public class CameraOperation1 : MonoBehaviour
         GameObject newUI = GameObject.Find("newUI").gameObject;
         if (newUI != null) newUI.SetActive(false);
 #endif
+
+        bkup_skyMaterialFloat = new List<BasicStringFloatList>();
+        bkup_skyMaterialColor = new List<BasicStringColorList>();
+
+        GetDefaultSky();
     }
 
     // Update is called once per frame
@@ -555,6 +567,28 @@ public class CameraOperation1 : MonoBehaviour
     //---------------------------------------------------------------------------------------
     // Sky mode settings
     //---------------------------------------------------------------------------------------
+    public void GetDefaultSky()
+    {
+        bkup_skyColor = GetSkyColor();
+        bkup_clearFlags = GetClearFlag();
+        bkup_skyShader = GetSkyShader();
+        bkup_skyMaterialFloat = ListSkyMaterialFloat();
+        bkup_skyMaterialColor = ListSkyMaterialColor();
+    }
+    public void SetDefaultSky()
+    {
+        SetSkyColor(bkup_skyColor);
+        SetClearFlag(bkup_clearFlags);
+        SetSkyShader(bkup_skyShader);
+        bkup_skyMaterialFloat.ForEach(item =>
+        {
+            SetSkyMaterial(item.text + "," + item.value.ToString());
+        });
+        bkup_skyMaterialColor.ForEach(item =>
+        {
+            SetSkyMaterial(item.text + ",#" + ColorUtility.ToHtmlStringRGBA(item.value));
+        });
+    }
     public void GetIndicatedPropertyFromOuter()
     {
         string ret = "{";
@@ -848,6 +882,8 @@ public class CameraOperation1 : MonoBehaviour
         ReceiveStringVal(ret);
 #endif
     }
+
+    //=====================================================================================================================
     /// <summary>
     /// Change camera from Main to User (or User to Main)
     /// </summary>

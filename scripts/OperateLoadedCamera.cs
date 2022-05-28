@@ -28,6 +28,10 @@ namespace UserHandleSpace
 
         private void Awake()
         {
+            effectPunch = new AvatarPunchEffect();
+            effectShake = new AvatarShakeEffect();
+
+
             cameraPlayFlag = UserAnimationState.Stop;
 
             targetType = AF_TARGETTYPE.Camera;

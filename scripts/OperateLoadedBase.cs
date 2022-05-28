@@ -494,7 +494,20 @@ namespace UserHandleSpace
             
         }
         //---effect: punch------------------------------------
-        public virtual void SetPunch(string param)
+        public virtual void SetPunch(AvatarPunchEffect param)
+        {
+            if (param != null)
+            {
+                effectPunch.elasiticity = param.elasiticity;
+                effectPunch.isEnable = param.isEnable;
+                effectPunch.punch.x = param.punch.x;
+                effectPunch.punch.y = param.punch.y;
+                effectPunch.punch.z = param.punch.z;
+                effectPunch.translationType = param.translationType;
+                effectPunch.vibrato = param.vibrato;
+            }
+        }
+        public virtual void SetPunchFromOuter(string param)
         {
             AvatarPunchEffect ape = JsonUtility.FromJson<AvatarPunchEffect>(param);
             if (ape != null)
@@ -508,13 +521,27 @@ namespace UserHandleSpace
         }
         public void GetPunchFromOuter()
         {
+            Debug.Log(effectPunch);
             string js = JsonUtility.ToJson(effectPunch);
+            Debug.Log(js);
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(js);
 #endif
         }
         //---effect: shake------------------------------------
-        public virtual void SetShake(string param)
+        public virtual void SetShake(AvatarShakeEffect param)
+        {
+            if (param != null)
+            {
+                effectShake.fadeOut = param.fadeOut;
+                effectShake.isEnable = param.isEnable;
+                effectShake.randomness = param.randomness;
+                effectShake.strength = param.strength;
+                effectShake.translationType = param.translationType;
+                effectShake.vibrato = param.vibrato;
+            }
+        }
+        public virtual void SetShakeFromOuter(string param)
         {
             AvatarShakeEffect ashe = JsonUtility.FromJson<AvatarShakeEffect>(param);
             if (ashe != null)

@@ -68,6 +68,10 @@ namespace UserHandleSpace
         // Start is called before the first frame update
         void Awake()
         {
+            effectPunch = new AvatarPunchEffect();
+            effectShake = new AvatarShakeEffect();
+
+
             childCount = 0;
             animationRemainTime = 0f;
             //userSharedMaterials = new Dictionary<string, Material>();

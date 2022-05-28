@@ -66,6 +66,10 @@ namespace UserHandleSpace
         // Start is called before the first frame update
         private void Awake()
         {
+            effectPunch = new AvatarPunchEffect();
+            effectShake = new AvatarShakeEffect();
+
+
             SaveDefaultTransform(true, true);
             SetActiveFace();
 
@@ -80,7 +84,7 @@ namespace UserHandleSpace
             //userSharedProperties = new MaterialProperties();
 
         }
-        void Start()
+        void Start() 
         {
             
             manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();

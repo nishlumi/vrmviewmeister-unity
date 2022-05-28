@@ -21,14 +21,26 @@ namespace UserHandleSpace
         private static extern void ReceiveFloatVal(float val);
 
 
+        private LightType bkup_lightType;
+        private Color bkup_lightColor;
+        private float bkup_lightRange;
+        private float bkup_lightIntensity;
+        private float bkup_lightSpotAngle;
+        private LightRenderMode bkup_lightRenderMode;
+
+
         private void Awake()
         {
+            effectPunch = new AvatarPunchEffect();
+            effectShake = new AvatarShakeEffect();
+
+
             targetType = AF_TARGETTYPE.Light;
         }
         // Start is called before the first frame update
         void Start()
         {
-
+            GetDefault();
         }
 
         // Update is called once per frame
@@ -79,7 +91,25 @@ namespace UserHandleSpace
             ReceiveStringVal(ret);
 #endif
         }
+        public void GetDefault()
+        {
+            bkup_lightType = GetLightType();
+            bkup_lightColor = GetColor();
+            bkup_lightRange = GetRange();
+            bkup_lightIntensity = GetPower();
+            bkup_lightSpotAngle = GetSpotAngle();
+            bkup_lightRenderMode = GetRenderMode();
 
+        }
+        public void SetDefault()
+        {
+            SetLightType(bkup_lightType);
+            SetColor(bkup_lightColor);
+            SetRange(bkup_lightRange);
+            SetPower(bkup_lightIntensity);
+            SetSpotAngle(bkup_lightSpotAngle);
+            SetRenderMode((int)bkup_lightRenderMode);
+        }
         //--------------------------------------------------------------------
         public void SetLightType ( LightType type )
         {

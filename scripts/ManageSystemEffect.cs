@@ -31,6 +31,8 @@ namespace UserHandleSpace
 
         private PostProcessVolume ppvol;
 
+        private List<string> bkuplist;
+
         private void Awake()
         {
             ppvol = PostProcessingArea.GetComponent<PostProcessVolume>();
@@ -44,12 +46,70 @@ namespace UserHandleSpace
             ManageAnimation mana = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
             //mana.FirstAddFixedAvatar(gameObject.name, gameObject, gameObject, "SystemEffect", AF_TARGETTYPE.SystemEffect);
 
-
+            bkuplist = new List<string>();
+            GetDefault();
         }
 
         // Update is called once per frame
         void Update()
         {
+
+        }
+        public void GetDefault()
+        {
+            bkuplist.Clear();
+
+            bkuplist.Add(GetEnablePostProcessing("bloom,0").ToString() + "," + GetBloomSetting("intensity,0").ToString());
+            bkuplist.Add(GetEnablePostProcessing("chromatic,0").ToString() + "," + GetChromaticSetting("intensity,0"));
+            bkuplist.Add(GetEnablePostProcessing("colorgrading,0").ToString() + ",#" + ColorUtility.ToHtmlStringRGBA(GetColorGradingSettingColor("colorfilter,0")) + "," + GetColorGradingSettingFloat("temperature,0").ToString() + "," + GetColorGradingSettingFloat("tint,0").ToString());
+            bkuplist.Add(GetEnablePostProcessing("depthoffield,0").ToString() + "," + GetDepthOfFieldSetting("aperture,0").ToString() + "," + GetDepthOfFieldSetting("focallength,0").ToString());
+            bkuplist.Add(GetEnablePostProcessing("grain,0").ToString() + "," + GetGrainSetting("intensity,0").ToString() + "," + GetGrainSetting("size,0").ToString());
+            bkuplist.Add(GetEnablePostProcessing("vignette,0").ToString() + "," + GetVignetteSetting("intensity,0").ToString());
+            bkuplist.Add(GetEnablePostProcessing("motionblur,0").ToString() + "," + GetMotionBlurSetting("shutterangle,0").ToString() + "," + GetMotionBlurSetting("samplecount,0").ToString());
+
+        }
+        public void SetDefault()
+        {
+            //---bloom
+            string[] bloom = bkuplist[0].Split(",");
+            EnablePostProcessing("bloom," + bloom[0]);
+            BloomSetting("intensity," + bloom[1]);
+
+            //---chromatic
+            string[] chromatic = bkuplist[1].Split(",");
+            EnablePostProcessing("chromatic," + chromatic[0]);
+            ChromaticSetting("intensity," + chromatic[1]);
+
+            //---colorgrading
+            string[] colorgrad = bkuplist[2].Split(",");
+            EnablePostProcessing("colorgrading," + colorgrad[0]);
+            ColorGradingSetting("colorfilter," + colorgrad[1]);
+            ColorGradingSetting("temperature," + colorgrad[2]);
+            ColorGradingSetting("tint," + colorgrad[3]);
+
+            //---depthoffield
+            string[] depthoffield = bkuplist[3].Split(",");
+            EnablePostProcessing("depthoffield," + depthoffield[0]);
+            DepthOfFieldSetting("aperture," + depthoffield[1]);
+            DepthOfFieldSetting("focallength," + depthoffield[2]);
+
+            //---grain
+            string[] grain = bkuplist[4].Split(",");
+            EnablePostProcessing("grain," + grain[0]);
+            GrainSetting("intensity," + grain[1]);
+            GrainSetting("size," + grain[2]);
+
+            //---vignette
+            string[] vignette = bkuplist[5].Split(",");
+            EnablePostProcessing("vignette," + vignette[0]);
+            VignetteSetting("intensity," + vignette[1]);
+
+            //---motionblur
+            string[] motionblur = bkuplist[6].Split(",");
+            EnablePostProcessing("motionblur," + motionblur[0]);
+            MotionBlurSetting("shutterangle," + motionblur[1]);
+            MotionBlurSetting("samplecount," + motionblur[2]);
+
 
         }
         /// <summary>

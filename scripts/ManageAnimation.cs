@@ -758,21 +758,25 @@ namespace UserHandleSpace
             List<string> ret = new List<string>();
             if (currentProject != null)
             {
-                foreach (NativeAnimationAvatar avatar in currentProject.casts)
+                if (currentProject.casts != null)
                 {
-                    AnimationAvatar aa = new AnimationAvatar();
-                    if (avatar != null)
+                    foreach (NativeAnimationAvatar avatar in currentProject.casts)
                     {
-                        aa.avatarId = avatar.avatarId;
-                        //Array.Copy(avatar.bodyHeight, aa.bodyHeight, avatar.bodyHeight.Length); Not neccessary...
-                        aa.roleName = avatar.roleName;
-                        aa.roleTitle = avatar.roleTitle;
-                        aa.type = avatar.type;
-                        string js = JsonUtility.ToJson(aa);
-                        ret.Add(js);
+                        AnimationAvatar aa = new AnimationAvatar();
+                        if (avatar != null)
+                        {
+                            aa.avatarId = avatar.avatarId;
+                            //Array.Copy(avatar.bodyHeight, aa.bodyHeight, avatar.bodyHeight.Length); Not neccessary...
+                            aa.roleName = avatar.roleName;
+                            aa.roleTitle = avatar.roleTitle;
+                            aa.type = avatar.type;
+                            string js = JsonUtility.ToJson(aa);
+                            ret.Add(js);
+                        }
+
                     }
-                    
                 }
+                
             }
 
             string jsret = string.Join("%", ret);
@@ -1045,6 +1049,45 @@ namespace UserHandleSpace
         }
 
         /// <summary>
+        /// Check wheather title is exist in casts. if exised, return next counter.
+        /// </summary>
+        /// <param name="title"></param>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public int CheckRoleTitleExist(string title, AF_TARGETTYPE type)
+        {
+            List<NativeAnimationAvatar> existCnt = currentProject.casts.FindAll(tmpnav =>
+            {
+                if (type == tmpnav.type)
+                {
+                    if (tmpnav.roleTitle.IndexOf(title) > -1)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            int ret = 0;
+            if (existCnt.Count > 0)
+            {
+                string lasttitle = existCnt.Last<NativeAnimationAvatar>().roleTitle;
+                string[] tarr = lasttitle.Split("_");
+
+                int lastintstr = 0;
+                if (int.TryParse(tarr[tarr.Length-1],out lastintstr))
+                {
+                    ret = lastintstr + 1;
+                }
+                else
+                {
+                    ret = existCnt.Count + 1;
+                }
+            }
+            return ret;
+
+        }
+
+        /// <summary>
         /// Create An empty cast and timeline
         /// </summary>
         /// <param name="param">CSV-String: [0] - cast type(AF_TARGETTYPE), [1] - cast title</param>
@@ -1137,7 +1180,20 @@ namespace UserHandleSpace
             nav.ikparent = ikparent;
             nav.type = type;
             nav.roleName = RoleName + "_" + DateTime.Now.ToFileTime().ToString();  //"(" + GetCountTypeOf(type) + ")";
-            nav.roleTitle = nav.roleName;
+
+            
+            int existCnt = CheckRoleTitleExist(RoleName, type);
+
+
+            if (existCnt == 0)
+            {
+                nav.roleTitle = RoleName;
+            }
+            else
+            {
+                nav.roleTitle = RoleName + "_" + existCnt.ToString();
+            }
+            
 
             //---for timeline.characters
             NativeAnimationFrameActor naf = new NativeAnimationFrameActor();
@@ -1201,7 +1257,7 @@ namespace UserHandleSpace
             else
             {
                 string convertTitle = rtitle;
-                if (nav != null)
+                /*if (nav != null)
                 { //---role is exist, and not allocate cast
                     string characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
                     char[] Charsarr = new char[3];
@@ -1213,14 +1269,25 @@ namespace UserHandleSpace
                     }
 
                     convertTitle += "_" + new String(Charsarr);
-                }
+                }*/
+                
+                int existCnt = CheckRoleTitleExist(rtitle, type);
+
                 nav = new NativeAnimationAvatar();
                 nav.avatarId = id;
                 nav.avatar = avatar;
                 nav.ikparent = ikparent;
                 nav.type = type;
                 nav.roleName = RoleName + "_" + DateTime.Now.ToFileTime().ToString();  //"(" + GetCountTypeOf(type) + ")";
-                nav.roleTitle = convertTitle; // nav.roleName;
+                if (existCnt == 0)
+                {
+                    nav.roleTitle = convertTitle; // nav.roleName;
+                }
+                else
+                {
+                    nav.roleTitle = convertTitle + "_" + existCnt.ToString();
+                }
+                
             }
 
 
@@ -1299,10 +1366,10 @@ namespace UserHandleSpace
 
             NativeAnimationAvatar nav = currentProject.casts.Find(match =>
             {
-                if ((match.path == path) && (match.type == type)) return true;
+                if ((match.path == path) && (match.type == type) && (match.avatar == null)) return true;
                 return false;
             });
-            if ((nav != null) && (nav.avatar == null))
+            if ((nav != null))
             { //---already this time the each object exists in the project (And unallocated)
                 nav.avatarId = id;
                 nav.avatar = avatar;
@@ -1321,7 +1388,17 @@ namespace UserHandleSpace
                 nav.ikparent = ikparent;
                 nav.type = type;
                 nav.roleName = RoleName + "_" + DateTime.Now.ToFileTime().ToString();  //"(" + GetCountTypeOf(type) + ")";
-                nav.roleTitle = nav.roleName;
+
+                
+                int existCnt = CheckRoleTitleExist(path, type);
+                if (existCnt == 0)
+                {
+                    nav.roleTitle = path;
+                }
+                else
+                {
+                    nav.roleTitle = path + "_" + existCnt.ToString();
+                }
                 nav.path = path;
             }
 
