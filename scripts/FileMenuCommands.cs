@@ -1358,10 +1358,10 @@ namespace UserVRMSpace
                 opt.AnimationType = AnimationType.Legacy;
             }
             //Debug.Log(uri);
-            string[] prm = uri.Split(',');
+            string[] prm = uri.Split('\t');
             string url = prm[0];
             string filename = prm[1];
-            string ext = prm[2];
+            string ext = TriLibCore.Utils.FileUtils.GetFileExtension(filename, false);
             //Debug.Log("filename=[" + filename + "]");
             //Debug.Log("ext=[" + ext + "]");
             _loadedObjectFileName = filename;
