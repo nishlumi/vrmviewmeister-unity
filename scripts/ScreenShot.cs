@@ -16,6 +16,18 @@ public class ScreenShot : MonoBehaviour
     public int ThumbnailWidth;
     public int ThumbnailHeight;
 
+    public void SetCameraForScreenshot(string param)
+    {
+        GameObject camobj = GameObject.Find(param);
+        if (camobj != null)
+        {
+            Camera cam = camobj.GetComponent<Camera>();
+            if (cam != null)
+            {
+                Cam3DBottom = cam;
+            }
+        }
+    }
     public void CaptureScreen(int isTransparent)
     {
         StartCoroutine(_CaptureScreenBody(isTransparent));

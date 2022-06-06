@@ -323,42 +323,73 @@ namespace UserHandleSpace
             //2022.05.17 entrust the management from CCDIK
             if (PartsName == "head")
             {
-                Transform neck = animator.GetBoneTransform(HumanBodyBones.Neck);
-                seq.Join(neck.DORotate(transform.rotation.eulerAngles, 0.1f));
-                //neck.DORotateQuaternion(Quaternion.LookRotation(transform.localPosition),0.1f);
+                if ((this.transform.position != oldPosition) || (this.transform.rotation != oldRotation))
+                {
+                    Transform neck = animator.GetBoneTransform(HumanBodyBones.Neck);
+                    seq.Join(neck.DORotate(transform.rotation.eulerAngles, 0.1f));
+                    //neck.DORotateQuaternion(Quaternion.LookRotation(transform.localPosition),0.1f);
+                }
+
             }
             if (PartsName == "aim")
             {
-                Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
-                GameObject ikhead = transform.parent.Find("Head").gameObject;
+                if ((this.transform.position != oldPosition) || (this.transform.rotation != oldRotation))
+                {
+                    Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
+                    GameObject ikhead = transform.parent.Find("Head").gameObject;
 
-                ikhead.transform.DOMove(head.transform.position, 0.1f);
+                    //seq.Join(ikhead.transform.DOMoveX(head.transform.position.x, 0.1f));
+                    //seq.Join(ikhead.transform.DOMoveY(head.transform.position.y+0.1f, 0.1f));
+                    //seq.Join(ikhead.transform.DOMoveZ(head.transform.position.z, 0.1f));
+
+                    Transform leftshoulder = animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
+                    Transform rightshoulder = animator.GetBoneTransform(HumanBodyBones.RightShoulder);
+
+                    UserGroundOperation ugo = transform.parent.GetComponent<UserGroundOperation>();
+                    Transform ikleft = ugo.LeftShoulderIK;
+                    Transform ikright = ugo.RightShoulderIK;
+
+                    /*
+                    seq.Join(ikleft.DOMoveX(leftshoulder.transform.position.x+0.09f, 0.1f));
+                    seq.Join(ikleft.DOMoveY(leftshoulder.transform.position.y, 0.1f));
+                    seq.Join(ikleft.DOMoveZ(leftshoulder.transform.position.z, 0.1f));
+                    seq.Join(ikright.DOMoveX(rightshoulder.transform.position.x-0.09f, 0.1f));
+                    seq.Join(ikright.DOMoveY(rightshoulder.transform.position.y, 0.1f));
+                    seq.Join(ikright.DOMoveZ(rightshoulder.transform.position.z, 0.1f));
+                    */
+                }
+
+
             }
             if (PartsName == "chest")
             {
-                Transform leftshoulder = animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
-                Transform rightshoulder = animator.GetBoneTransform(HumanBodyBones.RightShoulder);
-
-                GameObject ikleft = transform.parent.Find("LeftShoulder").gameObject;
-                GameObject ikright = transform.parent.Find("RightShoulder").gameObject;
-
-                ikleft.transform.DOMoveX(leftshoulder.transform.position.x+0.09f, 0.1f);
-                ikleft.transform.DOMoveY(leftshoulder.transform.position.y, 0.1f);
-                ikleft.transform.DOMoveZ(leftshoulder.transform.position.z, 0.1f);
-                ikright.transform.DOMoveX(rightshoulder.transform.position.x-0.09f, 0.1f);
-                ikright.transform.DOMoveY(rightshoulder.transform.position.y, 0.1f);
-                ikright.transform.DOMoveZ(rightshoulder.transform.position.z, 0.1f);
 
             }
             if (PartsName == "leftshoulder")
             {
-                Transform leftshoulder = animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
-                seq.Join(leftshoulder.DORotate(transform.rotation.eulerAngles, 0.1f));
+                if ((this.transform.position != oldPosition) || (this.transform.rotation != oldRotation))
+                {
+                    Transform leftshoulder = animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
+                    seq.Join(leftshoulder.DORotate(transform.rotation.eulerAngles, 0.1f));
+                    //leftshoulder.rotation = Quaternion.Euler(leftshoulder.rotation.eulerAngles.x, leftshoulder.rotation.eulerAngles.y, transform.rotation.eulerAngles.z);
+                    //leftshoulder.LookAt(transform);
+                    //transform.position = leftshoulder.position;
+                    //transform.localRotation = leftshoulder.localRotation;
+                }
+
             }
             if (PartsName == "rightshoulder")
             {
-                Transform rightshoulder = animator.GetBoneTransform(HumanBodyBones.RightShoulder);
-                seq.Join(rightshoulder.DORotate(transform.rotation.eulerAngles, 0.1f));
+                if ((this.transform.position != oldPosition) || (this.transform.rotation != oldRotation)) 
+                {
+                    Transform rightshoulder = animator.GetBoneTransform(HumanBodyBones.RightShoulder);
+                    seq.Join(rightshoulder.DORotate(transform.rotation.eulerAngles, 0.1f));
+                    //rightshoulder.rotation = Quaternion.Euler(rightshoulder.rotation.eulerAngles.x, rightshoulder.rotation.eulerAngles.y, transform.rotation.eulerAngles.z);
+                    //rightshoulder.LookAt(transform);
+                    //transform.position = rightshoulder.position;
+                    //transform.localRotation = rightshoulder.localRotation;
+                }
+
             }
 
             oldPosition = this.transform.localPosition;

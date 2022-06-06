@@ -17,6 +17,9 @@ namespace UserHandleSpace
         private static extern void ChangeTransformOnUpdate(string val);
 
         public GameObject relatedAvatar;
+        private Animator animator;
+        public Transform LeftShoulderIK;
+        public Transform RightShoulderIK;
 
         private Vector3 oldPosition;
         private Quaternion oldRotation;
@@ -77,7 +80,19 @@ namespace UserHandleSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
                     if (!animarea.IsPlaying)  ChangeTransformOnUpdate(JsonUtility.ToJson(bti));
 #endif
-
+                    //---get child
+                    /*if (LeftShoulderIK != null)
+                    {
+                        Transform animtrans = animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
+                        LeftShoulderIK.position = animtrans.position;
+                        LeftShoulderIK.rotation = animtrans.rotation;
+                    }
+                    if (RightShoulderIK != null)
+                    {
+                        Transform animtrans = animator.GetBoneTransform(HumanBodyBones.RightShoulder);
+                        RightShoulderIK.position = animtrans.position;
+                        RightShoulderIK.rotation = animtrans.rotation;
+                    }*/
                 }
             }
             oldPosition = transform.position;
@@ -94,7 +109,11 @@ namespace UserHandleSpace
             if (ispos) transform.position = defaultPosition;
             if (isrotate) transform.rotation = defaultRotation;
         }
-
+        public void SetRelatedAvatar(GameObject avatar)
+        {
+            relatedAvatar = avatar;
+            animator = avatar.GetComponent<Animator>();
+        }
     }
 
 }

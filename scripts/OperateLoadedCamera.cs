@@ -25,6 +25,8 @@ namespace UserHandleSpace
         public Vector2 RenderSize;
         protected RenderTexture availableRenderTexture;
 
+        ManageAnimation manim;
+
 
         private void Awake()
         {
@@ -41,6 +43,7 @@ namespace UserHandleSpace
         // Start is called before the first frame update
         void Start()
         {
+            manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
         }
 
         // Update is called once per frame
@@ -79,14 +82,32 @@ namespace UserHandleSpace
 
         public void PreviewCamera()
         {
+            manim.currentProject.casts.ForEach(action =>
+            {
+                Camera c = action.avatar.GetComponent<Camera>();
+                if (c != null)
+                {
+                    c.enabled = false;
+                }
+            });
             Camera cam = gameObject.GetComponent<Camera>();
             cam.enabled = true;
+            ScreenShot ss = Camera.main.GetComponent<ScreenShot>();
+            if (ss != null)
+            {
+                ss.SetCameraForScreenshot(gameObject.name);
+            }
         }
         public void EndPreview()
         {
             Camera cam = gameObject.GetComponent<Camera>();
             cam.enabled = false;
 
+            ScreenShot ss = Camera.main.GetComponent<ScreenShot>();
+            if (ss != null)
+            {
+                ss.SetCameraForScreenshot("FrontMainCamera");
+            }
         }
         public UserAnimationState GetCameraPlaying(int is_contacthtml = 1)
         {

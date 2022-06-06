@@ -389,6 +389,8 @@ namespace UserHandleSpace
 
             if (targetObjects.targetType == AF_TARGETTYPE.VRM)
             {
+                Transform[] bts = naa.ikparent.GetComponentsInChildren<Transform>();
+
                 int index = (int)movedata.vrmBone;
 
                 if (movedata.vrmBone == ParseIKBoneType.IKParent)
@@ -479,8 +481,17 @@ namespace UserHandleSpace
 
                     { //---Transform for IK
                         if ((movedata.vrmBone >= ParseIKBoneType.EyeViewHandle) && (movedata.vrmBone <= ParseIKBoneType.RightLeg))
-                        { 
-                            GameObject realObject = naa.ikparent.transform.Find(IKBoneNames[index]).gameObject;
+                        {
+                            GameObject realObject = null;// naa.ikparent.transform.Find(IKBoneNames[index]).gameObject;
+                            foreach (Transform bt in bts)
+                            {
+                                if (bt.name == IKBoneNames[index])
+                                {
+                                    realObject = bt.gameObject;
+                                    break;
+                                }
+                            }
+
                             //---Position (absorb a distance of height)
                             if (movedata.animationType == AF_MOVETYPE.Translate)
                             {
@@ -2283,11 +2294,20 @@ namespace UserHandleSpace
                         
                     };
 
+                    Transform[] bts = nact.avatar.ikparent.GetComponentsInChildren<Transform>();
                     for (int srti = 1; srti < sortedIndex.Length; srti++)
                     {
                         int i = sortedIndex[srti];
                         string ikname = IKBoneNames[i];
-                        Transform child = nact.avatar.ikparent.transform.Find(ikname);
+                        Transform child = null;// nact.avatar.ikparent.transform.Find(ikname);
+                        foreach (Transform bt in bts)
+                        {
+                            if (bt.name == ikname)
+                            {
+                                child = bt;
+                                break;
+                            }
+                        }
 
                         AnimationTargetParts[] atp = new AnimationTargetParts[3];
                         atp[0] = new AnimationTargetParts();

@@ -665,10 +665,13 @@ namespace UserHandleSpace
             }
             const string TARGETLAYER = "Handle";
             ikparent.layer = LayerMask.NameToLayer(TARGETLAYER);
-            int cnt = ikparent.transform.childCount;
+
+            Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
+            int cnt = bts.Length; // ikparent.transform.childCount;
             for (int i = 0; i < cnt; i++)
             {
-                GameObject child = ikparent.transform.GetChild(i).gameObject;
+                GameObject child = null; // ikparent.transform.GetChild(i).gameObject;
+                child = bts[i].gameObject;
                 child.layer = LayerMask.NameToLayer(TARGETLAYER);
             }
 
@@ -732,10 +735,12 @@ namespace UserHandleSpace
                 ikparent.layer = LayerMask.NameToLayer(TARGETLAYER);
             }
 
-            int cnt = ikparent.transform.childCount;
+            Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
+            int cnt = bts.Length; //ikparent.transform.childCount;
             for (int i = 0; i < cnt; i++)
             {
-                GameObject child = ikparent.transform.GetChild(i).gameObject;
+                GameObject child = null;
+                child = bts[i].gameObject; // ikparent.transform.GetChild(i).gameObject;
                 if (child.name.ToLower() != "dlightik")
                 {
                     child.layer = LayerMask.NameToLayer(TARGETLAYER);
@@ -751,10 +756,14 @@ namespace UserHandleSpace
         /// <param name="type"></param>
         public void EnableTransactionHandle(GameObject avatar, GameObject ikparent, AF_TARGETTYPE type = AF_TARGETTYPE.Unknown)
         {
-            int cnt = gameObject.transform.childCount;
+            Transform[] bts = gameObject.GetComponentsInChildren<Transform>();
+
+            int cnt = bts.Length; // gameObject.transform.childCount;
             for (int i = 0; i < cnt; i++)
             {
-                GameObject child = gameObject.transform.GetChild(i).gameObject;
+                GameObject child = null;// gameObject.transform.GetChild(i).gameObject;
+                child = bts[i].gameObject;
+
                 DisableHandle_Avatar(child);
             }
             //---check equipping item
@@ -941,12 +950,18 @@ namespace UserHandleSpace
         }
         public void ResetAllHandle()
         {
+            UserHandleOperation[] bts = ActiveIKHandle.GetComponentsInChildren<UserHandleOperation>();
+            foreach (UserHandleOperation bt in bts)
+            {
+                bt.LoadDefaultTransform();
+            }
+            /*
             for (int i = 0; i < ActiveIKHandle.transform.childCount; i++)
             {
                 GameObject ch = ActiveIKHandle.transform.GetChild(i).gameObject;
                 ch.GetComponent<UserHandleOperation>().LoadDefaultTransform();
             }
-
+            */
         }
         public void ResetParentHandlePosition()
         {

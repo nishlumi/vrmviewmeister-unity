@@ -457,13 +457,15 @@ namespace UserVRMSpace
 
         void SetupBipedIK(GameObject ikhandles, Animator animator, BipedIK vik, CCDIK cik, Vector3 bnd)
         {
-            int cnt = ikhandles.transform.childCount;
+            Transform[] bts = ikhandles.GetComponentsInChildren<Transform>();
+
+            int cnt = bts.Length; // ikhandles.transform.childCount;
             Transform[] setup_spinetrans = { animator.GetBoneTransform(HumanBodyBones.Spine), animator.GetBoneTransform(HumanBodyBones.Chest) };
             vik.solvers.spine.SetChain(setup_spinetrans, animator.gameObject.transform);
 
             for (int i = 0; i < cnt; i++)
             {
-                GameObject hans = ikhandles.transform.GetChild(i).gameObject;
+                GameObject hans = bts[i].gameObject; // ikhandles.transform.GetChild(i).gameObject;
                 if (hans.name.IndexOf("Head") > -1)
                 {
                     Transform necktrans = animator.GetBoneTransform(HumanBodyBones.Neck);

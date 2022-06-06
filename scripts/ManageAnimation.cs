@@ -1805,8 +1805,9 @@ namespace UserHandleSpace
         /// <param name="vrmBone">Body parts to calculate</param>
         /// <param name="pelvisCondition">current loaded avatar's pelvis position</param>
         /// <returns>Calculated value</returns>
-        public Vector3 CalculateReposition(GameObject avatar, GameObject ikparent, AF_TARGETTYPE type, float[] bounds, Vector3 lst, ParseIKBoneType vrmBone, Vector3 pelvisCondition)
+        /*public Vector3 CalculateReposition(GameObject avatar, GameObject ikparent, AF_TARGETTYPE type, float[] bounds, Vector3 lst, ParseIKBoneType vrmBone, Vector3 pelvisCondition)
         { //---no use. futurely delete.
+            
             //---current avatar body information
             //GameObject body = avatar.GetComponent<ManageAvatarTransform>().GetBodyMesh();
             Bounds bnd = avatar.GetComponent<OperateLoadedVRM>().GetTPoseBodyInfo(); //body.GetComponent<SkinnedMeshRenderer>().bounds;
@@ -1829,7 +1830,7 @@ namespace UserHandleSpace
                 currentTargetExtents.z = bnd.extents.z * 2f;
 
             }
-
+            Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
             Transform boneTran = ikparent.transform.Find(IKBoneNames[(int)vrmBone]);
 
             Vector3 fnl;
@@ -1851,7 +1852,7 @@ namespace UserHandleSpace
 
             return new Vector3(fnl.x, fnl.y, lst.z);
             
-        }
+        }*/
 
         /// <summary>
         /// To calculate difference of height of VRM.

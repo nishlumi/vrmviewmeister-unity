@@ -292,6 +292,8 @@ namespace UserHandleSpace
         }
         public List<Vector3> ParseBodyInfoList(Bounds bnd, GameObject ikparent)
         {
+            Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
+
             List<Vector3> ret = new List<Vector3>();
             //---height
             //ret.Add(new Vector3( bnd.extents.x * 2f, bnd.extents.y * 2f, bnd.extents.z * 2f ));
@@ -308,7 +310,16 @@ namespace UserHandleSpace
                 else
                 {
                     //Debug.Log(name);
-                    GameObject child = ikparent.transform.Find(name).gameObject;
+                    GameObject child = null; // ikparent.transform.Find(name).gameObject;
+                    foreach (Transform bt in bts)
+                    {
+                        if (bt.name == name)
+                        {
+                            child = bt.gameObject;
+                            break;
+                        }
+                    }
+
                     if (child == null)
                     {
                         ret.Add(Vector3.zero);
@@ -327,8 +338,10 @@ namespace UserHandleSpace
         }
         public List<AvatarSingleIKTransform> GetIKTransformAll()
         {
+
             List<AvatarSingleIKTransform> ret = new List<AvatarSingleIKTransform>();
             OperateLoadedVRM ovrm = gameObject.GetComponent<OperateLoadedVRM>();
+            Transform[] bts = ovrm.relatedHandleParent.GetComponentsInChildren<Transform>();
 
             for (int i = 0; i < IKbones.Length; i++)
             {
@@ -341,7 +354,16 @@ namespace UserHandleSpace
                 }
                 else
                 {
-                    GameObject child = ovrm.relatedHandleParent.transform.Find(IKbones[i]).gameObject;
+                    GameObject child = null;// ovrm.relatedHandleParent.transform.Find(IKbones[i]).gameObject;
+                    foreach (Transform bt in bts)
+                    {
+                        if (bt.name == IKbones[i])
+                        {
+                            child = bt.gameObject;
+                            break;
+                        }
+                    }
+
                     if (child != null)
                     {
                         //ret.Add(new Vector3(  child.transform.localPosition.x, child.transform.localPosition.y, child.transform.localPosition.z ));
@@ -397,6 +419,8 @@ namespace UserHandleSpace
                     "EyeViewHandle"
                 };
                 sortedBones = IKbones;
+                Transform[] bts = ovrm.relatedHandleParent.GetComponentsInChildren<Transform>();
+
                 for (int i = 0; i < sortedBones.Length; i++)
                 {
                     if (i == 0)
@@ -414,7 +438,16 @@ namespace UserHandleSpace
                         });
                         if (asit != null)
                         {
-                            GameObject child = ovrm.relatedHandleParent.transform.Find(asit.ikname).gameObject;
+                            GameObject child = null; // ovrm.relatedHandleParent.transform.Find(asit.ikname).gameObject;
+                            foreach (Transform bt in bts)
+                            {
+                                if (bt.name == asit.ikname)
+                                {
+                                    child = bt.gameObject;
+                                    break;
+                                }
+                            }
+
                             if (child != null)
                             {
                                 child.transform.localPosition = asit.position; //new Vector3(aai.list[i].x, aai.list[i].y, aai.list[i].z);
@@ -448,9 +481,25 @@ namespace UserHandleSpace
             if (ikpos == -1) return;
 
             OperateLoadedVRM ovrm = gameObject.GetComponent<OperateLoadedVRM>();
+            Transform[] bts = ovrm.relatedHandleParent.GetComponentsInChildren<Transform>();
+
             GameObject parts = null;
-            if (ikpos == 0) parts = ovrm.relatedHandleParent;
-            else parts = ovrm.relatedHandleParent.transform.Find(IKbones[ikpos]).gameObject;
+            if (ikpos == 0)
+            {
+                parts = ovrm.relatedHandleParent;
+            }
+            else
+            {
+                //parts = ovrm.relatedHandleParent.transform.Find(IKbones[ikpos]).gameObject;
+                foreach (Transform bt in bts)
+                {
+                    if (bt.name == IKbones[ikpos])
+                    {
+                        parts = bt.gameObject;
+                        break;
+                    }
+                }
+            }
 
             if (parts == null) return;
 
@@ -505,11 +554,21 @@ namespace UserHandleSpace
                 ret.Add(tran.position);
                 string name = Enum.GetName(typeof(HumanBodyBones), value);
             }*/
+            Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
 
             ret.Add(ikparent.transform.position);  //---IKHandleWorld
             for (int i = 1; i < IKbones.Length; i++)
             {
-                ret.Add(ikparent.transform.Find(IKbones[i]).transform.localPosition);
+                GameObject child = null; //ikparent.transform.Find(IKbones[i])
+                foreach (Transform bt in bts)
+                {
+                    if (bt.name == IKbones[i])
+                    {
+                        child = bt.gameObject;
+                        break;
+                    }
+                }
+                ret.Add(child.transform.localPosition);
             }
 
 
@@ -527,12 +586,21 @@ namespace UserHandleSpace
                 ret.Add(tran.rotation);
                 string name = Enum.GetName(typeof(HumanBodyBones), value);
             }*/
-
+            Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
 
             ret.Add(ikparent.transform.rotation.eulerAngles);  //---IKHandleWorld
             for (int i = 1; i < IKbones.Length; i++)
             {
-                ret.Add(ikparent.transform.Find(IKbones[i]).transform.rotation.eulerAngles);
+                GameObject child = null; //ikparent.transform.Find(IKbones[i])
+                foreach (Transform bt in bts)
+                {
+                    if (bt.name == IKbones[i])
+                    {
+                        child = bt.gameObject;
+                        break;
+                    }
+                }
+                ret.Add(child.transform.rotation.eulerAngles);
             }
 
             /*VRIK vik = ActiveAvatar.GetComponent<VRIK>();
@@ -739,12 +807,20 @@ namespace UserHandleSpace
                 currentTargetExtents.z = bnd.extents.z * 2f;
 
             }
-        
-            
+            Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
+
 
             for (int i = 1; i < lst.Count; i++)
             {
-                Transform boneTran = ikparent.transform.Find(IKbones[i]);
+                Transform boneTran = null;// ikparent.transform.Find(IKbones[i]);
+                foreach (Transform bt in bts)
+                {
+                    if (bt.name == IKbones[i])
+                    {
+                        boneTran = bt;
+                        break;
+                    }
+                }
 
                 //---Absorb the difference in height.
                 Vector3 fnl;
@@ -770,11 +846,21 @@ namespace UserHandleSpace
         }
         private void RestoreAllRotation(GameObject ikparent, string type, float[] bounds, List<Vector3> lst)
         {
+            Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
             ikparent.transform.rotation = Quaternion.Euler(lst[0]);
 
             for (int i = 1; i < lst.Count; i++)
             {
-                ikparent.transform.Find(IKbones[i]).transform.localRotation = Quaternion.Euler(lst[i]);
+                Transform child = null; //ikparent.transform.Find(IKbones[i])
+                foreach (Transform bt in bts)
+                {
+                    if (bt.name == IKbones[i])
+                    {
+                        child = bt;
+                        break;
+                    }
+                }
+                child.localRotation = Quaternion.Euler(lst[i]);
             }
         }
         private void RestoreHand(GameObject avatar, string type, List<float> lst)
@@ -891,9 +977,20 @@ namespace UserHandleSpace
 
             seq.Append(ikparent.transform.DOMove(lst[0], duration));
 
+            Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
+
             for (int i = 1; i < lst.Count; i++)
             {
-                Transform boneTran = ikparent.transform.Find(IKbones[i]);
+                Transform boneTran = null;// ikparent.transform.Find(IKbones[i]);
+                foreach (Transform bt in bts)
+                {
+                    if (bt.name == IKbones[i])
+                    {
+                        boneTran = bt;
+                        break;
+                    }
+                }
+
                 Vector3 defPos = boneTran.GetComponent<UserHandleOperation>().defaultPosition;
 
                 //---Absorb the difference in height.
@@ -954,11 +1051,19 @@ namespace UserHandleSpace
 
             seq.Append(ikparent.transform.DOMove(lst[0], duration));
 
+            Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
             for (int i = 1; i < lst.Count; i++)
             {
-                Transform boneTran = ikparent.transform.Find(IKbones[i]);
+                Transform boneTran = null;// ikparent.transform.Find(IKbones[i]);
+                foreach (Transform bt in bts)
+                {
+                    if (bt.name == IKbones[i])
+                    {
+                        boneTran = bt;
+                        break;
+                    }
+                }
 
-                
                 Vector3 fnl;
                 
                 //---Absorb the difference in height.
@@ -1000,6 +1105,9 @@ namespace UserHandleSpace
                 (int)ParseIKBoneType.LeftLeg, (int)ParseIKBoneType.RightLeg,
                 (int)ParseIKBoneType.LeftLowerLeg, (int)ParseIKBoneType.RightLowerLeg
             };
+
+            Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
+
             for (int srti = sortedIndex.Length-1; srti >= 0; srti--)
             {
                 int i = sortedIndex[srti];
@@ -1051,7 +1159,15 @@ namespace UserHandleSpace
                 else
                 {
 
-                    Transform boneTran = ikparent.transform.Find(IKbones[i]);
+                    Transform boneTran = null;// ikparent.transform.Find(IKbones[i]);
+                    foreach (Transform bt in bts)
+                    {
+                        if (bt.name == IKbones[i])
+                        {
+                            boneTran = bt;
+                            break;
+                        }
+                    }
 
                     Vector3 fnlpos = Vector3.zero;
 
@@ -1076,12 +1192,23 @@ namespace UserHandleSpace
         }
         private Sequence AnimateAllRotation(Sequence seq, GameObject ikparent, string type, float[] bounds, List<Vector3> lst, float duration)
         {
+            Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
+
             //Sequence seq = DOTween.Sequence();
             seq.Append(ikparent.transform.DORotate(lst[0],duration));
 
             for (int i = 1; i < lst.Count; i++)
             {
-                seq.Join(ikparent.transform.Find(IKbones[i]).transform.DOLocalRotate(lst[i], duration));
+                Transform child = null; //ikparent.transform.Find(IKbones[i])
+                foreach (Transform bt in bts)
+                {
+                    if (bt.name == IKbones[i])
+                    {
+                        child = bt;
+                        break;
+                    }
+                }
+                seq.Join(child.DOLocalRotate(lst[i], duration));
             }
             return seq;
         }
