@@ -2399,6 +2399,14 @@ namespace UserHandleSpace
         /// <param name="param">JSON-string for AnimationRegisterOptions</param>
         public void SetEase(string param)
         {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
             AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
 
             NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
@@ -2455,6 +2463,14 @@ namespace UserHandleSpace
         /// <param name="param">JSON-string for AnimationRegisterOptions</param>
         public void SetDuration(string param)
         {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
             AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
 
             NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
@@ -2467,6 +2483,14 @@ namespace UserHandleSpace
         /// <param name="param">JSON-string for AnimationRegisterOptions</param>
         public void ResetAutoDuration(string param)
         {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
             AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
 
             NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
