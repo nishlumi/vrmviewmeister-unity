@@ -480,6 +480,34 @@ namespace UserHandleSpace
                     }
 
                     { //---Transform for IK
+
+                        //---for blendable: get information of previous frame
+                        /*
+                        int beforeIndex = targetObjects.frames.FindIndex(match =>
+                        {
+                            if (match.index == frame.index) return true;
+                            return false;
+                        });
+                        NativeAnimationFrame beforeFrame = null;
+                        AnimationTargetParts beforeMoveData = null;
+                        if (beforeIndex > -1)
+                        {
+                            beforeFrame = targetObjects.frames[beforeIndex];
+                            beforeMoveData = beforeFrame.movingData.Find(match =>
+                            {
+                                if ((match.vrmBone == movedata.vrmBone) &&
+                                    (match.animationType == movedata.animationType)
+                                ) {
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            });
+                        }
+                        */
+                        
                         if ((movedata.vrmBone >= ParseIKBoneType.EyeViewHandle) && (movedata.vrmBone <= ParseIKBoneType.RightLeg))
                         {
                             GameObject realObject = null;// naa.ikparent.transform.Find(IKBoneNames[index]).gameObject;
@@ -509,15 +537,44 @@ namespace UserHandleSpace
                                     frame.useBodyInfo == UseBodyInfoType.TimelineCharacter ? targetObjects.bodyInfoList[vbone] : curList[vbone],
                                     movedata.position, movedata.vrmBone
                                 );
-                                if (options.isExecuteForDOTween == 1) seq.Join(realObject.transform.DOLocalMove(repos, frame.duration));
-                                else realObject.transform.localPosition = repos;
+
+                                //---for blendable
+                                //if (beforeIndex == -1)
+                                //{
+                                    if (options.isExecuteForDOTween == 1) seq.Join(realObject.transform.DOLocalMove(repos, frame.duration));
+                                    else realObject.transform.localPosition = repos;
+                                //}
+                                /*else
+                                {
+                                    Vector3 beforeRepos = CalculateDifferenceInHeight(
+                                        curList[vbone],
+                                        beforeFrame.useBodyInfo == UseBodyInfoType.TimelineCharacter ? targetObjects.bodyInfoList[vbone] : curList[vbone],
+                                        beforeMoveData.position, beforeMoveData.vrmBone
+                                    );
+                                    Vector3 blendRepos = repos - beforeRepos;
+                                    if (options.isExecuteForDOTween == 1) seq.Join(realObject.transform.DOBlendableLocalMoveBy(blendRepos, frame.duration));
+                                    else realObject.transform.localPosition = repos;
+                                }*/
+                                
+                                
+                                
                             }
 
                             //---Rotation
                             if (movedata.animationType == AF_MOVETYPE.Rotate)
                             {
-                                if (options.isExecuteForDOTween == 1) seq.Join(realObject.transform.DOLocalRotate(movedata.rotation, frame.duration));
-                                else realObject.transform.rotation = Quaternion.Euler(movedata.rotation);
+                                //if (beforeIndex == -1)
+                                //{
+                                    if (options.isExecuteForDOTween == 1) seq.Join(realObject.transform.DOLocalRotate(movedata.rotation, frame.duration));
+                                    else realObject.transform.rotation = Quaternion.Euler(movedata.rotation);
+                                //}
+                                /*else
+                                {
+                                    if (options.isExecuteForDOTween == 1) seq.Join(realObject.transform.DOBlendableLocalRotateBy(movedata.rotation, frame.duration));
+                                    else realObject.transform.rotation = Quaternion.Euler(movedata.rotation);
+                                }*/
+                                    
+                                    
                             }
                         }
 

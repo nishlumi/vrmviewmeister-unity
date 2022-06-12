@@ -681,21 +681,7 @@ namespace UserHandleSpace
 
             if (param.ToLower() == "vrm")
             {
-                /*
-                OperateLoadedVRM olvrm = transform.gameObject.GetComponent<OperateLoadedVRM>();
-                ikparent = olvrm.relatedHandleParent;
-
-                //maa.CalculateReposition(gameObject, ikparent, AF_TARGETTYPE.VRM, )
-                Bounds bndReal = olvrm.GetTPoseBodyInfo();
-
-                GameObject part = GetBodyMesh();
-                if (part != null)
-                {
-                    //atran.bodyHeight = ParseBodyInfo(bndReal);
-                    
-                    atran.bodyInfoList = olvrm.GetTPoseBodyList(true);  //ParseBodyInfoList(bndReal, ikparent);
-                }
-                */
+                
                 atran.sampleavatar = transform.gameObject.GetComponent<VRMMeta>().Meta.Title;
 
             }
@@ -731,37 +717,36 @@ namespace UserHandleSpace
             savedActor = actor.SCopy();
 
             NativeAnimationFrame fr = maa.SaveFrameData(1, -1, actor, aro);
-            savedActor.frames.Add(fr);
+            //savedActor.frames.Add(fr);
 
             AnimationFrameActor afactor = new AnimationFrameActor();
             afactor.SetFromNative(savedActor);
-            foreach (NativeAnimationFrame frame in savedActor.frames)
+
+            
+            AnimationFrame afg = new AnimationFrame();
+            afg.duration = fr.duration;
+            afg.finalizeIndex = fr.finalizeIndex;
+            afg.index = fr.index;
+            afg.key = fr.key;
+            foreach (AnimationTargetParts mv in fr.movingData)
             {
-                AnimationFrame afg = new AnimationFrame();
-                afg.duration = frame.duration;
-                afg.finalizeIndex = frame.finalizeIndex;
-                afg.index = frame.index;
-                afg.key = frame.key;
-                foreach (AnimationTargetParts mv in frame.movingData)
-                {
-                    afg.movingData.Add(maa.DataToCSV(afactor.targetType, mv));
-                    //afg.movingData.Add(mv);
-                }
-                int isHit = afactor.frames.FindIndex(item =>
-                {
-                    if (item.index == afg.index) return true;
-                    return false;
-                });
-                if (isHit < 0)
-                {
-                    afactor.frames.Add(afg);
-                }
-                else
-                {
-                    afactor.frames[isHit] = afg;
-                }
-                
+                afg.movingData.Add(maa.DataToCSV(afactor.targetType, mv));
+                //afg.movingData.Add(mv);
             }
+            int isHit = afactor.frames.FindIndex(item =>
+            {
+                if (item.index == afg.index) return true;
+                return false;
+            });
+            if (isHit < 0)
+            {
+                afactor.frames.Add(afg);
+            }
+            else
+            {
+                afactor.frames[isHit] = afg;
+            }
+                
             atran.frameData = afactor;
 
             //---Take thumbnail screenshot for This pose

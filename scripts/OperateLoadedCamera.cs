@@ -44,6 +44,8 @@ namespace UserHandleSpace
         void Start()
         {
             manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+            CameraClearFlags flg =  Camera.main.gameObject.GetComponent<CameraOperation1>().GetClearFlag();
+            SetClearFlag((int)flg);
         }
 
         // Update is called once per frame

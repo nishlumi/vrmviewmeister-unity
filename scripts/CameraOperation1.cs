@@ -54,9 +54,13 @@ public class CameraOperation1 : MonoBehaviour
     [SerializeField]
     private Material[] skyMaterials = { };
 
+    private ManageAnimation manim;
+
     // Start is called before the first frame update
     void Start()
     {
+        manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+
         Debug.Log(RenderSettings.skybox.shader.name);
 
         configLab = GameObject.Find("AnimateArea").GetComponent<ConfigSettingLabs>();
@@ -641,10 +645,17 @@ public class CameraOperation1 : MonoBehaviour
     public void SetClearFlag(CameraClearFlags param)
     {
         Front3DCam.clearFlags = param;
+
+        List<NativeAnimationAvatar> list = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
+        list.ForEach(item =>
+        {
+            item.avatar.GetComponent<OperateLoadedCamera>().SetClearFlag((int)param);
+        });
     }
     public void SetClearFlagFromOuter(int param)
     {
-        Front3DCam.clearFlags = (CameraClearFlags)param;
+        SetClearFlag((CameraClearFlags)param);
+        
     }
     public CameraClearFlags GetClearFlag()
     {
