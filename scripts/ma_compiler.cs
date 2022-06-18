@@ -866,6 +866,26 @@ namespace UserHandleSpace
                                 NativeAnimationAvatar cast = GetCastInProject(body.equipitem);
                                 if (cast != null)
                                 {
+                                    NativeAnimationFrameActor nafact = GetFrameActorFromRole(cast.roleName, cast.type);
+                                    if (nafact != null)
+                                    {
+                                        NativeAnimationFrame naf_frame = nafact.frames.Find(nafact_ma =>
+                                        {
+                                            if (nafact_ma.index == frame.index) return true;
+                                            return false;
+                                        });
+                                        if (naf_frame != null)
+                                        {
+                                            AnimationTargetParts translate_atp =  naf_frame.FindMovingData(AF_MOVETYPE.Translate);
+                                            AnimationTargetParts rotation_atp = naf_frame.FindMovingData(AF_MOVETYPE.Rotate);
+                                            OperateLoadedBase cast_olb = cast.avatar.GetComponent<OperateLoadedBase>();
+                                            if (cast_olb != null)
+                                            {
+                                                cast_olb.SetPosition(translate_atp.position);
+                                                cast_olb.SetRotation(rotation_atp.rotation);
+                                            }
+                                        }
+                                    }
                                     //ovrm.SetPosition(body.position);
                                     //ovrm.SetRotation(body.rotation);
                                     //vi devas sxargi POSITION kaj ROTATION antaux cxi tiu metodo.
@@ -2455,34 +2475,34 @@ namespace UserHandleSpace
                     isEquip = ooik.isEquipping;
                 }
 
+                //---Here is other of VRM, RectTransform, Audio, SystemEffect
+                AnimationTargetParts[] ikp = new AnimationTargetParts[3];
+                ikp[0] = new AnimationTargetParts();
+                ikp[0].animationType = AF_MOVETYPE.Translate;
+                ikp[0].vrmBone = ParseIKBoneType.IKParent;
+                ikp[0].position = nact.avatar.ikparent.transform.position;
+                //------position only: jump parts
+                ikp[0].jumpNum = olb.GetJumpNum();
+                ikp[0].jumpPower = olb.GetJumpPower();
+                frame.movingData.Add(ikp[0]);
+
+                ikp[1] = new AnimationTargetParts();
+                ikp[1].animationType = AF_MOVETYPE.Rotate;
+                ikp[1].vrmBone = ParseIKBoneType.IKParent;
+                ikp[1].rotation = nact.avatar.ikparent.transform.rotation.eulerAngles;
+                frame.movingData.Add(ikp[1]);
+
+                if ((nact.avatar.type == AF_TARGETTYPE.OtherObject) || (nact.avatar.type == AF_TARGETTYPE.Image))
+                {
+                    ikp[2] = new AnimationTargetParts();
+                    ikp[2].animationType = AF_MOVETYPE.Scale;
+                    ikp[2].vrmBone = ParseIKBoneType.IKParent;
+                    ikp[2].scale = nact.avatar.avatar.transform.localScale;
+                    frame.movingData.Add(ikp[2]);
+                }
+
                 if (!isEquip)
                 { //---Enable transfroming without equipped status
-                    //---Here is other of VRM, RectTransform, Audio, SystemEffect
-                    AnimationTargetParts[] ikp = new AnimationTargetParts[3];
-                    ikp[0] = new AnimationTargetParts();
-                    ikp[0].animationType = AF_MOVETYPE.Translate;
-                    ikp[0].vrmBone = ParseIKBoneType.IKParent;
-                    ikp[0].position = nact.avatar.ikparent.transform.position;
-                    //------position only: jump parts
-                    ikp[0].jumpNum = olb.GetJumpNum();
-                    ikp[0].jumpPower = olb.GetJumpPower();
-                    frame.movingData.Add(ikp[0]);
-
-                    ikp[1] = new AnimationTargetParts();
-                    ikp[1].animationType = AF_MOVETYPE.Rotate;
-                    ikp[1].vrmBone = ParseIKBoneType.IKParent;
-                    ikp[1].rotation = nact.avatar.ikparent.transform.rotation.eulerAngles;
-                    frame.movingData.Add(ikp[1]);
-
-                    if ((nact.avatar.type == AF_TARGETTYPE.OtherObject) || (nact.avatar.type == AF_TARGETTYPE.Image))
-                    {
-                        ikp[2] = new AnimationTargetParts();
-                        ikp[2].animationType = AF_MOVETYPE.Scale;
-                        ikp[2].vrmBone = ParseIKBoneType.IKParent;
-                        ikp[2].scale = nact.avatar.avatar.transform.localScale;
-                        frame.movingData.Add(ikp[2]);
-                    }
-
                     //---common effect parts
                     AvatarPunchEffect punch = olb.GetPunch();
                     //if ((punch != null))

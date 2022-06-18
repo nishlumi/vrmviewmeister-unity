@@ -2811,6 +2811,7 @@ namespace UserHandleSpace
 
             List<float> durationList = new List<float>();
 
+
             foreach (NativeAnimationFrameActor actor in timeline.characters)
             {
                 if (actor.targetRole != "")

@@ -372,14 +372,15 @@ namespace UserHandleSpace
             float z = float.TryParse(prm[2], out z) ? z : 0f;
             bool isabs = prm[3] == "1" ? true : false;
 
-            if (relatedHandleParent != null)
+            SetPosition(new Vector3(x, y, z));
+            /*if (relatedHandleParent != null)
             {
                 relatedHandleParent.transform.DOMove(new Vector3(x, y, z), 0.1f).SetRelative(!isabs);
             }
             else
             {
                 gameObject.transform.DOMove(new Vector3(x, y, z), 0.1f).SetRelative(!isabs);
-            }
+            }*/
                 
 
         }
