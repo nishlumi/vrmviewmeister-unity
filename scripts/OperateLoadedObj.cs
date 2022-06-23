@@ -791,7 +791,8 @@ namespace UserHandleSpace
             GameObject copyleftshoulder = (GameObject)Resources.Load("IKHandleTriangleLeft");
             GameObject leftshoulder = Instantiate(copyleftshoulder, copyleftshoulder.transform.position, Quaternion.identity, chest.transform);
             leftshoulder.name = "LeftShoulder"; 
-            leftshoulder.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            //leftshoulder.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            leftshoulder.transform.localRotation = Quaternion.Euler(0f, 4.765f, -1.158f);
             leftshoulder.transform.localScale = new Vector3(1f, 1f, 1f);
             UserHandleOperation leftsld = leftshoulder.GetComponent<UserHandleOperation>();
             leftsld.PartsName = "leftshoulder";
@@ -830,7 +831,8 @@ namespace UserHandleSpace
             GameObject copyrightshoulder = (GameObject)Resources.Load("IKHandleTriangleRight");
             GameObject rightshoulder = Instantiate(copyrightshoulder, copyrightshoulder.transform.position, Quaternion.identity, chest.transform);
             rightshoulder.name = "RightShoulder";
-            rightshoulder.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            //rightshoulder.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            rightshoulder.transform.localRotation = Quaternion.Euler(0f, -4.765f, -1.158f);
             rightshoulder.transform.localScale = new Vector3(1f, 1f, 1f);
             UserHandleOperation rightsld = rightshoulder.GetComponent<UserHandleOperation>();
             rightsld.PartsName = "rightshoulder";
