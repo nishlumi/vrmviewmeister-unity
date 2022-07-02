@@ -793,6 +793,8 @@ namespace UserHandleSpace
                     {
                         if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => face.GetBlendShapeWeight(bindex), x => face.SetBlendShapeWeight(bindex, x), weight, frame.duration));
                         else ovrm.changeAvatarBlendShapeByName(val.text, val.value);  //face.SetBlendShapeWeight(bindex, weight);
+                        //---write as backup to Loaded setting.
+                        ovrm.SetBlendShapeToBackup(hitName, weight);
                     }
 
                 }
@@ -1272,7 +1274,7 @@ namespace UserHandleSpace
 
                     seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
                     {
-                        olc.SetClearFlag(movedata.clearFlag);
+                        //olc.SetClearFlag(movedata.clearFlag);
 
                         //---LOAD configuration only: render texture etc...
                         olc.SetRenderTexture(movedata.renderTex);
@@ -1286,15 +1288,6 @@ namespace UserHandleSpace
                     cam.rect = movedata.viewport;
                     cam.depth = movedata.depth;
                 }
-
-                /*if (options.isBuildDoTween == 0)
-                {
-                    olc.SetClearFlag(movedata.clearFlag);
-
-                    //---LOAD configuration only: render texture etc...
-                    olc.SetRenderTexture(movedata.renderTex);
-                    if ((movedata.renderTex.x > 0) && (movedata.renderTex.y > 0)) olc.SetCameraRenderFlag(movedata.renderFlag);
-                }*/
             }
             return seq;
         }

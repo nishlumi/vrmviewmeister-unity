@@ -522,7 +522,7 @@ namespace UserHandleSpace
             List<string> matlist = ListUserMaterial();
             string matjs = string.Join("\r\n", matlist.ToArray());
 
-            List<string> lst = ListAvatarBlendShape();
+            List<string> lst = ListBackupAvatarBlendShape();
             string blendshape = string.Join(",", lst.ToArray());
             int eflag = GetEquipFlag();
             string equipjs = JsonUtility.ToJson(equipDestinations);
@@ -650,6 +650,15 @@ namespace UserHandleSpace
 
             return ret;
         }
+        public List<string> ListBackupAvatarBlendShape()
+        {
+            List<string> ret = new List<string>();
+            for (int i = 0; i < blendShapeList.Count; i++)
+            {
+                ret.Add(blendShapeList[i].text + "=" + blendShapeList[i].value.ToString());
+            }
+            return ret;
+        }
         /// <summary>
         /// Get all blend shapes, the avatar has. When user call from HTML
         /// </summary>
@@ -710,6 +719,18 @@ namespace UserHandleSpace
         public int getAvatarBlendShapeIndex(string name)
         {
             return BSFace.sharedMesh.GetBlendShapeIndex(name);
+        }
+        public void SetBlendShapeToBackup(string name, float value)
+        {
+            BasicStringFloatList bs = blendShapeList.Find(item =>
+            {
+                if (item.text == name) return true;
+                return false;
+            });
+            if (bs != null)
+            {
+                bs.value = value;
+            }
         }
         public void changeAvatarBlendShape(string param)
         {
