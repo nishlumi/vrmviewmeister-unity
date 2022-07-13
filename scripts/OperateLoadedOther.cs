@@ -29,24 +29,26 @@ namespace UserHandleSpace
         public int childCount;
 
         public float animationRemainTime;
+        private float local_animRemainTime;
+
         public float SeekPosition
         {
             set
             {
-                animationRemainTime = value;
                 Animation anim = null;
                 if (transform.TryGetComponent<Animation>(out anim))
                 {
                     if (value > -1f)
                     {
-                        anim.clip.SampleAnimation(transform.gameObject, animationRemainTime);
+                        anim.clip.SampleAnimation(transform.gameObject, value);
+                        local_animRemainTime = value;
                     }
 
                 }
             }
             get
             {
-                return animationRemainTime;
+                return local_animRemainTime;
             }
         }
         public UserAnimationState animationStartFlag;  //1 - play, 0 - stop, 2 - playing, 3 - seeking, 4 - pause
@@ -74,6 +76,7 @@ namespace UserHandleSpace
 
             childCount = 0;
             animationRemainTime = 0f;
+            local_animRemainTime = 0f;
             //userSharedMaterials = new Dictionary<string, Material>();
             //userSharedTextureFiles = new Dictionary<string, MaterialProperties>();
             //backupTextureFiles = new Dictionary<string, MaterialProperties>();
@@ -486,11 +489,11 @@ namespace UserHandleSpace
                 {
                     if (anim.clip.name == state.clip.name)
                     {
-                        state.normalizedTime = animationRemainTime;
+                        state.time = animationRemainTime;
                     }
                     
                 }
-
+                
                 anim.Rewind();
                 anim.Play(anim.clip.name);
             }
@@ -524,7 +527,7 @@ namespace UserHandleSpace
                     {
                         if (anim.clip.name == state.clip.name)
                         {
-                            animationRemainTime = state.normalizedTime;
+                            animationRemainTime = state.time;
                         }
                     }
                     anim.Stop();
@@ -535,7 +538,7 @@ namespace UserHandleSpace
                     {
                         if (anim.clip.name == state.clip.name)
                         {
-                            state.normalizedTime = animationRemainTime;
+                            state.time = animationRemainTime;
                         }
                     }
                     anim.Play();
@@ -578,7 +581,7 @@ namespace UserHandleSpace
                 animationRemainTime = 0f;
             }
         }
-
+        
         //-----------------------------------------------------
         public void SetSpeedAnimation(float to)
         {

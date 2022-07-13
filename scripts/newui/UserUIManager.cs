@@ -85,6 +85,12 @@ namespace UserUISpace
             Button tlb_btn_stopanim = rootElement.Q<Button>("tlb_btn_stopanimation");
             tlb_btn_stopanim.clicked += StopAnimation_OnClick;
 
+            Button tlb_btn_selwater = rootElement.Q<Button>("tlb_btn_selwater");
+            tlb_btn_selwater.clicked += selectwater_OnClick;
+            Button tlb_btn_changewater = rootElement.Q<Button>("tlb_btn_changewater");
+            tlb_btn_changewater.clicked += wateropt1_OnClick;
+
+
             //---tlb_menunew set up 
             VisualElement tlb_menu_new = rootElement.Q<VisualElement>("tlb_menu_new");
             List<string> menu_new_strlst = new List<string>();
@@ -100,6 +106,7 @@ namespace UserUISpace
             menu_new_strlst.Add("Blank Object Cube");
             menu_new_strlst.Add("Blank Object Sphere");
             menu_new_strlst.Add("Blank Object Plane");
+            menu_new_strlst.Add("Blank Water level");
             ListView tlb_menunew_listview = CreateVListView(menu_new_strlst, tlb_menu_new, "tlb_menunew_listview");
             tlb_menunew_listview.onSelectedIndicesChange += inx =>
             {
@@ -128,11 +135,13 @@ namespace UserUISpace
                         case 8:
                             Newobj_Text_OnClick(); break;
                         case 9:
-                            Newobj_Blank_OnClick(PrimitiveType.Cube); break;
+                            Newobj_Blank_OnClick(UserPrimitiveType.Cube); break;
                         case 10:
-                            Newobj_Blank_OnClick(PrimitiveType.Sphere); break;
+                            Newobj_Blank_OnClick(UserPrimitiveType.Sphere); break;
                         case 11:
-                            Newobj_Blank_OnClick(PrimitiveType.Plane); break;
+                            Newobj_Blank_OnClick(UserPrimitiveType.Plane); break;
+                        case 12:
+                            Newobj_Blank_OnClick(UserPrimitiveType.WaterLevel); break;
                     }
                 }
             };
@@ -320,7 +329,7 @@ namespace UserUISpace
             Newobj_OnClick();
         }
 
-        void Newobj_Blank_OnClick(PrimitiveType type)
+        void Newobj_Blank_OnClick(UserPrimitiveType type)
         {
             GameObject animatearea = GameObject.Find("AnimateArea");
             UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
@@ -428,6 +437,17 @@ namespace UserUISpace
             UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
             StartCoroutine(fmc.ListGetAAS("effect"));
 
+        }
+        async void selectwater_OnClick()
+        {
+            OperateStage os = GameObject.Find("Stage").GetComponent<OperateStage>();
+            await os.SelectStageRef((int)StageKind.SeaDaytime);
+            os.ListGetOneUserMaterial("");
+        }
+        void wateropt1_OnClick()
+        {
+            OperateStage os = GameObject.Find("Stage").GetComponent<OperateStage>();
+            os.SetUserMaterial("wavescale,0.02");
         }
 
         //===============================================================================================

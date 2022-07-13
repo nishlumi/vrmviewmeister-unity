@@ -2477,6 +2477,19 @@ namespace UserHandleSpace
             NativeAnimationFrame curframe = GetFrame(actor, aro.index);
             curframe.duration = aro.duration;
         }
+        public void SetBaseDuration(float param)
+        {
+            if (param != 0f)
+            {
+                currentProject.baseDuration = param;
+            }
+        }
+        public void GetBaseDurationFromOuter()
+        {
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(currentProject.baseDuration);
+#endif
+        }
         /// <summary>
         /// Reset frame duration.(all frame)
         /// </summary>
@@ -2787,7 +2800,7 @@ namespace UserHandleSpace
             //bool ret = false;
             Sequence animateFlow = DOTween.Sequence();
             animateFlow.SetAutoKill(false);
-            animateFlow.OnStart(() =>
+            /*animateFlow.OnStart(() =>
             {
                 //Debug.Log(frameIndex + " - Started");
 
@@ -2795,7 +2808,7 @@ namespace UserHandleSpace
                 SpecialUpdateFor_no_DOTween(currentProject.timeline, frameIndex);
 
                 seqInIndex++;
-            });
+            });*/
             animateFlow.OnComplete(() =>
             {
                 //Debug.Log("  & Finished");
@@ -2959,7 +2972,7 @@ namespace UserHandleSpace
         {
             foreach (NativeAnimationFrameActor actor in timeline.characters)
             {
-                SpecialUpdate_body(actor, frameIndex);
+                //SpecialUpdate_body(actor, frameIndex);
 
             }
         }
@@ -3047,7 +3060,7 @@ namespace UserHandleSpace
             }
 
             //---To adjust all frame duration and finalIndex of the actor
-            AdjustAllFrame(nactor, currentProject.baseDuration, true, true);
+            AdjustAllFrame(nactor, currentProject.baseDuration, false, true);
 
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(param);

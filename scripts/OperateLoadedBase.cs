@@ -356,11 +356,11 @@ namespace UserHandleSpace
         {
             if (relatedHandleParent != null)
             {
-                relatedHandleParent.transform.Translate(pos);
+                relatedHandleParent.transform.position = (pos);
             }
             else
             {
-                gameObject.transform.Translate(pos);
+                gameObject.transform.position = (pos);
             }
                 
         }
@@ -735,10 +735,10 @@ namespace UserHandleSpace
 
                         newkeyname = keyname + suffix;
                         //---change Shader, exclude: Standard, VRM/MToon, FX/Water4
-                        if ((mat.shader.name != "Standard") && (mat.shader.name != "VRM/MToon") && (mat.shader.name != "FX/Water4"))
+                        /*if ((mat.shader.name != "Standard") && (mat.shader.name != "VRM/MToon") && (mat.shader.name != "FX/Water4") && (mat.shader.name != "FX/Water (Basic)"))
                         {
                             mat.shader = Shader.Find("Standard");
-                        }
+                        }*/
 
                         userSharedMaterials.Add(newkeyname, mat);
 

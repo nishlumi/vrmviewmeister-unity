@@ -42,6 +42,8 @@ namespace UserHandleSpace
         public float rimfresnel = 0;
         public float srcblend = 0;
         public float dstblend = 0;
+        //---FX/Water (Basic)
+        public float waveScale = 0.0703f;
         //---FX/Water4
         public float fresnelScale = 0.75f;
         public Color reflectionColor = new Color(0.54f, 0.95f, 0.99f, 0.5f);
@@ -460,7 +462,17 @@ namespace UserHandleSpace
         Seeking,
         Pause
     }
-    
+    public enum UserPrimitiveType
+    {
+        Sphere = 0,
+        Capsule = 1,
+        Cylinder = 2,
+        Cube = 3,
+        Plane = 4,
+        Quad = 5,
+        WaterLevel = 6
+    }
+
     [Serializable]
     public class AnimationTargetParts
     {
@@ -594,6 +606,9 @@ namespace UserHandleSpace
             headLock = 1;
             animPlaying = 0;
             animLoop = 0;
+            animSeek = 0;
+            animSpeed = 1.0f;
+            animName = "";
             handpose = new List<float>();
             blendshapes = new List<BasicStringFloatList>();
             viewHandle = "self";

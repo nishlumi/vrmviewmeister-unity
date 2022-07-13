@@ -1531,21 +1531,21 @@ namespace UserVRMSpace
         }
         public NativeAnimationAvatar CreateBlankQuad()
         {
-            return CreateBlankCube(PrimitiveType.Cube);
+            return CreateBlankCube(UserPrimitiveType.Cube);
         }
         public NativeAnimationAvatar CreateBlankObject(int param)
         {
             /*
              * 
-             * 0 - sphere, 1 - capsule, 2 - cylinder, 3 - cube, 4 - plane, 5 - quad
+             * 0 - sphere, 1 - capsule, 2 - cylinder, 3 - cube, 4 - plane, 5 - quad, 6 - water level
              */
-            return CreateBlankCube((PrimitiveType)param);
+            return CreateBlankCube((UserPrimitiveType)param);
         }
-        public OpeningNativeAnimationAvatar Body_CreateBlankCube(PrimitiveType ptype)
+        public OpeningNativeAnimationAvatar Body_CreateBlankCube(UserPrimitiveType ptype)
         {
             OpeningNativeAnimationAvatar oap = new OpeningNativeAnimationAvatar();
 
-            string[] pritype = { "BlankSphere", "BlankCapsule", "BlankCylinder", "BlankCube", "BlankPlane", "BlankQuad" };
+            string[] pritype = { "BlankSphere", "BlankCapsule", "BlankCylinder", "BlankCube", "BlankPlane", "BlankQuad", "BlankWaterLevel" };
             GameObject ikhp = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
 
             GameObject copyprim = (GameObject)Resources.Load(pritype[(int)ptype]);
@@ -1608,7 +1608,7 @@ namespace UserVRMSpace
 
             return oap;
         }
-        public NativeAnimationAvatar CreateBlankCube(PrimitiveType ptype)
+        public NativeAnimationAvatar CreateBlankCube(UserPrimitiveType ptype)
         {
             OpeningNativeAnimationAvatar tmpnav = Body_CreateBlankCube(ptype);
 

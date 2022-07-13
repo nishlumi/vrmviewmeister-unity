@@ -91,7 +91,16 @@ namespace UserHandleSpace
                     mat.waveSteepness.x + CST_SEPSTR_PROP + mat.waveSteepness.y + CST_SEPSTR_PROP + mat.waveSteepness.z + CST_SEPSTR_PROP + mat.waveSteepness.w + CST_SEPSTR_PROP +
                     mat.waveSpeed.x     + CST_SEPSTR_PROP + mat.waveSpeed.y     + CST_SEPSTR_PROP + mat.waveSpeed.z     + CST_SEPSTR_PROP + mat.waveSpeed.w     + CST_SEPSTR_PROP +
                     mat.waveDirectionAB.x + CST_SEPSTR_PROP + mat.waveDirectionAB.y + CST_SEPSTR_PROP + mat.waveDirectionAB.z + CST_SEPSTR_PROP + mat.waveDirectionAB.w + CST_SEPSTR_PROP +
-                    mat.waveDirectionCD.x + CST_SEPSTR_PROP + mat.waveDirectionCD.y + CST_SEPSTR_PROP + mat.waveDirectionCD.z + CST_SEPSTR_PROP + mat.waveDirectionCD.w
+                    mat.waveDirectionCD.x + CST_SEPSTR_PROP + mat.waveDirectionCD.y + CST_SEPSTR_PROP + mat.waveDirectionCD.z + CST_SEPSTR_PROP + mat.waveDirectionCD.w + CST_SEPSTR_PROP +
+                    mat.waveScale.ToString()
+                ;
+            }
+            else if (mat.shaderName.ToLower() == "fx/water (basic)")
+            {
+                ln = mat.name + CST_SEPSTR_PROP +
+                    mat.shaderName + CST_SEPSTR_PROP +
+                    mat.waveScale.ToString() + CST_SEPSTR_PROP +
+                    mat.waveSpeed.x + CST_SEPSTR_PROP + mat.waveSpeed.y + CST_SEPSTR_PROP + mat.waveSpeed.z + CST_SEPSTR_PROP + mat.waveSpeed.w
                 ;
             }
 
@@ -108,14 +117,16 @@ namespace UserHandleSpace
                 MaterialProperties mat = new MaterialProperties();
                 string[] matc = matstr.Split(sepprop);
 
-                //---most less is 8 items.
-                if (matc.Length < 8) continue;
+                
 
                 mat.name = matc[0];
                 mat.shaderName = matc[1];
 
                 if (mat.shaderName.ToLower() == "standard")
                 {
+                    //---most less is 8 items.
+                    if (matc.Length < 8) continue;
+
                     mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
                     mat.blendmode = float.TryParse(matc[3], out mat.blendmode) ? mat.blendmode : 0;
                     mat.texturePath = matc[4];
@@ -127,6 +138,9 @@ namespace UserHandleSpace
                 }
                 else if (mat.shaderName.ToLower() == "vrm/mtoon")
                 {
+                    //---most less is 13 items.
+                    if (matc.Length < 13) continue;
+
                     mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
                     mat.cullmode = float.TryParse(matc[3], out mat.cullmode) ? mat.cullmode : 0;
                     mat.blendmode = float.TryParse(matc[4], out mat.blendmode) ? mat.blendmode : 0;
@@ -143,6 +157,9 @@ namespace UserHandleSpace
                 }
                 else if (mat.shaderName.ToLower() == "fx/water4")
                 {
+                    //---most less is 31 items.
+                    if (matc.Length < 31) continue;
+
                     mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
                     mat.fresnelScale = float.TryParse(matc[3], out mat.fresnelScale) ? mat.fresnelScale : 0;
                     mat.reflectionColor = ColorUtility.TryParseHtmlString(matc[4], out mat.reflectionColor) ? mat.reflectionColor : Color.white;
@@ -189,7 +206,22 @@ namespace UserHandleSpace
                         float w = float.TryParse(matc[29], out w) ? w : 0;
                         mat.waveDirectionCD = new Vector4(x, y, z, w);
                     }
+                    mat.waveScale = float.TryParse(matc[30], out mat.waveScale) ? mat.waveScale : 0;
 
+                }
+                else if (mat.shaderName.ToLower() == "fx/water (basic)")
+                {
+                    //---most less is 7 items.
+                    if (matc.Length < 7) continue;
+
+                    mat.waveScale = float.TryParse(matc[2], out mat.waveScale) ? mat.waveScale : 0;
+                    {
+                        float x = float.TryParse(matc[3], out x) ? x : 0;
+                        float y = float.TryParse(matc[4], out y) ? y : 0;
+                        float z = float.TryParse(matc[5], out z) ? z : 0;
+                        float w = float.TryParse(matc[6], out w) ? w : 0;
+                        mat.waveSpeed = new Vector4(x, y, z, w);
+                    }
                 }
                 /*
                 mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
@@ -742,31 +774,39 @@ namespace UserHandleSpace
                 }
                 else if (targetType == AF_TARGETTYPE.Stage)
                 {
-                    if (movetype == "stageprop")
+                    if (movetype == "stage")
+                    {
+                        atp.animationType = AF_MOVETYPE.Stage;
+                        float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+                        atp.stageType = (int)vec3[0];
+                    }
+                    else if (movetype == "stageprop")
                     {
                         atp.animationType = AF_MOVETYPE.StageProperty;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
                         atp.stageType = (int)vec3[0];
-                        Vector4 vec4 = new Vector4(vec3[1], vec3[2], vec3[3], vec3[4]);
-                        atp.wavespeed = vec4;
-                        atp.wavescale = vec3[5];
-
                         //---windzone
-                        atp.windPower = vec3[6];
-                        atp.windFrequency = vec3[7];
-                        atp.windDurationMin = vec3[8];
-                        atp.windDurationMax = vec3[9];
+                        atp.windPower = vec3[1];
+                        atp.windFrequency = vec3[2];
+                        atp.windDurationMin = vec3[3];
+                        atp.windDurationMax = vec3[4];
+
+                        //---stage 
+                        //Vector4 vec4 = new Vector4(vec3[1], vec3[2], vec3[3], vec3[4]);
+                        //atp.wavespeed = vec4;
+                        //atp.wavescale = vec3[5];
+
 
                         if (atp.stageType == (int)StageKind.User)
                         {
                             MaterialProperties matmain = new MaterialProperties();
 
                             //---user stage
-                            matmain.metallic = vec3[10];
-                            matmain.glossiness = vec3[11];
-                            matmain.emissioncolor = new Color(vec3[12], vec3[13], vec3[14], vec3[15]);
-                            matmain.color = new Color(vec3[16], vec3[17], vec3[18], vec3[19]);
-                            matmain.blendmode = vec3[20];
+                            matmain.metallic = vec3[5];
+                            matmain.glossiness = vec3[6];
+                            matmain.emissioncolor = new Color(vec3[7], vec3[8], vec3[9], vec3[10]);
+                            matmain.color = new Color(vec3[11], vec3[12], vec3[13], vec3[14]);
+                            matmain.blendmode = vec3[15];
 
                             //---user stage texture
                             string[] texparts = optParts.Split("\t");
@@ -780,7 +820,17 @@ namespace UserHandleSpace
                             matnormal.texturePath = texparts[1]; // lst[utex_i];
                             atp.matProp.Add(matnormal);
                         }
-                        
+                        else if ((atp.stageType == (int)StageKind.BasicSeaLevel) || (atp.stageType == (int)StageKind.SeaDaytime) || (atp.stageType == (int)StageKind.SeaNight))
+                        {
+                            List<MaterialProperties> tmpmats = new List<MaterialProperties>();
+                            SetObjectMaterial(lst[9], tmpmats, CST_SEPSTR_PROP, CST_SEPSTR_ITEM);
+                            if (tmpmats.Count > 0)
+                            {
+                                atp.vmatProp = tmpmats[0];
+                            }
+
+                        }
+
 
 
                     }
@@ -794,15 +844,23 @@ namespace UserHandleSpace
                         foreach (string item in ssf)
                         {
                             string[] arr = item.Split('=');
-                            float arrfloat = float.TryParse(arr[1], out arrfloat) ? arrfloat : 0;
-                            atp.skyShaderFloat.Add(new BasicStringFloatList(arr[0], arrfloat));
+                            if (arr.Length > 1)
+                            {
+                                float arrfloat = float.TryParse(arr[1], out arrfloat) ? arrfloat : 0;
+                                atp.skyShaderFloat.Add(new BasicStringFloatList(arr[0], arrfloat));
+                            }
+                            
                         }
                         string[] ssc = lst[7].Split('%');
                         foreach (string item in ssc)
                         {
                             string[] arr = item.Split('=');
-                            Color col = ColorUtility.TryParseHtmlString(arr[1], out col) ? col : Color.white;
-                            atp.skyShaderColor.Add(new BasicStringColorList(arr[0], col));
+                            if (arr.Length > 1)
+                            {
+                                Color col = ColorUtility.TryParseHtmlString(arr[1], out col) ? col : Color.white;
+                                atp.skyShaderColor.Add(new BasicStringColorList(arr[0], col));
+                            }
+                            
                         }
                         atp.skyShaderName = lst[8];
                     }
@@ -1347,54 +1405,79 @@ namespace UserHandleSpace
                 else if (targetType == AF_TARGETTYPE.Stage)
                 {
                     ret.Add(((int)atp.vrmBone).ToString());
-                    if (atp.animationType == AF_MOVETYPE.StageProperty)
+                    if (atp.animationType == AF_MOVETYPE.Stage)
+                    {
+                        ret.Add("");
+                        ret.Add("stage");
+                        ret.Add("1");
+                        ret.Add(atp.stageType.ToString());
+                    }
+                    else if (atp.animationType == AF_MOVETYPE.StageProperty)
                     {
                         string allCount = "";
                         string optParts = "";
                         if ((atp.matProp.Count > 0) && (atp.stageType == (int)StageKind.User))
                         {
-                            allCount = "21";
+                            allCount = "16";
                             optParts = atp.matProp[0].texturePath + "\t" + atp.matProp[1].texturePath;
                         }
                         else
                         {
-                            allCount = "10";
+                            allCount = "5";
                         }
                         ret.Add(optParts);
                         ret.Add("stageprop");
                         ret.Add(allCount);
-                        //0 ~ 9
+                        //0 ~ 4  (real: 4~ )
                         ret.Add(atp.stageType.ToString());
-                        ret.Add(atp.wavespeed.x.ToString());
-                        ret.Add(atp.wavespeed.y.ToString());
-                        ret.Add(atp.wavespeed.z.ToString());
-                        ret.Add(atp.wavespeed.w.ToString());
-                        ret.Add(atp.wavescale.ToString());
                         ret.Add(atp.windPower.ToString());
                         ret.Add(atp.windFrequency.ToString());
                         ret.Add(atp.windDurationMin.ToString());
                         ret.Add(atp.windDurationMax.ToString());
 
-                        if (atp.matProp.Count > 0)
+                        if (atp.stageType == (int)StageKind.User)
                         {
-                            MaterialProperties mat0 = atp.matProp[0];
-                            MaterialProperties mat1 = atp.matProp[1];
-                            //10 ~ 20
-                            ret.Add(mat0.metallic.ToString());
-                            ret.Add(mat0.glossiness.ToString());
-                            ret.Add(mat0.emissioncolor.r.ToString());
-                            ret.Add(mat0.emissioncolor.g.ToString());
-                            ret.Add(mat0.emissioncolor.b.ToString());
-                            ret.Add(mat0.emissioncolor.a.ToString());
-                            ret.Add(mat0.color.r.ToString());
-                            ret.Add(mat0.color.g.ToString());
-                            ret.Add(mat0.color.b.ToString());
-                            ret.Add(mat0.color.a.ToString());
-                            ret.Add(mat0.blendmode.ToString());
-                            //---below is string param
-                            //ret.Add(atp.matProp[0].texturePath); //maintex
-                            //ret.Add(atp.matProp[1].texturePath); //bump map
+                            if (atp.matProp.Count > 0)
+                            {
+                                MaterialProperties mat0 = atp.matProp[0];
+                                MaterialProperties mat1 = atp.matProp[1];
+                                //5 ~ 15
+                                ret.Add(mat0.metallic.ToString());
+                                ret.Add(mat0.glossiness.ToString());
+                                ret.Add(mat0.emissioncolor.r.ToString());
+                                ret.Add(mat0.emissioncolor.g.ToString());
+                                ret.Add(mat0.emissioncolor.b.ToString());
+                                ret.Add(mat0.emissioncolor.a.ToString());
+                                ret.Add(mat0.color.r.ToString());
+                                ret.Add(mat0.color.g.ToString());
+                                ret.Add(mat0.color.b.ToString());
+                                ret.Add(mat0.color.a.ToString());
+                                ret.Add(mat0.blendmode.ToString());
+                                //---below is string param
+                                //ret.Add(atp.matProp[0].texturePath); //maintex
+                                //ret.Add(atp.matProp[1].texturePath); //bump map
+                            }
                         }
+                        else if ((atp.stageType == (int)StageKind.BasicSeaLevel) || (atp.stageType == (int)StageKind.SeaDaytime) || (atp.stageType == (int)StageKind.SeaNight)) 
+                        {
+                            List<string> lst = new List<string>();
+                            string water4ln = SerializeMaterial(atp.vmatProp);
+                            //5 (real: 9~ )
+                            lst.Add(water4ln);
+
+                            ret.Add(string.Join(CST_SEPSTR_ITEM,lst));
+                        }
+
+
+                        // --- セットの順番を全部見直し 2022.07.10
+
+                        //ret.Add(atp.wavespeed.x.ToString());
+                        //ret.Add(atp.wavespeed.y.ToString());
+                        //ret.Add(atp.wavespeed.z.ToString());
+                        //ret.Add(atp.wavespeed.w.ToString());
+                        //ret.Add(atp.wavescale.ToString());
+
+
                         
                     }
                     else if (atp.animationType == AF_MOVETYPE.SkyProperty)
@@ -1606,7 +1689,7 @@ namespace UserHandleSpace
             currentProject = ConvertProjectNative(proj);
 
             //---after settings
-            SetFps(currentProject.fps);
+            //SetFps(currentProject.fps);
 
 
             AnimationProject retproj = Body_SaveProject(currentProject);
@@ -1831,7 +1914,7 @@ namespace UserHandleSpace
                     if (nav.path == "%BLANK%")
                     {
                         int ptype = int.TryParse(nav.ext, out ptype) ? ptype : 0;
-                        ret = fmc.Body_CreateBlankCube((PrimitiveType)ptype);
+                        ret = fmc.Body_CreateBlankCube((UserPrimitiveType)ptype);
                         ret.cast.path = nav.path;
                     }
                     else
@@ -2036,7 +2119,7 @@ namespace UserHandleSpace
 
                     foreach (AnimationSingleFrame fr in asm.frames)
                     {
-                        if (fr.index < currentProject.timelineFrameLength)
+                        if (fr.index <= currentProject.timelineFrameLength)
                         {
                             NativeAnimationFrame naframe = new NativeAnimationFrame();
                             naframe.index = fr.index;

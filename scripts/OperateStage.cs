@@ -14,6 +14,7 @@ namespace UserHandleSpace
     public enum StageKind
     {
         Default = 0,        //special stage 1
+        BasicSeaLevel,
         SeaDaytime,
         SeaNight,
         DryGround,
@@ -85,7 +86,7 @@ namespace UserHandleSpace
         [DllImport("__Internal")]
         private static extern void ReceiveFloatVal(float val);
 
-        string[] StageNames = {"DefaultStage", "DaytimeWaterStage", "NightimeWaterStage", "DryGroundStage",
+        string[] StageNames = {"DefaultStage", "BasicSeaLevel","DaytimeWaterStage", "NighttimeWaterStage", "DryGroundStage",
             "DesertStage","FieldStage1", "FieldStage2", "FieldStage3", "FieldStage4","UserStage"
         };
 
@@ -93,6 +94,7 @@ namespace UserHandleSpace
         public List<GameObject> StageList;
         public GameObject ActiveStage;
         private StageKind ActiveStageType;
+        private AsyncOperationHandle<GameObject> ActiveTargetStageHandle;
 
         public string ActiveUserStageMainTextureName;
         public string ActiveUserStageBumpmapTextureName;
@@ -107,6 +109,10 @@ namespace UserHandleSpace
         const float HEIGHT_CHANGEVAL = 0.001f;
 
         private VVStageMap editStageMap;
+
+        protected Color finalDefaultColor;
+        protected MaterialProperties finalMatprop;
+        protected MaterialProperties finalUserStageMatprop;
 
         ManageAnimation manim;
 
@@ -138,6 +144,8 @@ namespace UserHandleSpace
 
             ActiveUserStageMainTextureName = "";
             ActiveUserStageBumpmapTextureName = "";
+            finalMatprop = new MaterialProperties();
+            finalUserStageMatprop = new MaterialProperties();
         }
 
         // Update is called once per frame
@@ -201,9 +209,21 @@ namespace UserHandleSpace
             ReceiveStringVal(js);
 #endif
         }
+        public GameObject FindStageByType(StageKind skind)
+        {
+            GameObject ret = null;
+
+            ret = StageList.Find(item =>
+            {
+                if (item.name == StageNames[(int)skind]) return true;
+                return false;
+            });
+
+            return ret;
+        }
         public void SelectStage(int param)
         {
-            StageList.ForEach(action =>
+            /*StageList.ForEach(action =>
             {
                 action.SetActive(false);
             });
@@ -211,17 +231,50 @@ namespace UserHandleSpace
                 ActiveStage = StageList[param];
                 ActiveStageType = (StageKind)param;
                 ActiveStage.SetActive(true);
-            }
-            /*
-            for (int i = 0; i < StageParent.transform.childCount; i++)
+            }*/
+            if ((0 <= param) && (param < StageNames.Length))
             {
-                StageParent.transform.GetChild(i).gameObject.SetActive(false);
-            }
+                if (ActiveStageType == (StageKind)param) return;
 
-            ActiveStage = StageParent.transform.GetChild(param).gameObject;
-            ActiveStageType = (StageKind)param;
-            ActiveStage.SetActive(true);
-            */
+                RelaseStageRef();
+
+                ActiveStageType = (StageKind)param;
+                if (ActiveStageType == StageKind.Default)
+                {
+                    ActiveStage = StageList[0];
+                    ActiveStage.SetActive(true);
+                    Material mat = ActiveStage.GetComponent<Renderer>().materials[0];
+                    mat.color = Color.white;
+                }
+                else if (ActiveStageType == StageKind.User)
+                {
+                    GameObject tmps = FindStageByType(ActiveStageType);
+                    if (tmps != null)
+                    {
+                        ActiveStage = tmps;
+                        ActiveStage.SetActive(true);
+                    }
+
+                }
+                else if (
+                        (ActiveStageType == StageKind.BasicSeaLevel) ||
+                        (ActiveStageType == StageKind.SeaDaytime) ||
+                        (ActiveStageType == StageKind.SeaNight)
+                    )
+                {
+                    GameObject tmps = FindStageByType(ActiveStageType);
+                    if (tmps != null)
+                    {
+                        ActiveStage = tmps;
+                        ActiveStage.SetActive(true);
+
+                        List<MaterialProperties> mats = ListUserMaterialObject();
+                        if (mats.Count > 0) SetUserMaterialObject(mats[0]);
+                    }
+
+
+                }
+            }
         }
         public StageKind GetActiveStageType(int is_contacthtml = 1)
         {
@@ -235,30 +288,86 @@ namespace UserHandleSpace
 #endif
             return ret;
         }
+        public void SelectStageFromOuter(int param)
+        {
+            StageKind skind = (StageKind)param;
+            if (
+                (skind == StageKind.Default) ||
+                (skind == StageKind.User) ||
+                (skind == StageKind.BasicSeaLevel) ||
+                (skind == StageKind.SeaDaytime) ||
+                (skind == StageKind.SeaNight)
+            )
+            {
+                SelectStage(param);
+                
+            }
+            else
+            {
+                DOVirtual.DelayedCall(0.0001f, async () =>
+                {
+                    await SelectStageRef(param);
+                });
+            }
+            
+        }
         public async System.Threading.Tasks.Task<GameObject> SelectStageRef(int param)
         {
             if ((0 <= param) && (param < StageNames.Length))
             {
+                if (ActiveStageType == (StageKind)param) return ActiveStage;
+
                 RelaseStageRef();
 
                 //ActiveStage = StageList[param];
                 ActiveStageType = (StageKind)param;
-                if (param == 0)
+                if (ActiveStageType == StageKind.Default)
                 {
-                    ActiveStage = StageList[0];
+                    /*ActiveStage = StageList[0];
                     ActiveStage.SetActive(true);
                     Material mat = ActiveStage.GetComponent<Renderer>().materials[0];
-                    mat.color = Color.white;
+                    mat.color = Color.white;*/
+                }
+                else if (ActiveStageType == StageKind.User)
+                {
+                    /*GameObject tmps = FindStageByType(ActiveStageType);
+                    if (tmps != null)
+                    {
+                        ActiveStage = tmps;
+                        ActiveStage.SetActive(true);
+                    }*/
+                    
+                }
+                else if (
+                        (ActiveStageType == StageKind.BasicSeaLevel) ||
+                        (ActiveStageType == StageKind.SeaDaytime) ||
+                        (ActiveStageType == StageKind.SeaNight)
+                    )
+                {
+                    /*GameObject tmps = FindStageByType(ActiveStageType);
+                    if (tmps != null)
+                    {
+                        ActiveStage = tmps;
+                        ActiveStage.SetActive(true);
+
+                        List<MaterialProperties> mats = ListUserMaterialObject();
+                        if (mats.Count > 0) SetUserMaterialObject(mats[0]);
+                    }
+
+                    */
                 }
                 else
                 {
                     string sname = "Stage/" + StageNames[param];
                     Debug.Log(sname);
 
-                    AsyncOperationHandle<GameObject> targetStageHandle = Addressables.InstantiateAsync(sname);
+                    ActiveTargetStageHandle = Addressables.InstantiateAsync(sname);
 
-                    System.Threading.Tasks.Task<GameObject> eff = targetStageHandle.Task;
+                    System.Threading.Tasks.Task<GameObject> eff = ActiveTargetStageHandle.Task;
                     ActiveStage = await eff;
+
+                    
+                  
                 }
                 
 
@@ -272,17 +381,27 @@ namespace UserHandleSpace
             
         }
         
-         public void RelaseStageRef()
+        public void RelaseStageRef()
         {
-            if (ActiveStageType == StageKind.Default)
+            if (
+                (ActiveStageType == StageKind.Default) ||
+                (ActiveStageType == StageKind.BasicSeaLevel) ||
+                (ActiveStageType == StageKind.SeaDaytime) ||
+                (ActiveStageType == StageKind.SeaNight) ||
+                (ActiveStageType == StageKind.User)
+            )
             {
                 ActiveStage.SetActive(false);
             }
             else
             {
-                if (ActiveStage != null) Addressables.ReleaseInstance(ActiveStage);
+                if (ActiveStage != null)
+                {
+                    Addressables.ReleaseInstance(ActiveTargetStageHandle);
+                    GameObject.Destroy(ActiveStage);
+                }
             }
-            
+            ActiveStage = null;
         }
         
         //-----------------------------------------------------------------------------------------------
@@ -320,7 +439,7 @@ namespace UserHandleSpace
             Color col = Color.white;
             if (ActiveStageType == StageKind.Default)
             {
-                col = ActiveStage.GetComponent<MeshRenderer>().sharedMaterial.color;
+                col = finalDefaultColor; // ActiveStage.GetComponent<MeshRenderer>().sharedMaterial.color;
             }
 #if !UNITY_EDITOR && UNITY_WEBGL
             if (is_contacthtml == 1)
@@ -329,6 +448,15 @@ namespace UserHandleSpace
             }
 #endif
             return col;
+        }
+
+        /// <summary>
+        /// Set saving color only
+        /// </summary>
+        /// <param name="param"></param>
+        public void SetDefaultStageColorObject(Color param)
+        {
+            finalDefaultColor = param;
         }
         public void SetDefaultStageColor(string param)
         {
@@ -435,17 +563,77 @@ namespace UserHandleSpace
                 MeshRenderer mesh = ActiveStage.GetComponent<MeshRenderer>();
                 if (mesh.materials.Length > 0)
                 {
-                    ret += "color=#" + ColorUtility.ToHtmlStringRGBA(mesh.material.GetColor("_Color")) + "\t";
-                    ret += "renderingtype=" + mesh.material.GetFloat("_Mode").ToString() + "\t";
-                    ret += "metallic=" + mesh.material.GetFloat("_Metallic").ToString() + "\t";
-                    ret += "glossiness=" + mesh.material.GetFloat("_Glossiness").ToString() + "\t";
-                    ret += "emissioncolor=#" + ColorUtility.ToHtmlStringRGBA(mesh.material.GetColor("_EmissionColor"));
+                    ret += "color=#" + ColorUtility.ToHtmlStringRGBA(finalUserStageMatprop.color) + "\t";
+                    ret += "renderingtype=" + finalUserStageMatprop.blendmode.ToString() + "\t";
+                    ret += "metallic=" + finalUserStageMatprop.metallic.ToString() + "\t";
+                    ret += "glossiness=" + finalUserStageMatprop.glossiness.ToString() + "\t";
+                    ret += "emissioncolor=#" + ColorUtility.ToHtmlStringRGBA(finalUserStageMatprop.emissioncolor) + "\t";
+                    ret += "maintex" + ActiveUserStageMainTextureName + "\t";
+                    ret += "normaltex" + ActiveUserStageBumpmapTextureName;
                 }
             }
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(ret);
 
 #endif
+        }
+
+        /// <summary>
+        /// Set value for UI only
+        /// </summary>
+        /// <param name="param"></param>
+        public void SetMaterialObjectToUserStage(string param)
+        {
+            string[] prm = param.Split(',');
+            float val = float.TryParse(prm[1], out val) ? val : 0f;
+
+            if (prm[0] == "color")
+            {
+                Color col = ColorUtility.TryParseHtmlString(prm[1], out col) ? col : Color.white;
+                finalUserStageMatprop.color = col;
+            }
+            else if (prm[0] == "renderingtype")
+            {
+                finalUserStageMatprop.blendmode = val;
+            }
+            else if (prm[0] == "metallic")
+            {
+                finalUserStageMatprop.metallic = val;
+            }
+            else if (prm[0] == "glossiness")
+            {
+                finalUserStageMatprop.glossiness = val;
+            }
+            else if (prm[0] == "emissioncolor")
+            {
+                Color col = ColorUtility.TryParseHtmlString(prm[1], out col) ? col : Color.white;
+                finalUserStageMatprop.emissioncolor = col;
+            }
+            else if (prm[0] == "main")
+            {
+                if (ActiveUserStageMainTextureName != prm[1])
+                {
+                    
+                    NativeAP_OneMaterial nap = manim.FindTexture(prm[1]);
+                    if (nap != null)
+                    {
+                        ActiveUserStageMainTextureName = prm[1];
+                    }
+                }
+
+            }
+            else if (prm[0] == "normal")
+            {
+                if (ActiveUserStageBumpmapTextureName != prm[1])
+                {
+                    NativeAP_OneMaterial nap = manim.FindTexture(prm[1]);
+                    if (nap != null)
+                    {
+                        ActiveUserStageBumpmapTextureName = prm[1];
+                    }
+                }
+
+            }
         }
         public void SetMaterialToUserStage(string param)
         {
@@ -484,7 +672,7 @@ namespace UserHandleSpace
                 }
             }
         }
-        public void SetTextureToUserStage(string param)
+        public void SetTextureToUserStage(StageKind skind, string param)
         {
             string[] prm = param.Split(',');
             if (ActiveStageType == StageKind.User)
@@ -680,8 +868,19 @@ namespace UserHandleSpace
                     return;
                 }
                 mat.SetVector("WaveSpeed", vec);
-                
 
+            }
+            else if (ActiveStageType == StageKind.BasicSeaLevel)
+            {
+                MeshRenderer[] meshs = GetComponentsInChildren<MeshRenderer>();
+                foreach (MeshRenderer mr in meshs)
+                {
+                    Material mat = mr.sharedMaterial;
+                    if (mat != null)
+                    {
+                        mat.SetVector("WaveSpeed", vec);
+                    }
+                }
             }
         }
         public void SetWaterWaveSpeed(Vector4 param)
@@ -700,6 +899,18 @@ namespace UserHandleSpace
                     return;
                 }
                 mat.SetVector("WaveSpeed", param);
+            }
+            else if (ActiveStageType == StageKind.BasicSeaLevel)
+            {
+                MeshRenderer[] meshs = GetComponentsInChildren<MeshRenderer>();
+                foreach (MeshRenderer mr in meshs)
+                {
+                    Material mat = mr.sharedMaterial;
+                    if (mat != null)
+                    {
+                        mat.SetVector("WaveSpeed", param);
+                    }
+                }
             }
         }
         public void SetWaterWaveSpeed(string pos, float value)
@@ -738,6 +949,7 @@ namespace UserHandleSpace
         }
         public Vector4 GetWaterWaveSpeedFromOuter(int is_contacthtml = 1)
         {
+            string js = "";
             Vector4 ret = Vector4.zero;
             if ((ActiveStageType == StageKind.SeaDaytime) || (ActiveStageType == StageKind.SeaNight))
             {
@@ -752,14 +964,29 @@ namespace UserHandleSpace
                     return ret;
                 }
                 ret = mat.GetVector("WaveSpeed");
-                string js = JsonUtility.ToJson(ret);
+                js = JsonUtility.ToJson(ret);
+            }
+            else if (ActiveStageType == StageKind.BasicSeaLevel)
+            {
+                MeshRenderer[] meshs = GetComponentsInChildren<MeshRenderer>();
+                foreach (MeshRenderer mr in meshs)
+                {
+                    Material mat = mr.sharedMaterial;
+                    if (mat != null)
+                    {
+                        ret = mat.GetVector("WaveSpeed");
+                        js = JsonUtility.ToJson(ret);
+                        break;
+                    }
+                }
+            }
 #if !UNITY_EDITOR && UNITY_WEBGL
             if (is_contacthtml == 1)
             {
                 ReceiveStringVal(js);
             }
 #endif
-            }
+
             return ret;
 
         }
@@ -841,6 +1068,471 @@ namespace UserHandleSpace
 
             return ret;
         }
+
+        //=== Water stage materials======================---------------------------------------------------------
+        public List<MaterialProperties> ListUserMaterialObject()
+        {
+            List<MaterialProperties> ret = new List<MaterialProperties>();
+
+            MeshRenderer hitmr = null;
+            if ((ActiveStageType == StageKind.SeaDaytime) || (ActiveStageType == StageKind.SeaNight))
+            {
+                hitmr = ActiveStage.GetComponent<MeshRenderer>();
+
+            }
+            else if (ActiveStageType == StageKind.BasicSeaLevel)
+            {
+                MeshRenderer[] meshs = ActiveStage.GetComponentsInChildren<MeshRenderer>();
+                foreach (MeshRenderer mr in meshs)
+                {
+                    hitmr = mr;
+                    break;
+                }
+            }
+            if (hitmr == null) return ret;
+
+            Material mat = hitmr.sharedMaterial;
+
+            if (mat != null)
+            {
+                MaterialProperties matp = new MaterialProperties();
+
+                matp.name = mat.name;
+
+                matp.shaderName = mat.shader.name;
+
+                if ((ActiveStageType == StageKind.SeaDaytime) || (ActiveStageType == StageKind.SeaNight))
+                {
+                    matp.waveScale = mat.GetFloat("_WaveScale");
+                }
+                else if (ActiveStageType == StageKind.BasicSeaLevel)
+                {
+                    matp.fresnelScale = mat.GetFloat("_FresnelScale");
+                    matp.color = mat.GetColor("_BaseColor");
+                    matp.reflectionColor = mat.GetColor("_ReflectionColor");
+                    matp.specularColor = mat.GetColor("_SpecularColor");
+
+                    matp.waveAmplitude = mat.GetVector("_GAmplitude");
+                    matp.waveFrequency = mat.GetVector("_GFrequency");
+                    matp.waveSteepness = mat.GetVector("_GSteepness");
+                    matp.waveSpeed = mat.GetVector("_GSpeed");
+                    matp.waveDirectionAB = mat.GetVector("_GDirectionAB");
+                    matp.waveDirectionCD = mat.GetVector("_GDirectionCD");
+                }
+
+                ret.Add(matp);
+            }
+
+            
+
+            return ret;
+        }
+        public virtual void ListUserMaterialFromOuter()
+        {
+#if !UNITY_EDITOR && UNITY_WEBGL
+            //List<string> list = ListUserMaterial("");
+            string js = ListGetOneUserMaterial(""); //string.Join("\r\n", list.ToArray());
+            Debug.Log(js);
+            ReceiveStringVal(js);
+#endif
+        }
+        /// <summary>
+        /// To write 1 - material to csv-string 
+        /// </summary>
+        /// <param name="param"></param>
+        /// <returns></returns>
+        public string ListGetOneUserMaterial(string param)
+        {
+            MeshRenderer hitmr = null;
+            if ((ActiveStageType == StageKind.SeaDaytime) || (ActiveStageType == StageKind.SeaNight))
+            {
+                hitmr = ActiveStage.GetComponent<MeshRenderer>();
+
+            }
+            else if (ActiveStageType == StageKind.BasicSeaLevel)
+            {
+                MeshRenderer[] meshs = ActiveStage.GetComponentsInChildren<MeshRenderer>();
+                foreach (MeshRenderer mr in meshs)
+                {
+                    hitmr = mr;
+                    break;
+                }
+            }
+            if (hitmr == null) return "";
+
+            Material mat = hitmr.sharedMaterial;
+
+            const string SEPSTR = "=";
+            string ret = "";
+
+            //Debug.Log("param=" + param);
+            //Debug.Log(userSharedMaterials.ContainsKey(param));
+            List<MaterialProperties> umat = ListUserMaterialObject();
+            //umat.Add(finalMatprop);
+
+            Debug.Log("umat=" + umat.Count.ToString());
+
+            if (umat.Count > 0)
+            {
+                if ((ActiveStageType == StageKind.SeaDaytime) || (ActiveStageType == StageKind.SeaNight))
+                {
+                    ret = (
+                        param + SEPSTR +
+                        umat[0].shaderName + SEPSTR +
+                        umat[0].waveScale.ToString() + SEPSTR +
+                        umat[0].fresnelScale.ToString() + SEPSTR +
+                        "" + SEPSTR +
+                        "" + SEPSTR +
+                        "" + SEPSTR +
+                        //---7
+                        "0,0,0,0" + SEPSTR +
+                        "0,0,0,0" + SEPSTR +
+                        "0,0,0,0" + SEPSTR +
+                        "0,0,0,0" + SEPSTR +
+                        "0,0,0,0" + SEPSTR +
+                        "0,0,0,0"
+                    );
+
+                }
+                else if (ActiveStageType == StageKind.BasicSeaLevel)
+                {
+                    Vector4 wa = umat[0].waveAmplitude;
+                    Vector4 wf = umat[0].waveFrequency;
+                    Vector4 wt = umat[0].waveSteepness;
+                    Vector4 ws = umat[0].waveSpeed;
+                    Vector4 wdab = umat[0].waveDirectionAB;
+                    Vector4 wdcd = umat[0].waveDirectionCD;
+                    ret = (
+                        param + SEPSTR +
+                        umat[0].shaderName + SEPSTR +
+                        umat[0].waveScale.ToString() + SEPSTR + 
+                        umat[0].fresnelScale.ToString() + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(umat[0].color) + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(umat[0].reflectionColor) + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(umat[0].specularColor) + SEPSTR +
+                        //---7
+                        wa.x.ToString() + "," + wa.y.ToString() + "," + wa.z.ToString() + "," + wa.w.ToString() + SEPSTR +
+                        wf.x.ToString() + "," + wf.y.ToString() + "," + wf.z.ToString() + "," + wf.w.ToString() + SEPSTR +
+                        wt.x.ToString() + "," + wt.y.ToString() + "," + wt.z.ToString() + "," + wt.w.ToString() + SEPSTR +
+                        ws.x.ToString() + "," + ws.y.ToString() + "," + ws.z.ToString() + "," + ws.w.ToString() + SEPSTR +
+                        wdab.x.ToString() + "," + wdab.y.ToString() + "," + wdab.z.ToString() + "," + wdab.w.ToString() + SEPSTR +
+                        wdcd.x.ToString() + "," + wdcd.y.ToString() + "," + wdcd.z.ToString() + "," + wdcd.w.ToString()
+                    );
+
+                }
+            }
+
+            /////Debug.Log("ret=" + ret);
+            // 0 - key name
+            // 1 - shader name
+            // 2 - wave scale
+            // 3 - fresnel scale
+            // 4 - base color
+            // 5 - reflection color
+            // 6 - specular color
+            // 7 - wave amplitude
+            // 8 - wave frequency
+            // 9 - wave steepness
+            // 10- wave speed
+            // 11- wave direction AB
+            // 12- wave direction CD
+
+            return ret;
+        }
+
+        /// <summary>
+        /// Set value for UI only
+        /// </summary>
+        /// <param name="orimat"></param>
+        public void SetUserMaterialObject(MaterialProperties orimat)
+        {
+
+            finalMatprop.name = orimat.name;
+            finalMatprop.shaderName = orimat.name;
+            finalMatprop.waveScale = orimat.waveScale;
+            finalMatprop.fresnelScale = orimat.fresnelScale;
+            finalMatprop.color = orimat.color;
+            finalMatprop.reflectionColor = orimat.reflectionColor;
+            finalMatprop.specularColor = orimat.specularColor;
+            finalMatprop.waveAmplitude = orimat.waveAmplitude;
+            finalMatprop.waveFrequency = orimat.waveFrequency;
+            finalMatprop.waveSpeed = orimat.waveSpeed;
+            finalMatprop.waveSteepness = orimat.waveSteepness;
+            finalMatprop.waveDirectionAB = orimat.waveDirectionAB;
+            finalMatprop.waveDirectionCD = orimat.waveDirectionCD;
+        }
+        /// <summary>
+        /// To set material property from Unity
+        /// </summary>
+        /// <param name="mat_name"></param>
+        /// <param name="propname"></param>
+        /// <param name="vmat"></param>
+        /// <param name="isSaveOnly"></param>
+        public virtual void SetUserMaterial(string propname, MaterialProperties vmat, bool isSaveOnly = false)
+        {
+            MeshRenderer hitmr = null;
+            if ((ActiveStageType == StageKind.SeaDaytime) || (ActiveStageType == StageKind.SeaNight))
+            {
+                hitmr = ActiveStage.GetComponent<MeshRenderer>();
+
+            }
+            else if (ActiveStageType == StageKind.BasicSeaLevel)
+            {
+                MeshRenderer[] meshs = ActiveStage.GetComponentsInChildren<MeshRenderer>();
+                foreach (MeshRenderer mr in meshs)
+                {
+                    hitmr = mr;
+                    break;
+                }
+            }
+            if (hitmr == null) return;
+
+            ManageAnimation manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+
+            Material mat = hitmr.sharedMaterial;
+            if (mat != null)
+            {
+                if (propname.ToLower() == "wavescale")
+                {
+                    mat.SetFloat("_WaveScale", vmat.waveScale);
+                }
+                else if (propname.ToLower() == "fresnelscale")
+                {
+                    mat.SetFloat("_FresnelScale", vmat.fresnelScale);
+                }
+                else if (propname.ToLower() == "basecolor")
+                {
+                    mat.SetColor("_BaseColor", vmat.color);
+                }
+                else if (propname.ToLower() == "reflectioncolor")
+                {
+                    mat.SetColor("_ReflectionColor", vmat.reflectionColor);
+                }
+                else if (propname.ToLower() == "specularcolor")
+                {
+                    mat.SetColor("_SpecularColor", vmat.specularColor);
+                }
+                else if (propname.ToLower() == "waveamplitude")
+                {
+                    mat.SetVector("_GAmplitude", vmat.waveAmplitude);
+                }
+                else if (propname.ToLower() == "wavefrequency")
+                {
+                    mat.SetVector("_GFrequency", vmat.waveFrequency);
+                }
+                else if (propname.ToLower() == "wavesteepness")
+                {
+                    mat.SetVector("_GSteepness", vmat.waveSteepness);
+                }
+                else if (propname.ToLower() == "wavespeed")
+                {
+                    mat.SetVector("_GSpeed", vmat.waveSpeed);
+                }
+                else if (propname.ToLower() == "wavedirectionab")
+                {
+                    mat.SetVector("_GDirectionAB", vmat.waveDirectionAB);
+                }
+                else if (propname.ToLower() == "wavedirectioncd")
+                {
+                    mat.SetVector("_GDirectionCD", vmat.waveDirectionCD);
+                }
+            }
+            
+        }
+        public void SetUserMaterialFromOuter(string param)
+        {
+            SetUserMaterial(param);
+        }
+        /// <summary>
+        /// To set material property from HTML
+        /// </summary>
+        /// <param name="param">0--parts(shader,color,cullmode,etc),2-value(Standard,VRM/MToon, #FFFFFF)</param>
+        public void SetUserMaterial(string param)
+        {
+            string[] prm = param.Split(',');
+            string propname = prm[0];
+            string value = prm[1];
+
+            MeshRenderer hitmr = null;
+            if ((ActiveStageType == StageKind.SeaDaytime) || (ActiveStageType == StageKind.SeaNight))
+            {
+                hitmr = ActiveStage.GetComponent<MeshRenderer>();
+
+            }
+            else if (ActiveStageType == StageKind.BasicSeaLevel)
+            {
+                MeshRenderer[] meshs = ActiveStage.GetComponentsInChildren<MeshRenderer>();
+                foreach (MeshRenderer mr in meshs)
+                {
+                    hitmr = mr;
+                    break;
+                }
+            }
+            if (hitmr == null) return;
+
+            ManageAnimation manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+
+            Material mat = hitmr.sharedMaterial;
+            if (mat != null)
+            {
+                if (propname.ToLower() == "wavescale")
+                {
+                    float fv = 0;
+                    if (float.TryParse(value, out fv))
+                    {
+                        mat.SetFloat("_WaveScale", fv);
+                    }
+                }
+                else if (propname.ToLower() == "fresnelscale")
+                {
+                    float fv = 0;
+                    if (float.TryParse(value, out fv))
+                    {
+                        mat.SetFloat("_FresnelScale", fv);
+                    }
+                }
+                else if (propname.ToLower() == "basecolor")
+                {
+                    Color col;
+                    if (ColorUtility.TryParseHtmlString(value, out col))
+                    {
+                        mat.SetColor("_BaseColor", col);
+                    }
+                }
+                else if (propname.ToLower() == "reflectioncolor")
+                {
+                    Color col;
+                    if (ColorUtility.TryParseHtmlString(value, out col))
+                    {
+                        mat.SetColor("_ReflectionColor", col);
+                    }
+                }
+                else if (propname.ToLower() == "specularcolor")
+                {
+                    Color col;
+                    if (ColorUtility.TryParseHtmlString(value, out col))
+                    {
+                        mat.SetColor("_SpecularColor", col);
+                    }
+                }
+                else if (propname.ToLower() == "waveamplitude")
+                {
+                    string[] arr = value.Split("\t");
+                    float x = float.TryParse(arr[0], out x) ? x : 0f;
+                    float y = float.TryParse(arr[1], out y) ? y : 0f;
+                    float z = float.TryParse(arr[2], out z) ? z : 0f;
+                    float w = float.TryParse(arr[3], out w) ? w : 0f;
+                    Vector4 vec = new Vector4(x, y, z, w);
+                    mat.SetVector("_GAmplitude", vec);
+                }
+                else if (propname.ToLower() == "wavefrequency")
+                {
+                    string[] arr = value.Split("\t");
+                    float x = float.TryParse(arr[0], out x) ? x : 0f;
+                    float y = float.TryParse(arr[1], out y) ? y : 0f;
+                    float z = float.TryParse(arr[2], out z) ? z : 0f;
+                    float w = float.TryParse(arr[3], out w) ? w : 0f;
+                    Vector4 vec = new Vector4(x, y, z, w);
+                    mat.SetVector("_GFrequency", vec);
+                }
+                else if (propname.ToLower() == "wavesteepness")
+                {
+                    string[] arr = value.Split("\t");
+                    float x = float.TryParse(arr[0], out x) ? x : 0f;
+                    float y = float.TryParse(arr[1], out y) ? y : 0f;
+                    float z = float.TryParse(arr[2], out z) ? z : 0f;
+                    float w = float.TryParse(arr[3], out w) ? w : 0f;
+                    Vector4 vec = new Vector4(x, y, z, w);
+                    mat.SetVector("_GSteepness", vec);
+                }
+                else if (propname.ToLower() == "wavespeed")
+                {
+                    string[] arr = value.Split("\t");
+                    float x = float.TryParse(arr[0], out x) ? x : 0f;
+                    float y = float.TryParse(arr[1], out y) ? y : 0f;
+                    float z = float.TryParse(arr[2], out z) ? z : 0f;
+                    float w = float.TryParse(arr[3], out w) ? w : 0f;
+                    Vector4 vec = new Vector4(x, y, z, w);
+                    mat.SetVector("_GSpeed", vec);
+                }
+                else if (propname.ToLower() == "wavedirectionab")
+                {
+                    string[] arr = value.Split("\t");
+                    float x = float.TryParse(arr[0], out x) ? x : 0f;
+                    float y = float.TryParse(arr[1], out y) ? y : 0f;
+                    float z = float.TryParse(arr[2], out z) ? z : 0f;
+                    float w = float.TryParse(arr[3], out w) ? w : 0f;
+                    Vector4 vec = new Vector4(x, y, z, w);
+                    mat.SetVector("_GDirectionAB", vec);
+                }
+                else if (propname.ToLower() == "wavedirectioncd")
+                {
+                    string[] arr = value.Split("\t");
+                    float x = float.TryParse(arr[0], out x) ? x : 0f;
+                    float y = float.TryParse(arr[1], out y) ? y : 0f;
+                    float z = float.TryParse(arr[2], out z) ? z : 0f;
+                    float w = float.TryParse(arr[3], out w) ? w : 0f;
+                    Vector4 vec = new Vector4(x, y, z, w);
+                    mat.SetVector("_GDirectionCD", vec);
+                }
+            }
+        }
+        /// <summary>
+        /// To set material motion information to DOTween 
+        /// </summary>
+        /// <param name="seq"></param>
+        /// <param name="skind"></param>
+        /// <param name="mat_name"></param>
+        /// <param name="value"></param>
+        /// <param name="duration"></param>
+        /// <returns></returns>
+        public virtual Sequence SetMaterialTween(Sequence seq, StageKind skind, string mat_name, MaterialProperties value, float duration)
+        {
+            MeshRenderer hitmr = null;
+            if ((skind == StageKind.SeaDaytime) || (skind == StageKind.SeaNight))
+            {
+                hitmr = ActiveStage.GetComponent<MeshRenderer>();
+
+                if (hitmr != null)
+                {
+                    Material mat = hitmr.material;
+
+                    if (mat.HasProperty("_WaveScale")) seq.Join(mat.DOFloat(value.waveScale, "_WaveScale", duration));
+                }
+            }
+            else if (skind == StageKind.BasicSeaLevel)
+            {
+                MeshRenderer[] meshs = ActiveStage.GetComponentsInChildren<MeshRenderer>();
+                foreach (MeshRenderer mr in meshs)
+                {
+                    hitmr = mr;
+                    break;
+                }
+                if (hitmr != null)
+                {
+                    Material mat = hitmr.sharedMaterial;
+
+                    if (mat.HasProperty("_FresnelScale")) seq.Join(mat.DOFloat(value.fresnelScale, "_FresnelScale", duration));
+                    if (mat.HasProperty("_BaseColor")) seq.Join(mat.DOColor(value.color, "_BaseColor", duration));
+                    if (mat.HasProperty("_ReflectionColor")) seq.Join(mat.DOColor(value.reflectionColor, "_ReflectionColor", duration));
+                    if (mat.HasProperty("_SpecularColor")) seq.Join(mat.DOColor(value.specularColor, "_SpecularColor", duration));
+                    if (mat.HasProperty("_GAmplitude")) seq.Join(mat.DOVector(value.waveAmplitude, "_GAmplitude", duration));
+                    if (mat.HasProperty("_GFrequency")) seq.Join(mat.DOVector(value.waveFrequency, "_GFrequency", duration));
+                    if (mat.HasProperty("_GSteepness")) seq.Join(mat.DOVector(value.waveSteepness, "_GSteepness", duration));
+                    if (mat.HasProperty("_GSpeed")) seq.Join(mat.DOVector(value.waveSpeed, "_GSpeed", duration));
+                    if (mat.HasProperty("_GDirectionAB")) seq.Join(mat.DOVector(value.waveDirectionAB, "_GDirectionAB", duration));
+                    if (mat.HasProperty("_GDirectionCD")) seq.Join(mat.DOVector(value.waveDirectionCD, "_GDirectionCD", duration));
+
+                }
+
+            }
+            if (hitmr == null) return seq;
+
+
+
+            return seq;
+        }
+
 
         //------------------------------------------------------------------------------------------------------------------------
         //   Camera Operation 1
