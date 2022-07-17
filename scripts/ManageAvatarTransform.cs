@@ -404,65 +404,78 @@ namespace UserHandleSpace
             AvatarAllIKParts aai = JsonUtility.FromJson<AvatarAllIKParts>(param);
             if (aai != null)
             {
-                OperateLoadedVRM ovrm = gameObject.GetComponent<OperateLoadedVRM>();
-                string[] sortedBones = {
-                    "IKParent", 
+                StartCoroutine(SetIKTransformAll_Body(aai));
+            }
+        }
+        private IEnumerator SetIKTransformAll_Body(AvatarAllIKParts aai)
+        {
+            OperateLoadedVRM ovrm = gameObject.GetComponent<OperateLoadedVRM>();
+            string[] sortedBones = {
+                    "IKParent",
                     "Pelvis","Chest","Head", "Aim", "LookAt",
+                    "LeftLeg",
+                    "RightLeg",
+                    "LeftLowerLeg",
+                    "RightLowerLeg",
 
                     "LeftShoulder",
                     "LeftHand", "LeftLowerArm",
                     "RightShoulder",
                     "RightHand", "RightLowerArm",
-                    "LeftLeg", "LeftLowerLeg",
-                    "RightLeg", "RightLowerLeg",
 
                     "EyeViewHandle"
                 };
-                sortedBones = IKbones;
-                Transform[] bts = ovrm.relatedHandleParent.GetComponentsInChildren<Transform>();
+            sortedBones = IKbones;
+            Transform[] bts = ovrm.relatedHandleParent.GetComponentsInChildren<Transform>();
 
-                for (int i = 0; i < sortedBones.Length; i++)
+            /*Sequence seq = DOTween.Sequence();
+            TweenCallback cb_comp = () =>
+            {
+                maa.FinishPreviewMarker2();
+            };
+            seq.OnComplete(cb_comp);*/
+
+            //maa.PreparePreviewMarker();
+            for (int i = 1; i < sortedBones.Length; i++)
+            {
+
                 {
-                    if (i == 0)
+                    AvatarSingleIKTransform asit = aai.list.Find(match =>
                     {
-                        GameObject ikparent = ovrm.relatedHandleParent;
-                        ikparent.transform.position = aai.list[i].position; // new Vector3(aai.list[i].x, aai.list[i].y, aai.list[i].z);
-                        ikparent.transform.rotation = Quaternion.Euler(aai.list[i].rotation);
-                    }
-                    else
+                        if (match.ikname.ToLower() == sortedBones[i].ToLower()) return true;
+                        return false;
+                    });
+                    if (asit != null)
                     {
-                        AvatarSingleIKTransform asit = aai.list.Find(match =>
+                        GameObject child = null; // ovrm.relatedHandleParent.transform.Find(asit.ikname).gameObject;
+                        foreach (Transform bt in bts)
                         {
-                            if (match.ikname.ToLower() == sortedBones[i].ToLower()) return true;
-                            return false;
-                        });
-                        if (asit != null)
-                        {
-                            GameObject child = null; // ovrm.relatedHandleParent.transform.Find(asit.ikname).gameObject;
-                            foreach (Transform bt in bts)
+                            if (bt.name == asit.ikname)
                             {
-                                if (bt.name == asit.ikname)
-                                {
-                                    child = bt.gameObject;
-                                    break;
-                                }
+                                child = bt.gameObject;
+                                break;
                             }
+                        }
 
-                            if (child != null)
-                            {
-                                child.transform.localPosition = asit.position; //new Vector3(aai.list[i].x, aai.list[i].y, aai.list[i].z);
-                                child.transform.localRotation = Quaternion.Euler(asit.rotation);
-                            }
+                        if (child != null)
+                        {
+                            child.transform.localPosition = asit.position;
+                            child.transform.localRotation = Quaternion.Euler(asit.rotation);
+                            //seq.Join(child.transform.DOLocalMove(asit.position, 0.1f));
+                            //seq.Join(child.transform.DOLocalRotate(asit.rotation, 0.1f));
+                            yield return null;
                             
                         }
 
-                        
-                        
-                        
                     }
-                    
                 }
             }
+            //---IKParent
+            GameObject ikparent = ovrm.relatedHandleParent;
+            ikparent.transform.position = aai.list[0].position; // new Vector3(aai.list[i].x, aai.list[i].y, aai.list[i].z);
+            ikparent.transform.rotation = Quaternion.Euler(aai.list[0].rotation);
+            //seq.Join(ikparent.transform.DOMove(aai.list[0].position, 0.01f));
+            //seq.Join(ikparent.transform.DORotate(aai.list[0].rotation, 0.01f));
         }
 
         /// <summary>

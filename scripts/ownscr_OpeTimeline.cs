@@ -81,6 +81,7 @@ public class ownscr_OpeTimeline : MonoBehaviour
 
         int opti = int.TryParse(GameObject.Find("inputOptDOTween").GetComponent<InputField>().text, out opti) ? opti : 0;
 
+        ma.PreparePreviewMarker();
         ma.currentProject.casts.ForEach(cast =>
         {
             AnimationParsingOptions aro = new AnimationParsingOptions();

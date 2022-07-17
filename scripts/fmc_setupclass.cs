@@ -617,7 +617,7 @@ namespace UserVRMSpace
                 {
                     Transform pt = animator.GetBoneTransform(HumanBodyBones.LeftLowerLeg);
                     //hans.transform.position = new Vector3(pt.position.x, pt.position.y, pt.position.z - (hans.transform.localScale.z * 0.5f)) ;
-                    hans.transform.localPosition = pt.position;
+                    hans.transform.localPosition = new Vector3(pt.position.x, pt.position.y, pt.position.z-0.05f);
                     RotationLimitHinge rlh = pt.gameObject.AddComponent<RotationLimitHinge>();
                     rlh.axis.x = 1f;
                     rlh.axis.y = 0f;
@@ -633,7 +633,7 @@ namespace UserVRMSpace
                 {
                     Transform pt = animator.GetBoneTransform(HumanBodyBones.RightLowerLeg);
                     //hans.transform.position = new Vector3(pt.position.x, pt.position.y, pt.position.z - (hans.transform.localScale.z * 0.5f));
-                    hans.transform.localPosition = pt.position;
+                    hans.transform.localPosition = new Vector3(pt.position.x, pt.position.y, pt.position.z - 0.05f);
                     RotationLimitHinge rlh = pt.gameObject.AddComponent<RotationLimitHinge>();
                     rlh.axis.x = 1f;
                     rlh.axis.y = 0f;

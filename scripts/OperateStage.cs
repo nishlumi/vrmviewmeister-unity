@@ -142,6 +142,8 @@ namespace UserHandleSpace
             //ResetEditableStage();
             //SetStageTest("");
 
+            finalDefaultColor = Color.white;
+
             ActiveUserStageMainTextureName = "";
             ActiveUserStageBumpmapTextureName = "";
             finalMatprop = new MaterialProperties();
@@ -181,9 +183,9 @@ namespace UserHandleSpace
             ReceiveStringVal(ret);
 #endif
         }
-        public async void SetDefault()
+        public void SetDefault()
         {
-            await SelectStageRef(0);
+            SelectStage((int)StageKind.Default);
             GetCameraOperation().SetDefaultSky();
             GetSystemDirectionalLight().SetDefault();
             GetWindzone().SetDefault();

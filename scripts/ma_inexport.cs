@@ -2266,8 +2266,11 @@ namespace UserHandleSpace
             if (naf != null)
             {
                 asm.blendShapeList = naf.blendShapeList;
-                Array.Copy(naf.bodyHeight, asm.bodyHeight, naf.bodyHeight.Length);
+                //---AnimationAvatar -> AnimationSingleMotion: bodyHeight information. (as current avatar height info!!)
+                Array.Copy(naf.avatar.bodyHeight, asm.bodyHeight, naf.avatar.bodyHeight.Length);
                 asm.bodyInfoList = naf.bodyInfoList;
+
+                List<Vector3> curList = naf.avatar.avatar.GetComponent<OperateLoadedVRM>().GetTPoseBodyList();
 
                 foreach (NativeAnimationFrame frame in naf.frames)
                 {
@@ -2277,11 +2280,50 @@ namespace UserHandleSpace
                     asf.index = frame.index;
                     asf.key = frame.key;
                     
-                    foreach (AnimationTargetParts mv in frame.movingData)
+                    //---absorb height distance, apply changes.
+                    if (naf.avatar.type == AF_TARGETTYPE.VRM)
                     {
-                        asf.movingData.Add(DataToCSV(type, mv));
+                        foreach (AnimationTargetParts mv in frame.movingData)
+                        {
+                            /*if ((mv.vrmBone >= ParseIKBoneType.EyeViewHandle) && (mv.vrmBone <= ParseIKBoneType.RightLeg))
+                            {
+                                if (mv.animationType == AF_MOVETYPE.Translate)
+                                {
+                                    int vbone = (int)mv.vrmBone;
+
+                                    Vector3 repos = CalculateDifferenceInHeight(
+                                        curList[vbone],
+                                        frame.useBodyInfo == UseBodyInfoType.TimelineCharacter ? naf.bodyInfoList[vbone] : curList[vbone],
+                                        mv.position, mv.vrmBone
+                                    );
+                                    AnimationTargetParts tmpatp = new AnimationTargetParts();
+                                    tmpatp = mv.SCopy();
+                                    tmpatp.position = repos;
+                                    asf.movingData.Add(DataToCSV(type, tmpatp));
+                                }
+                                else
+                                {
+                                    asf.movingData.Add(DataToCSV(type, mv));
+                                }
+                            }
+                            else*/
+                            {
+                                asf.movingData.Add(DataToCSV(type, mv));
+                            }
+
+
+                        }
+                        asm.frames.Add(asf);
                     }
-                    asm.frames.Add(asf);
+                    else
+                    {
+                        foreach (AnimationTargetParts mv in frame.movingData)
+                        {
+                            asf.movingData.Add(DataToCSV(type, mv));
+                        }
+                        asm.frames.Add(asf);
+                    }
+                    
                 }
 
                 ret = JsonUtility.ToJson(asm);

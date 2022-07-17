@@ -29,6 +29,8 @@ namespace UserHandleSpace
         private ManageAvatarTransform mat;
         private ManageAnimation manim;
 
+        private const float cns_lowerleg_z = 0.05f;
+
         // Start is called before the first frame update
         void Start()
         {
@@ -107,13 +109,13 @@ namespace UserHandleSpace
                     {
                         if (ll != null)
                         {
-                            seq.Join(ll.transform.DOMoveZ(leftlowerleg.position.z, 0.1f));
-                            seq.Join(ll.transform.DOMoveY(leftlowerleg.position.y, 0.1f));
+                            seq.Join(ll.transform.DOMoveY(leftlowerleg.position.y, 0.01f));
+                            seq.Join(ll.transform.DOMoveZ(leftlowerleg.position.z - cns_lowerleg_z, 0.01f));
                         }
                         if (rl != null)
                         {
-                            seq.Join(rl.transform.DOMoveZ(rightlowerleg.position.z, 0.1f));
-                            seq.Join(rl.transform.DOMoveY(rightlowerleg.position.y, 0.1f));
+                            seq.Join(rl.transform.DOMoveY(rightlowerleg.position.y, 0.01f));
+                            seq.Join(rl.transform.DOMoveZ(rightlowerleg.position.z - cns_lowerleg_z, 0.01f));
                         }
                     }
                 }
@@ -216,8 +218,8 @@ namespace UserHandleSpace
 
                             //+seq.Join(ll.transform.DOLocalMoveZ(referll.localPosition.z-0.05f,0.1f)); 
                             //ll.transform.DOLocalMoveZ(legZ * adjustZ * -1f, 0.1f).SetRelative(true); //
-                            seq.Join(ll.transform.DOMoveY(leftlowerleg.position.y, 0.1f));
-                            seq.Join(ll.transform.DOMoveZ(leftlowerleg.position.z, 0.1f));
+                            seq.Join(ll.transform.DOMoveY(leftlowerleg.position.y, 0.01f));
+                            seq.Join(ll.transform.DOMoveZ(leftlowerleg.position.z - cns_lowerleg_z, 0.01f));
 
                             //float degree = Vector3.Angle(ll.transform.localPosition, transform.localPosition);
                             if (cnf.enable_foot_autorotate) seq.Join(transform.DOLocalRotate(rrot, 0.1f));
@@ -235,8 +237,8 @@ namespace UserHandleSpace
                             //+seq.Join(ll.transform.DOLocalMoveZ(legY * adjustZ * -1f, 0.1f).SetRelative(true));
                             //+seq.Join(ll.transform.DOLocalMoveY(finallower.y, 0.1f)); //referll.localPosition.y + calcLeg.y
                             //+seq.Join(ll.transform.DOLocalMoveZ(finallower.z, 0.1f));
-                            seq.Join(ll.transform.DOMoveY(leftlowerleg.position.y, 0.1f));
-                            seq.Join(ll.transform.DOMoveZ(leftlowerleg.position.z, 0.1f));
+                            seq.Join(ll.transform.DOMoveY(leftlowerleg.position.y, 0.01f));
+                            seq.Join(ll.transform.DOMoveZ(leftlowerleg.position.z - cns_lowerleg_z, 0.01f));
 
 
                             //float degree = Vector3.Angle(ll.transform.localPosition, transform.localPosition);
@@ -281,8 +283,8 @@ namespace UserHandleSpace
                         if (rl != null)
                         {
                             //seq.Join(rl.transform.DOLocalMoveZ(referrl.localPosition.z - 0.05f, 0.1f));  //rl.transform.DOLocalMoveZ(legZ * adjustZ * -1f, 0.1f).SetRelative(true); //
-                            seq.Join(rl.transform.DOMoveY(rightlowerleg.transform.position.y, 0.1f));
-                            seq.Join(rl.transform.DOMoveZ(rightlowerleg.position.z, 0.1f));
+                            seq.Join(rl.transform.DOMoveY(rightlowerleg.position.y, 0.01f));
+                            seq.Join(rl.transform.DOMoveZ(rightlowerleg.position.z - cns_lowerleg_z, 0.01f));
 
                             if (cnf.enable_foot_autorotate) seq.Join(transform.DOLocalRotate(rrot, 0.1f));
                         }
@@ -298,8 +300,8 @@ namespace UserHandleSpace
                             //seq.Join(rl.transform.DOLocalMoveZ(legY * adjustZ * 1f, 0.1f).SetRelative(true));
                             //seq.Join(rl.transform.DOLocalMoveY(referrl.localPosition.y, 0.1f));
                             //seq.Join(rl.transform.DOLocalMoveZ(referrl.localPosition.z - 0.05f, 0.1f));
-                            seq.Join(rl.transform.DOMoveY(rightlowerleg.transform.position.y, 0.1f));
-                            seq.Join(rl.transform.DOMoveZ(rightlowerleg.transform.position.z, 0.1f));
+                            seq.Join(rl.transform.DOMoveY(rightlowerleg.transform.position.y, 0.01f));
+                            seq.Join(rl.transform.DOMoveZ(rightlowerleg.transform.position.z - cns_lowerleg_z, 0.01f));
 
                             //float degree = Vector3.Angle(rl.transform.localPosition, transform.localPosition);
                             if (cnf.enable_foot_autorotate) seq.Join(transform.DOLocalRotate(rrot, 0.1f));

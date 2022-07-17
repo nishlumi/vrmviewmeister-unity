@@ -801,6 +801,7 @@ namespace UserHandleSpace
     {
         //public AnimationAvatar cast;
         //public AnimationFrameActor timeline;
+        public int version = 1;
 
         public AF_TARGETTYPE targetType = AF_TARGETTYPE.Unknown;
         public int compiled = 0;

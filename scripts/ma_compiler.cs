@@ -524,40 +524,23 @@ namespace UserHandleSpace
                             //---Position (absorb a distance of height)
                             if (movedata.animationType == AF_MOVETYPE.Translate)
                             {
-                                /*
-                                Vector3 repos = CalculateReposition(
-                                    naa.avatar, naa.ikparent, targetObjects.targetType, 
-                                    targetObjects.bodyHeight, 
-                                    movedata.position, movedata.vrmBone, pelvisCondition.position
-                                );*/
                                 List<Vector3> curList = naa.avatar.GetComponent<OperateLoadedVRM>().GetTPoseBodyList();
                                 int vbone = (int)movedata.vrmBone;
 
-                                Vector3 repos = CalculateDifferenceInHeight(
+                                Vector3 repos = movedata.position;
+                                
+                                /*repos = CalculateDifferenceInHeight(
                                     curList[vbone],
                                     frame.useBodyInfo == UseBodyInfoType.TimelineCharacter ? targetObjects.bodyInfoList[vbone] : curList[vbone],
                                     movedata.position, movedata.vrmBone
-                                );
+                                );*/
+
+                                //---another version: Multiple height diff percentage to the pose value.
+                                repos = CalculateDifferenceByHeight(naa.bodyHeight, targetObjects.bodyHeight, movedata.position, movedata.vrmBone);
 
                                 //---for blendable
-                                //if (beforeIndex == -1)
-                                //{
-                                    if (options.isExecuteForDOTween == 1) seq.Join(realObject.transform.DOLocalMove(repos, frame.duration));
-                                    else realObject.transform.localPosition = repos;
-                                //}
-                                /*else
-                                {
-                                    Vector3 beforeRepos = CalculateDifferenceInHeight(
-                                        curList[vbone],
-                                        beforeFrame.useBodyInfo == UseBodyInfoType.TimelineCharacter ? targetObjects.bodyInfoList[vbone] : curList[vbone],
-                                        beforeMoveData.position, beforeMoveData.vrmBone
-                                    );
-                                    Vector3 blendRepos = repos - beforeRepos;
-                                    if (options.isExecuteForDOTween == 1) seq.Join(realObject.transform.DOBlendableLocalMoveBy(blendRepos, frame.duration));
-                                    else realObject.transform.localPosition = repos;
-                                }*/
-                                
-                                
+                                if (options.isExecuteForDOTween == 1) seq.Join(realObject.transform.DOLocalMove(repos, frame.duration));
+                                else realObject.transform.localPosition = repos;
                                 
                             }
 
@@ -1704,7 +1687,7 @@ namespace UserHandleSpace
 
                     if (skind == StageKind.Default)
                     {
-                        seq = os.SetDefaultStageColorTween(seq, movedata.color, frame.duration);
+                        //seq = os.SetDefaultStageColorTween(seq, movedata.color, frame.duration);
                         
                     }
                     else if (skind == StageKind.User)
@@ -1764,7 +1747,7 @@ namespace UserHandleSpace
                         if (os.GetActiveStageMaterial() != null)
                         {
                             //os.SetDefaultStageColor(movedata.color);
-                            os.SetDefaultStageColorObject(movedata.color);
+                            //os.SetDefaultStageColorObject(movedata.color);
                         }
                     }
                     else if (skind == StageKind.User)
@@ -2412,7 +2395,7 @@ namespace UserHandleSpace
                         (int)ParseIKBoneType.RightShoulder,
                         (int)ParseIKBoneType.RightHand, (int)ParseIKBoneType.RightLowerArm,
 
-                        (int)ParseIKBoneType.LeftLeg, (int)ParseIKBoneType.LeftLowerLeg,
+                        (int)ParseIKBoneType.LeftLeg,(int)ParseIKBoneType.LeftLowerLeg, 
                         (int)ParseIKBoneType.RightLeg,(int)ParseIKBoneType.RightLowerLeg,
                         (int)ParseIKBoneType.EyeViewHandle
                         

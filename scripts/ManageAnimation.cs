@@ -81,9 +81,9 @@ namespace UserHandleSpace
         public bool IsLimitedPelvis;
         public bool IsLimitedArms;
         public bool IsLimitedLegs;
-        private bool OldIsLimitedPelvis;
-        private bool OldIsLimitedArms;
-        private bool OldIsLimitedLegs;
+        public bool OldIsLimitedPelvis;
+        public bool OldIsLimitedArms;
+        public bool OldIsLimitedLegs;
         private int isOldLoop = 0;
         private int oldPreviewMarker;
         private int currentMarker;
@@ -1805,7 +1805,7 @@ namespace UserHandleSpace
         /// <param name="vrmBone">Body parts to calculate</param>
         /// <param name="pelvisCondition">current loaded avatar's pelvis position</param>
         /// <returns>Calculated value</returns>
-        /*public Vector3 CalculateReposition(GameObject avatar, GameObject ikparent, AF_TARGETTYPE type, float[] bounds, Vector3 lst, ParseIKBoneType vrmBone, Vector3 pelvisCondition)
+        /*public Vector3 CalculateReposition(GameObject avatar, GameObject ikparent, AF_TARGETTYPE type, float[] bounds, Vector3 position, ParseIKBoneType vrmBone, Vector3 pelvisCondition)
         { //---no use. futurely delete.
             
             //---current avatar body information
@@ -1820,7 +1820,7 @@ namespace UserHandleSpace
             if (type == AF_TARGETTYPE.VRM) 
             {
                 //---base is pelvis.
-                loadTargetPelvis.y = bounds[PELVIS_Y] - pelvisCondition.y; //lst.y;
+                loadTargetPelvis.y = bounds[PELVIS_Y] - pelvisCondition.y; //position.y;
                 loadTargetExtents.x = bounds[HEIGHT_X];
                 loadTargetExtents.y = bounds[HEIGHT_Y];
                 loadTargetExtents.z = bounds[HEIGHT_Z];
@@ -1837,20 +1837,20 @@ namespace UserHandleSpace
 
 
             //---Absorb the difference in height.
-            fnl.x = currentTargetExtents.x * (lst.x / loadTargetExtents.x);
+            fnl.x = currentTargetExtents.x * (position.x / loadTargetExtents.x);
             if (vrmBone == ParseIKBoneType.Pelvis) 
             {
                 //---Pelvis only: add sample result of "rest pelvis - pose pelvis"
-                fnl.y = currentTargetExtents.y * (lst.y / loadTargetExtents.y) + loadTargetPelvis.y;
+                fnl.y = currentTargetExtents.y * (position.y / loadTargetExtents.y) + loadTargetPelvis.y;
             }
             else
             {
-                fnl.y = currentTargetExtents.y * (lst.y / loadTargetExtents.y);
+                fnl.y = currentTargetExtents.y * (position.y / loadTargetExtents.y);
             }
 
-            fnl.z = currentTargetExtents.z * (lst.z / loadTargetExtents.z);
+            fnl.z = currentTargetExtents.z * (position.z / loadTargetExtents.z);
 
-            return new Vector3(fnl.x, fnl.y, lst.z);
+            return new Vector3(fnl.x, fnl.y, position.z);
             
         }*/
 
@@ -1859,10 +1859,10 @@ namespace UserHandleSpace
         /// </summary>
         /// <param name="currentActor">T-pose data of current target avatar</param>
         /// <param name="roller">T-pose data of the timeline actor</param>
-        /// <param name="lst">target pose data</param>
+        /// <param name="position">target pose data</param>
         /// <param name="vrmBone">target body part</param>
         /// <returns></returns>
-        public Vector3 CalculateDifferenceInHeight(Vector3 currentActor, Vector3 roller, Vector3 lst, ParseIKBoneType vrmBone)
+        public Vector3 CalculateDifferenceInHeight(Vector3 currentActor, Vector3 roller, Vector3 position, ParseIKBoneType vrmBone)
         {
             Vector3 ret = Vector3.zero;
             Vector3 qv = Vector3.zero;
@@ -1882,16 +1882,41 @@ namespace UserHandleSpace
             if (qv.z == 0f) qv.z = 1f;
             */
 
-            ret = lst + qv;
+            ret = position + qv;
             /*
-            ret.x = lst.x * qv.x;
-            ret.y = lst.y * qv.y;
-            ret.z = lst.z * qv.z;
+            ret.x = position.x * qv.x;
+            ret.y = position.y * qv.y;
+            ret.z = position.z * qv.z;
             */
 
             return ret;
         }
-        
+
+        /// <summary>
+        /// To calculate difference of height of VRM. (multiply percentage)
+        /// </summary>
+        /// <param name="currentActor"></param>
+        /// <param name="roller"></param>
+        /// <param name="position"></param>
+        /// <param name="vrmBone"></param>
+        /// <returns></returns>
+        public Vector3 CalculateDifferenceByHeight(float[] currentActor, float[] roller, Vector3 position, ParseIKBoneType vrmBone)
+        {
+            Vector3 ret = position;
+            if ((roller[0] != 0) && (roller[1] != 0) && (roller[2] != 0))
+            {
+                float hx = currentActor[0] / roller[0];
+                float hy = currentActor[1] / roller[1];
+                float hz = currentActor[2] / roller[2];
+
+                ret.x = position.x * hx;
+                ret.y = position.y * hy;
+                ret.z = position.z * hz;
+
+            }
+
+            return ret;
+        }
 
 
 //===========================================================================================================================
@@ -2217,6 +2242,7 @@ namespace UserHandleSpace
                 TweenCallback cb_start = () =>
                 {
                     IsPreview = true;
+                    /*
                     IsBoneLimited = false;
                     OldIsLimitedPelvis = IsLimitedPelvis;
                     OldIsLimitedArms = IsLimitedArms;
@@ -2224,6 +2250,7 @@ namespace UserHandleSpace
                     IsLimitedPelvis = false;
                     IsLimitedArms = false;
                     IsLimitedLegs = false;
+                    */
                 };
                 animateFlow.OnPlay(cb_start);
                 animateFlow.OnRewind(cb_start);
@@ -2274,6 +2301,16 @@ namespace UserHandleSpace
             
 
         }
+        public void PreparePreviewMarker()
+        {
+            IsBoneLimited = false;
+            OldIsLimitedPelvis = IsLimitedPelvis;
+            OldIsLimitedArms = IsLimitedArms;
+            OldIsLimitedLegs = IsLimitedLegs;
+            IsLimitedPelvis = false;
+            IsLimitedArms = false;
+            IsLimitedLegs = false;
+        }
         public void FinishPreviewMarker()
         {
             DOVirtual.DelayedCall(0.15f, () =>
@@ -2296,20 +2333,38 @@ namespace UserHandleSpace
                     }
                 }
                 IsPreview = false;
-                IsBoneLimited = true;
+                //IsBoneLimited = true;
                 
-                IsLimitedPelvis = OldIsLimitedPelvis;
-                IsLimitedArms = OldIsLimitedArms;
-                IsLimitedLegs = OldIsLimitedLegs;
+                //IsLimitedPelvis = OldIsLimitedPelvis;
+                //IsLimitedArms = OldIsLimitedArms;
+                //IsLimitedLegs = OldIsLimitedLegs;
 
 #if !UNITY_EDITOR && UNITY_WEBGL
             SendPlayingPreviewAnimationInfoOnComplete(currentPlayingOptions.finalizeIndex < 0 ? currentPlayingOptions.index : currentPlayingOptions.finalizeIndex);
 #endif
             });
         }
+        public void FinishPreviewMarker2()
+        {
+
+            IsLimitedPelvis = OldIsLimitedPelvis;
+            IsLimitedArms = OldIsLimitedArms;
+            IsLimitedLegs = OldIsLimitedLegs;
+        }
         public void BackupPreviewMarker()
         {
             oldPreviewMarker = currentPlayingOptions.index;
+        }
+        public void RecoverBoneLimitatonMarker(string param)
+        {
+            string [] js = param.Split("\t");
+            int hingeflag = int.TryParse(js[0], out hingeflag) ? hingeflag : 0;
+            SetHingeLimited(hingeflag);
+
+            //limitation Pelvis
+            if (js.Length >= 2) SetLimitedBones(js[1]);
+            if (js.Length >= 3) SetLimitedBones(js[2]);
+            if (js.Length >= 4) SetLimitedBones(js[3]);
         }
         /// <summary>
         /// To animate previewly ONE actor (Pose load only)
@@ -2326,6 +2381,7 @@ namespace UserHandleSpace
             animateFlow.OnPlay(() =>
             {
                 IsPreview = true;
+                /*
                 IsBoneLimited = false;
 
                 OldIsLimitedPelvis = IsLimitedPelvis;
@@ -2334,6 +2390,7 @@ namespace UserHandleSpace
                 IsLimitedPelvis = false;
                 IsLimitedArms = false;
                 IsLimitedLegs = false;
+                */
             });
             /*animateFlow.OnComplete(() =>
             {
@@ -2366,14 +2423,13 @@ namespace UserHandleSpace
                     }
                 }
                 IsPreview = false;
+                /*
                 IsBoneLimited = true;
                 IsLimitedPelvis = OldIsLimitedPelvis;
                 IsLimitedArms = OldIsLimitedArms;
                 IsLimitedLegs = OldIsLimitedLegs;
-                DOVirtual.DelayedCall(0.5f, () =>
-                {
-                    
-                });
+                */
+                
 #if !UNITY_EDITOR && UNITY_WEBGL
                 SendPlayingPreviewAnimationInfoOnComplete(currentPlayingOptions.index);
 #endif
@@ -2524,6 +2580,7 @@ namespace UserHandleSpace
                 (currentSeq.IsActive())
             )
             {//---To play only-------------------------------
+                /*
                 IsBoneLimited = false;
                 OldIsLimitedPelvis = IsLimitedPelvis;
                 OldIsLimitedArms = IsLimitedArms;
@@ -2531,6 +2588,7 @@ namespace UserHandleSpace
                 IsLimitedPelvis = false;
                 IsLimitedArms = false;
                 IsLimitedLegs = false;
+                */
                 currentSeq.Restart();
             }
             else
@@ -2552,6 +2610,7 @@ namespace UserHandleSpace
                     //Debug.Log("Re-start an animation!");
                     IsPause = false;
                     IsPlaying = true;
+                    /*
                     IsBoneLimited = false;
                     OldIsLimitedPelvis = IsLimitedPelvis;
                     OldIsLimitedArms = IsLimitedArms;
@@ -2559,6 +2618,7 @@ namespace UserHandleSpace
                     IsLimitedPelvis = false;
                     IsLimitedArms = false;
                     IsLimitedLegs = false;
+                    */
 
                     foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
                     {
@@ -2613,11 +2673,13 @@ namespace UserHandleSpace
                     //StopAllTimeline();
                     IsPause = false;
                     IsPlaying = false;
+                    /*
                     IsBoneLimited = true;
                     
                     IsLimitedPelvis = OldIsLimitedPelvis;
                     IsLimitedArms = OldIsLimitedArms;
                     IsLimitedLegs = OldIsLimitedLegs;
+                    */
 
                     //Debug.Log("An animation finished.");
 #if !UNITY_EDITOR && UNITY_WEBGL
