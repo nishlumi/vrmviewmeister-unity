@@ -60,7 +60,7 @@ namespace UserHandleSpace
         public void GetIndicatedPropertyFromOuter(int type)
         {
             string ret = "";
-            Camera lt = transform.gameObject.GetComponent<Camera>();
+            Camera lt = gameObject.GetComponent<Camera>();
 
             int pflag = (int)GetCameraPlaying(0);
             string js = lt.rect.x.ToString() + "," + lt.rect.y.ToString() + "," + lt.rect.width.ToString() + "," + lt.rect.height.ToString();
@@ -84,6 +84,7 @@ namespace UserHandleSpace
 
         public void PreviewCamera()
         {
+            /*
             manim.currentProject.casts.ForEach(action =>
             {
                 Camera c = action.avatar.GetComponent<Camera>();
@@ -92,6 +93,7 @@ namespace UserHandleSpace
                     c.enabled = false;
                 }
             });
+            */
             Camera cam = gameObject.GetComponent<Camera>();
             cam.enabled = true;
             ScreenShot ss = Camera.main.GetComponent<ScreenShot>();
@@ -174,7 +176,7 @@ namespace UserHandleSpace
 
         public Rect GetViewport()
         {
-            Camera lt = transform.gameObject.GetComponent<Camera>();
+            Camera lt = gameObject.GetComponent<Camera>();
 
             string js = lt.rect.x + "," + lt.rect.y + "," + lt.rect.width + "," + lt.rect.height;
 #if !UNITY_EDITOR && UNITY_WEBGL
@@ -199,8 +201,7 @@ namespace UserHandleSpace
             float width = float.TryParse(prm[2], out width) ? width : 1f;
             float height = float.TryParse(prm[3], out height) ? height : 1f;
 
-
-            Camera lt = transform.gameObject.GetComponent<Camera>();
+            Camera lt = gameObject.GetComponent<Camera>();
             Rect rec = new Rect(x, y, width, height);
 
             lt.rect = rec;

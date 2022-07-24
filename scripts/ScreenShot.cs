@@ -160,47 +160,47 @@ public class ScreenShot : MonoBehaviour
 
     //********************************************************************************
     //---Camera extension
-    public void LayerCullingShow(Camera cam, int layerMask)
+    public static void LayerCullingShow(Camera cam, int layerMask)
     {
         cam.cullingMask |= layerMask;
     }
 
-    public void LayerCullingShow(Camera cam, string layer)
+    public static void LayerCullingShow(Camera cam, string layer)
     {
         LayerCullingShow(cam, 1 << LayerMask.NameToLayer(layer));
     }
 
-    public void LayerCullingHide(Camera cam, int layerMask)
+    public static void LayerCullingHide(Camera cam, int layerMask)
     {
         cam.cullingMask &= ~layerMask;
     }
 
-    public void LayerCullingHide(Camera cam, string layer)
+    public static void LayerCullingHide(Camera cam, string layer)
     {
         LayerCullingHide(cam, 1 << LayerMask.NameToLayer(layer));
     }
 
-    public void LayerCullingToggle(Camera cam, int layerMask)
+    public static void LayerCullingToggle(Camera cam, int layerMask)
     {
         cam.cullingMask ^= layerMask;
     }
 
-    public void LayerCullingToggle(Camera cam, string layer)
+    public static void LayerCullingToggle(Camera cam, string layer)
     {
         LayerCullingToggle(cam, 1 << LayerMask.NameToLayer(layer));
     }
 
-    public bool LayerCullingIncludes(Camera cam, int layerMask)
+    public static bool LayerCullingIncludes(Camera cam, int layerMask)
     {
         return (cam.cullingMask & layerMask) > 0;
     }
 
-    public  bool LayerCullingIncludes(Camera cam, string layer)
+    public static bool LayerCullingIncludes(Camera cam, string layer)
     {
         return LayerCullingIncludes(cam, 1 << LayerMask.NameToLayer(layer));
     }
 
-    public void LayerCullingToggle(Camera cam, int layerMask, bool isOn)
+    public static void LayerCullingToggle(Camera cam, int layerMask, bool isOn)
     {
         bool included = LayerCullingIncludes(cam, layerMask);
         if (isOn && !included)
@@ -213,7 +213,7 @@ public class ScreenShot : MonoBehaviour
         }
     }
 
-    public void LayerCullingToggle(Camera cam, string layer, bool isOn)
+    public static void LayerCullingToggle(Camera cam, string layer, bool isOn)
     {
         LayerCullingToggle(cam, 1 << LayerMask.NameToLayer(layer), isOn);
     }

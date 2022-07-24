@@ -77,7 +77,7 @@ namespace UserHandleSpace
                 ;
             }
             //---FX/Water4
-            else if (mat.shaderName.ToLower() == "fx/water4")
+            else if ( (mat.shaderName.ToLower() == "fx/water4") || (mat.shaderName.ToLower() == "fx/simplewater4") )
             {
                 ln = mat.name + CST_SEPSTR_PROP +
                     mat.shaderName + CST_SEPSTR_PROP +
@@ -101,6 +101,13 @@ namespace UserHandleSpace
                     mat.shaderName + CST_SEPSTR_PROP +
                     mat.waveScale.ToString() + CST_SEPSTR_PROP +
                     mat.waveSpeed.x + CST_SEPSTR_PROP + mat.waveSpeed.y + CST_SEPSTR_PROP + mat.waveSpeed.z + CST_SEPSTR_PROP + mat.waveSpeed.w
+                ;
+            }
+            else if (mat.shaderName.ToLower() == "lux water/watersurface")
+            {
+                ln = mat.name + CST_SEPSTR_PROP +
+                    mat.shaderName + CST_SEPSTR_PROP +
+                    mat.waveScale.ToString()
                 ;
             }
 
@@ -155,7 +162,7 @@ namespace UserHandleSpace
                     mat.dstblend = float.TryParse(matc[12], out mat.dstblend) ? mat.dstblend : 0;
 
                 }
-                else if (mat.shaderName.ToLower() == "fx/water4")
+                else if ( (mat.shaderName.ToLower() == "fx/water4") || (mat.shaderName.ToLower() == "fx/simplewater4") )
                 {
                     //---most less is 31 items.
                     if (matc.Length < 31) continue;
@@ -222,6 +229,11 @@ namespace UserHandleSpace
                         float w = float.TryParse(matc[6], out w) ? w : 0;
                         mat.waveSpeed = new Vector4(x, y, z, w);
                     }
+                }
+                else if (mat.shaderName.ToLower() == "lux water/watersurface")
+                {
+                    
+                    mat.waveScale = float.TryParse(matc[2], out mat.waveScale) ? mat.waveScale : 0;
                 }
                 /*
                 mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
@@ -868,6 +880,7 @@ namespace UserHandleSpace
                     {
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
 
+                        atp.animationType = AF_MOVETYPE.LightProperty;
                         atp.rotation = new Vector3(vec3[0], vec3[1], vec3[2]);
                         atp.range = vec3[3];
                         atp.color = new Color(vec3[4], vec3[5], vec3[6], vec3[7]);

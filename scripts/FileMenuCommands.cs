@@ -474,7 +474,7 @@ namespace UserVRMSpace
             AsyncOperationHandle dHandle = Addressables.DownloadDependenciesAsync(param, false);
             float progress = 0;
 
-            Debug.Log("total bytes=" + dHandle.GetDownloadStatus().TotalBytes.ToString());
+            //Debug.Log("total bytes=" + dHandle.GetDownloadStatus().TotalBytes.ToString());
             uui.EnableDlg(true);
             while (dHandle.Status == AsyncOperationStatus.None)
             {
@@ -523,7 +523,7 @@ namespace UserVRMSpace
                 //if (www.isNetworkError || www.isHttpError)
                 if (www.result == UnityWebRequest.Result.ConnectionError)
                 {
-                    Debug.Log(www.error);
+                    Debug.LogError(www.error);
                     yield break;
                 }
                 else
@@ -541,7 +541,7 @@ namespace UserVRMSpace
                 //if (www.isNetworkError || www.isHttpError)
                 if (www.result == UnityWebRequest.Result.ConnectionError)
                 {
-                    Debug.Log(www.error);
+                    Debug.LogError(www.error);
                     yield break;
                 }
                 else
@@ -646,7 +646,7 @@ namespace UserVRMSpace
             pendingInstance.gameObject.tag = "Player";
             pendingInstance.gameObject.layer = LayerMask.NameToLayer("Player");
 
-            Debug.Log("pendingInstance.gameObject.name=" + pendingInstance.gameObject.name);
+            //Debug.Log("pendingInstance.gameObject.name=" + pendingInstance.gameObject.name);
 
             ManageAvatarTransform mat = pendingInstance.gameObject.AddComponent<ManageAvatarTransform>();
             List<GameObject> meshcnt = mat.CheckSkinnedMeshAvailable();
@@ -737,7 +737,6 @@ namespace UserVRMSpace
             vrmoi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.VRM);
 
             string json = JsonUtility.ToJson(vrmoi);
-            //Debug.Log(json);
 
             //---get BlendShapes
             SkinnedMeshRenderer aface = null;
@@ -762,13 +761,13 @@ namespace UserVRMSpace
 
             //---return VRM Meta information to WebGL
 #if !UNITY_EDITOR && UNITY_WEBGL
-            Debug.Log("incolor="+incolor.Length);
+            //Debug.Log("incolor="+incolor.Length);
             if (isBackHTML) sendVRMInfo(incolor, incolor.Length, "VRM", json, pendingVRMmeta.LicenseType.ToString(), strHeight, blendShapeList);
 #endif
 
             //ScriptableObject.Destroy(vrmoi);
             openingNative.baseInfo = vrmoi;
-            Debug.Log("PreviewBody=" + vrmoi.Title);
+            //Debug.Log("PreviewBody=" + vrmoi.Title);
         }
 
         public void CheckNormalizedVRM()
@@ -1190,14 +1189,14 @@ namespace UserVRMSpace
         }
         private void OnErrorTriLib4HTML(IContextualizedError ErrorContext)
         {
-            Debug.Log(ErrorContext.GetInnerException());
+            Debug.LogError(ErrorContext.GetInnerException());
 #if !UNITY_EDITOR && UNITY_WEBGL
             if (IsBackToHTML) ReceiveStringVal(ErrorContext.GetInnerException().Message);
 #endif
         }
         private void OnErrorTriLib(IContextualizedError ErrorContext)
         {
-            Debug.Log(ErrorContext.GetInnerException());
+            Debug.LogError(ErrorContext.GetInnerException());
 
         }
         public OtherObjectInformation OnShowedOtherObject(GameObject oth)
@@ -1412,7 +1411,7 @@ namespace UserVRMSpace
                 //if (www.isNetworkError || www.isHttpError)
                 if (www.result == UnityWebRequest.Result.ConnectionError)
                 {
-                    Debug.Log(www.error);
+                    Debug.LogError(www.error);
                     yield break;
                 }
                 else
@@ -1526,6 +1525,14 @@ namespace UserVRMSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
                     ReceiveStringVal(oth.name);
 #endif
+                NativeAnimationAvatar nav = managa.GetCastInProject("Stage");
+                if (nav != null)
+                {
+                    OperateStage ost = nav.avatar.GetComponent<OperateStage>();
+                    ost.ManageWaterComponent();
+
+
+                }
             }
             
         }
@@ -2112,7 +2119,7 @@ namespace UserVRMSpace
                 //if (www.isNetworkError || www.isHttpError)
                 if (www.result == UnityWebRequest.Result.ConnectionError)
                 {
-                    Debug.Log(www.error);
+                    Debug.LogError(www.error);
                     yield break;
                 }
                 else
@@ -2570,7 +2577,7 @@ namespace UserVRMSpace
         {
             string[] prm = url.Split(',');
             string ext = System.IO.Path.GetExtension(prm[1]);
-            Debug.Log("name=>" + prm[1] + ",  extention=>" + ext);
+            //Debug.Log("name=>" + prm[1] + ",  extention=>" + ext);
             AudioType okaudiotype = AudioType.UNKNOWN;
             if (ext.ToLower().IndexOf("wav") > -1)
             {
@@ -2585,11 +2592,10 @@ namespace UserVRMSpace
                 okaudiotype = AudioType.OGGVORBIS;
             }
 
-            Debug.Log(okaudiotype);
+            //Debug.Log(okaudiotype);
             if (okaudiotype != AudioType.UNKNOWN)
             {
-                Debug.Log("url:" + prm[0] + "\n" + 
-                    okaudiotype);
+                //Debug.Log("url:" + prm[0] + "\n" + okaudiotype);
                 
                 using (UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(prm[0], okaudiotype))
                 {
@@ -2602,21 +2608,20 @@ namespace UserVRMSpace
                     //if (www.isNetworkError || www.isHttpError)
                     if (www.result == UnityWebRequest.Result.ConnectionError)
                     {
-                        Debug.Log(www.error);
+                        Debug.LogError(www.error);
                         yield break;
                     }
                     else
                     {
                         AudioClip ac = dhan.audioClip;
-                        Debug.Log("Audio downloade->");
                         if (ac != null)
                         {
-                            Debug.Log(ac.GetType());
-                            Debug.Log(ac.ToString());
+                            //Debug.Log(ac.GetType());
+                            //Debug.Log(ac.ToString());
                         }
                         else
                         {
-                            Debug.Log("Audio failed...");
+                            Debug.LogError("Audio failed...");
                         }
                         
                         DownloadAudio_body(ac, Path.GetFileName(prm[1]), BoxName);
@@ -2638,7 +2643,6 @@ namespace UserVRMSpace
                 ola.AddAudio(filename, ac);
             }
             string js = BoxName + "," + filename + "," + ac.samples.ToString() + "," + ac.length.ToString();
-            Debug.Log(js);
 
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(js);

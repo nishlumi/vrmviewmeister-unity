@@ -32,6 +32,7 @@ namespace UserHandleSpace
         private PostProcessVolume ppvol;
 
         private List<string> bkuplist;
+        private BasicNamedFloatList bkupProcessingList;
 
         private void Awake()
         {
@@ -54,6 +55,10 @@ namespace UserHandleSpace
         void Update()
         {
 
+        }
+        private void OnDestroy()
+        {
+            RuntimeUtilities.DestroyProfile(ppvol.profile, true);
         }
         public void GetDefault()
         {
@@ -187,8 +192,19 @@ namespace UserHandleSpace
 
             if (effectName.ToLower() == "bloom")
             {
-                Bloom st = ppvol.profile.GetSetting<Bloom>();
+                Bloom st = null;// ppvol.profile.GetSetting<Bloom>();
+                
+                if (!ppvol.profile.TryGetSettings<Bloom>(out st))
+                {
+                    st = ScriptableObject.CreateInstance<Bloom>();
+                    ppvol.profile.AddSettings(st);
+                }
+                
+                
                 st.enabled.Override(ena);
+                
+                
+
             }
             else if (effectName.ToLower() == "chromatic")
             {
@@ -310,8 +326,12 @@ namespace UserHandleSpace
 
             if (effectName.ToLower() == "bloom")
             {
-                Bloom st = ppvol.profile.GetSetting<Bloom>();
-                ret.Add(st.intensity.value);
+                Bloom st = null;
+                if (ppvol.profile.TryGetSettings<Bloom>(out st))
+                {
+                    ret.Add(st.intensity.value);
+                }
+                
             }
             else if (effectName.ToLower() == "chromatic")
             {
@@ -375,22 +395,27 @@ namespace UserHandleSpace
 
             if (effectName.ToLower() == "bloom")
             {
-                Bloom st = ppvol.profile.GetSetting<Bloom>();
-
-                seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
+                Bloom st = null;
                 
-                if (isEnable)
+                if (ppvol.profile.TryGetSettings<Bloom>(out st))
                 {
-                    if (useDOTween) seq.Join(DOTween.To(() => st.intensity.value, x => st.intensity.Override(x), values[0], duration));
-                    else st.intensity.Override(values[0]);
+                    if (useDOTween) seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
+
+                    if (isEnable)
+                    {
+                        if (useDOTween) seq.Join(DOTween.To(() => st.intensity.value, x => st.intensity.Override(x), values[0], duration));
+                        else st.intensity.Override(values[0]);
+                    }
                 }
+
+                
                 
             }
             else if (effectName.ToLower() == "chromatic")
             {
                 ChromaticAberration st = ppvol.profile.GetSetting<ChromaticAberration>();
 
-                seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
+                if (useDOTween) seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
                 
                 if (isEnable)
                 {
@@ -403,7 +428,7 @@ namespace UserHandleSpace
             {
                 ColorGrading st = ppvol.profile.GetSetting<ColorGrading>();
 
-                seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
+                if (useDOTween) seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
                 if (isEnable)
                 {
                     if (useDOTween) seq.Join(DOTween.To(() => st.temperature.value, x => st.temperature.Override(x), values[0], duration));
@@ -423,7 +448,7 @@ namespace UserHandleSpace
             {
                 DepthOfField st = ppvol.profile.GetSetting<DepthOfField>();
 
-                seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
+                if (useDOTween) seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
                 if (isEnable)
                 {
                     if (useDOTween) seq.Join(DOTween.To(() => st.aperture.value, x => st.aperture.Override(x), values[0], duration));
@@ -439,7 +464,7 @@ namespace UserHandleSpace
             {
                 Grain st = ppvol.profile.GetSetting<Grain>();
 
-                seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
+                if (useDOTween) seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
                 if (isEnable)
                 {
                     if (useDOTween) seq.Join(DOTween.To(() => st.intensity.value, x => st.intensity.Override(x), values[0], duration));
@@ -455,7 +480,7 @@ namespace UserHandleSpace
             {
                 MotionBlur st = ppvol.profile.GetSetting<MotionBlur>();
 
-                seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
+                if (useDOTween) seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
                 if (isEnable)
                 {
                     if (useDOTween) seq.Join(DOTween.To(() => st.shutterAngle.value, x => st.shutterAngle.Override(x), values[0], duration));
@@ -471,7 +496,7 @@ namespace UserHandleSpace
             {
                 Vignette st = ppvol.profile.GetSetting<Vignette>();
 
-                seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
+                if (useDOTween) seq.Join(DOVirtual.DelayedCall(duration, () => st.enabled.Override(isEnable), false));
                 if (isEnable)
                 {
                     if (useDOTween) seq.Join(DOTween.To(() => st.intensity.value, x => st.intensity.Override(x), values[0], duration));
@@ -519,25 +544,34 @@ namespace UserHandleSpace
             string[] prm = param.Split(',');
             string name = prm[0];
             float v = float.TryParse(prm[1], out v) ? v : 0f;
-            Bloom st = ppvol.profile.GetSetting<Bloom>();
-            if (name.ToLower() == "intensity")
+            Bloom st = null;// ppvol.profile.GetSetting<Bloom>();
+            if (ppvol.profile.TryGetSettings<Bloom>(out st))
             {
-                st.intensity.Override(v);
+                if (name.ToLower() == "intensity")
+                {
+                    st.intensity.Override(v);
+                    //st.intensity.value = v;
+                }
+
             }
         }
         public float GetBloomSetting(string param)
         {
             float ret = 0f;
-            Bloom st = ppvol.profile.GetSetting<Bloom>();
-
             string[] prm = param.Split(',');
             string name = prm[0];
             bool is_contacthtml = prm[1] == "1" ? true : false;
-
-            if (name.ToLower() == "intensity")
+            Bloom st = null;
+            
+            if (ppvol.profile.TryGetSettings<Bloom>(out st))
             {
-                ret = st.intensity.value;
+
+                if (name.ToLower() == "intensity")
+                {
+                    ret = st.intensity.value;
+                }
             }
+            
 #if !UNITY_EDITOR && UNITY_WEBGL
         if (is_contacthtml) ReceiveFloatVal(ret);
 #endif

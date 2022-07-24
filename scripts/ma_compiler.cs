@@ -1252,7 +1252,7 @@ namespace UserHandleSpace
                 {
                     cam.fieldOfView = movedata.fov;
                     cam.backgroundColor = movedata.color;
-                    cam.rect = movedata.viewport;
+                    cam.rect = new Rect(movedata.viewport);
                     cam.depth = movedata.depth;
                 }
             }
@@ -1610,7 +1610,26 @@ namespace UserHandleSpace
                 if (movedata.effectName.ToLower() == effectName.ToLower())
                 {
                     bool isEnable = movedata.animationType == AF_MOVETYPE.SystemEffectOff ? false : true;
-                    seq = mse.SetEffectValues(seq, effectName, movedata.effectValues, isEnable, options.isExecuteForDOTween == 1 ? true : false, frame.duration);
+                    //Debug.Log("Fukugen SystemEffect=" + effectName);
+                    //Debug.Log("  enabled=" + (isEnable ? "true" : "false"));
+                    //if (movedata.effectValues.Count > 0)
+                    //{
+                    //    Debug.Log("  value=" + movedata.effectValues[0].ToString());
+                    //}
+                    if (options.isBuildDoTween == 1)
+                    {
+                        seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                        {
+                            mse.EnablePostProcessing(effectName + "," + (isEnable ? "1" : "0"));
+                        },false));
+                        seq = mse.SetEffectValues(seq, effectName, movedata.effectValues, isEnable, options.isExecuteForDOTween == 1 ? true : false, frame.duration);
+                    }
+                    else
+                    {
+                        mse.EnablePostProcessing(effectName + "," + (isEnable ? "1" : "0"));
+                        mse.SetEffectValues(seq, effectName, movedata.effectValues, isEnable, false, frame.duration);
+                    }
+                    
                 }
             }
 
@@ -2818,7 +2837,10 @@ namespace UserHandleSpace
                 atcam2.color = cam.backgroundColor;
                 atcam2.fov = cam.fieldOfView;
                 atcam2.depth = cam.depth;
-                atcam2.viewport = cam.rect;
+                atcam2.viewport.x = cam.rect.x;
+                atcam2.viewport.y = cam.rect.y;
+                atcam2.viewport.width = cam.rect.width;
+                atcam2.viewport.height = cam.rect.height;
 
                 //---render texture : Camera SIDE
                 atcam2.renderFlag = olc.GetCameraRenderFlag();

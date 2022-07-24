@@ -441,13 +441,31 @@ namespace UserUISpace
         async void selectwater_OnClick()
         {
             OperateStage os = GameObject.Find("Stage").GetComponent<OperateStage>();
-            await os.SelectStageRef((int)StageKind.SeaDaytime);
-            os.ListGetOneUserMaterial("");
+            //os.SelectStage((int)StageKind.BasicSeaLevel);
+            os.SelectStage((int)StageKind.SeaNight);
+            //os.ListGetOneUserMaterial("");
         }
         void wateropt1_OnClick()
         {
             OperateStage os = GameObject.Find("Stage").GetComponent<OperateStage>();
-            os.SetUserMaterial("wavescale,0.02");
+            //os.SetUserMaterial("wavefrequency,1\t1\t1\t1");
+            /*
+            AnimationRegisterOptions aro = new AnimationRegisterOptions();
+            aro.index = 17;
+            aro.targetRole = "SystemEffect";
+            aro.targetType = AF_TARGETTYPE.SystemEffect;
+            aro.duration = 0.5f;
+
+            string js = JsonUtility.ToJson(aro);
+            manim.SetDuration(js);
+            */
+            os.SelectStage((int)StageKind.SeaNight);
+
+            GameObject sea = os.gameObject; //.transform.Find("DayTimeSeaStage").gameObject;
+            MeshRenderer mhr = sea.GetComponentInChildren<MeshRenderer>();
+            Debug.Log(mhr.material.name);
+            Vector4 vec = mhr.material.GetVector("_BumpTiling");
+            Debug.Log(vec.x.ToString() + ", " + vec.y.ToString() + ", " + vec.z.ToString() + ", " + vec.w.ToString());
         }
 
         //===============================================================================================

@@ -109,11 +109,14 @@ namespace UserHandleSpace
                     {
                         if (ll != null)
                         {
+                            seq.Join(ll.transform.DOMoveX(leftlowerleg.position.x, 0.01f));
                             seq.Join(ll.transform.DOMoveY(leftlowerleg.position.y, 0.01f));
                             seq.Join(ll.transform.DOMoveZ(leftlowerleg.position.z - cns_lowerleg_z, 0.01f));
+                            
                         }
                         if (rl != null)
                         {
+                            seq.Join(rl.transform.DOMoveX(rightlowerleg.position.x, 0.01f));
                             seq.Join(rl.transform.DOMoveY(rightlowerleg.position.y, 0.01f));
                             seq.Join(rl.transform.DOMoveZ(rightlowerleg.position.z - cns_lowerleg_z, 0.01f));
                         }

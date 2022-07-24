@@ -609,7 +609,6 @@ namespace UserHandleSpace
         //  New Activate methods: using Layer "Handle", "HiddenHandle"
         public void AddAvatarBox(string name, GameObject avatar, GameObject ikparent)
         {
-            Debug.Log(name);
 #if UNITY_EDITOR || UNITY_STANDALONE
 
             //Dropdown.OptionData opt = new Dropdown.OptionData();

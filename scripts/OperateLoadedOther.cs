@@ -122,7 +122,7 @@ namespace UserHandleSpace
 
                         mat.SetTexture("_MainTex", null);
                     }
-                    
+                    Destroy(mat);
                 }
                 mat = null;
             }

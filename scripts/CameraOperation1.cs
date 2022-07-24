@@ -61,7 +61,7 @@ public class CameraOperation1 : MonoBehaviour
     {
         manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
 
-        Debug.Log(RenderSettings.skybox.shader.name);
+        //Debug.Log(RenderSettings.skybox.shader.name);
 
         configLab = GameObject.Find("AnimateArea").GetComponent<ConfigSettingLabs>();
         mainCamera = Camera.main;

@@ -45,7 +45,7 @@ namespace UserHandleSpace
         // Update is called once per frame
         void Update()
         {
-            if (false)
+            /*if (false)
             {
                 if (Input.GetMouseButtonDown(0))
                 {
@@ -58,7 +58,7 @@ namespace UserHandleSpace
 
                     }
                 }
-            }
+            }*/
             
         }
         void LastUpdate()
@@ -1003,6 +1003,7 @@ namespace UserHandleSpace
         {
             GameObject animarea = manim.AvatarArea; //GameObject.Find("View Body");
             GameObject ikhp = manim.ikArea; //GameObject.FindGameObjectWithTag("IKHandleWorld");
+            Camera FrontMainCamera = GameObject.Find("FrontMainCamera").GetComponent<Camera>();
 
             //GameObject campar = new GameObject();
             GameObject copycam;
@@ -1013,8 +1014,19 @@ namespace UserHandleSpace
             ret[0] = Instantiate(copycam, copycam.transform.position, Quaternion.identity, animarea.transform);
             ret[1] = Instantiate(ikcopycam, ikcopycam.transform.position, Quaternion.identity, ikhp.transform);
 
+            /*Camera adcam = ret[0].AddComponent<Camera>();
+            adcam.clearFlags = CameraClearFlags.SolidColor;
+            adcam.fieldOfView = 30f;
+            adcam.farClipPlane = 100f;
+            adcam.nearClipPlane = 0.01f;
+            adcam.depth = 11;
+            adcam.cullingMask = FrontMainCamera.cullingMask;
+            adcam.enabled = false;
+            */
+
             //---connect camera transform to Post-process-layer
             PostProcessLayer ppl = ret[0].GetComponent<PostProcessLayer>();
+            //ppl.volumeLayer ^= 1 << LayerMask.NameToLayer("SystemEffect");
             ppl.volumeTrigger = ret[0].transform;
 
             //---re-positionning IK to real object

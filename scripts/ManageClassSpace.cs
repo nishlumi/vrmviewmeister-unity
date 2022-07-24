@@ -131,6 +131,22 @@ namespace UserHandleSpace
         public Vector3 rotation;
         public Vector3 scale;
     }
+    [Serializable]
+    public class BasicNamedFloatList 
+    {
+        public string text;
+        public List<float> values;
+        public BasicNamedFloatList(string id, List<float> vs)
+        {
+            text = id;
+            values = new List<float>();
+            vs.ForEach(action =>
+            {
+                values.Add(action);
+            });
+
+        }
+    }
     /*
      * "EyeViewHandle", "Head", "LookAt", "Aim", "Chest", "Pelvis", "LeftLowerArm", "LeftHand",
             "RightLowerArm","RightHand","LeftLowerLeg","LeftLeg","RightLowerLeg","RightLeg"
@@ -614,6 +630,9 @@ namespace UserHandleSpace
             viewHandle = "self";
             handleList = new List<AvatarIKMappingClass>();
             matProp = new List<MaterialProperties>();
+            lightType = LightType.Spot;
+            viewport = Rect.zero;
+
             effectValues = new List<float>();
             windDurationMin = 0.01f;
             windDurationMax = 0.02f;
@@ -623,6 +642,8 @@ namespace UserHandleSpace
             skyType = CameraClearFlags.SolidColor;
             skyShaderFloat = new List<BasicStringFloatList>();
             skyShaderColor = new List<BasicStringColorList>();
+            wavespeed = Vector4.zero;
+
             renderTex = new Vector2();
             //isEquip = 0;
             //equippedRoleName = "";
