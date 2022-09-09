@@ -80,6 +80,42 @@ namespace UserHandleSpace
         {
 
         }
+        public static Vector3 GetTwoPointAngleDirection(Vector3 point1, Vector3 point2, Vector3 axis)
+        {
+            Vector3 ret = Vector3.zero;
+            if (axis == Vector3.right)
+            { //axis is X, rotate Y and Z
+                float angle_z2y = Mathf.Atan2(point2.z - point1.z, point2.x - point1.x) * Mathf.Rad2Deg * -1;
+                float angle_y2z = Mathf.Atan2(point2.y - point1.y, point2.x - point1.x) * Mathf.Rad2Deg;
+
+                ret.y = angle_z2y;
+                ret.z = angle_y2z;
+            }
+            else if (axis == Vector3.up)
+            { //axis is Y, rotate X and Z
+                float angle_x2z = Mathf.Atan2(point2.x - point1.x, point2.y - point2.y);
+                float angle_z2x = Mathf.Atan2(point2.z - point1.z, point2.y - point2.y);
+
+                ret.x = angle_z2x;
+                ret.z = angle_x2z;
+            }
+            else if (axis == Vector3.forward)
+            { //axis is Z, rotate X and Y
+                float angle_x2y = Mathf.Atan2(point2.x - point1.x, point2.z - point1.z) * Mathf.Rad2Deg * -1;
+                float angle_y2x = Mathf.Atan2(point2.y - point1.y, point2.z - point1.z) * Mathf.Rad2Deg;
+
+                ret.x = angle_y2x;
+                ret.y = angle_x2y;
+            }
+            return ret;
+        }
+        public static void TranslateDummyPoint(Transform tmpobj, Vector3 rot, Vector3 left, Vector3 right, Vector3 pelvis)
+        {
+            Vector3 objcenter = (left + right) / 2;
+            tmpobj.position = new Vector3(objcenter.x, Mathf.Abs(objcenter.y) + pelvis.y, objcenter.z);
+            tmpobj.localRotation = Quaternion.Euler(rot);
+
+        }
         public void ChangeFullIKType(bool useFullIK)
         {
             if (useFullIK)
@@ -407,6 +443,14 @@ namespace UserHandleSpace
                 StartCoroutine(SetIKTransformAll_Body(aai));
             }
         }
+        public void SetIKTransformAll2(string param)
+        {
+            AvatarAllIKParts aai = JsonUtility.FromJson<AvatarAllIKParts>(param);
+            if (aai != null)
+            {
+                StartCoroutine(SetIKTransformAll_Body2(aai));
+            }
+        }
         private IEnumerator SetIKTransformAll_Body(AvatarAllIKParts aai)
         {
             OperateLoadedVRM ovrm = gameObject.GetComponent<OperateLoadedVRM>();
@@ -459,8 +503,32 @@ namespace UserHandleSpace
 
                         if (child != null)
                         {
-                            child.transform.localPosition = asit.position;
-                            child.transform.localRotation = Quaternion.Euler(asit.rotation);
+                            if ((asit.ikname.ToLower() != "leftshoulder") && (asit.ikname.ToLower() != "rightshoulder"))
+                            { // both shoulder is not neccessary positioning (rotation only)
+                                child.transform.localPosition = asit.position;
+                            }
+                            
+                            if (asit.ikname.ToLower() == "chest")
+                            {
+                                AvatarSingleIKTransform asit_leftshld = aai.list.Find(match =>
+                                {
+                                    if (match.ikname.ToLower() == "leftshoulder") return true;
+                                    return false;
+                                });
+                                AvatarSingleIKTransform asit_rightshld = aai.list.Find(match =>
+                                {
+                                    if (match.ikname.ToLower() == "rightshoulder") return true;
+                                    return false;
+                                });
+                                if ((asit_leftshld != null) && (asit_rightshld != null)) {
+                                    Quaternion fnlrot = Quaternion.FromToRotation(asit_leftshld.position, asit_rightshld.position);
+                                    child.transform.localRotation = fnlrot;
+                                }
+                            }
+                            else
+                            {
+                                child.transform.localRotation = Quaternion.Euler(asit.rotation);
+                            }
                             //seq.Join(child.transform.DOLocalMove(asit.position, 0.1f));
                             //seq.Join(child.transform.DOLocalRotate(asit.rotation, 0.1f));
                             yield return null;
@@ -477,7 +545,177 @@ namespace UserHandleSpace
             //seq.Join(ikparent.transform.DOMove(aai.list[0].position, 0.01f));
             //seq.Join(ikparent.transform.DORotate(aai.list[0].rotation, 0.01f));
         }
+        private IEnumerator SetIKTransformAll_Body2(AvatarAllIKParts aai)
+        {
+            OperateLoadedVRM ovrm = gameObject.GetComponent<OperateLoadedVRM>();
+            string[] sortedBones = {
+                    "IKParent",
+                    "Pelvis","Chest","Head", "Aim", "LookAt",
+                    "LeftLeg",
+                    "RightLeg",
+                    "LeftLowerLeg",
+                    "RightLowerLeg",
 
+                    "LeftShoulder",
+                    "LeftHand", "LeftLowerArm",
+                    "RightShoulder",
+                    "RightHand", "RightLowerArm",
+
+                    "EyeViewHandle"
+                };
+            sortedBones = IKbones;
+            List<Vector3> tpose = ovrm.GetTPoseBodyList();
+            Vector3 t_pelvis = tpose[6];
+
+            //Transform[] bts = ovrm.relatedHandleParent.GetComponentsInChildren<Transform>();
+            GameObject tmpobj = new GameObject();
+
+            //---common using
+            Vector3 chestcenter = (aai.list[11].position + aai.list[12].position) / 2;
+            Vector3 hipcenter = (aai.list[23].position + aai.list[24].position) / 2;
+            Vector3 eyerot = GetTwoPointAngleDirection(aai.list[2].position, aai.list[5].position, Vector3.right);
+            Vector3 aimrot = GetTwoPointAngleDirection(aai.list[11].position, aai.list[12].position, Vector3.right);
+            Vector3 hiprot = GetTwoPointAngleDirection(aai.list[23].position, aai.list[24].position, Vector3.right);
+            Vector3 hipXrot = GetTwoPointAngleDirection(hipcenter, chestcenter, Vector3.up);
+
+            //---Pelvis
+            Transform pelvis = ovrm.relatedHandleParent.transform.Find("Pelvis");
+            {
+                TranslateDummyPoint(tmpobj.transform, hiprot, aai.list[23].position, aai.list[24].position, t_pelvis);
+                yield return null;
+
+                //tmpobj.transform.Translate(Vector3.back);
+                pelvis.localPosition = new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tmpobj.transform.position.z);
+                pelvis.localRotation = Quaternion.Euler(hipXrot.x, hiprot.y, hiprot.z - 180f);
+            }
+            yield return null;
+
+            //---Chest
+            Transform chest = ovrm.relatedHandleParent.transform.Find("Chest");
+            {
+                chestcenter.y = t_pelvis.y + Mathf.Abs(chestcenter.y);
+                chest.localPosition = chestcenter;
+                chest.localRotation = Quaternion.Euler(aimrot.x - 180f, aimrot.y - 180f, aimrot.z);
+            }
+            yield return null;
+
+            //---Head
+            Transform head = ovrm.relatedHandleParent.transform.Find("Head");
+            {
+                head.localPosition = new Vector3(aai.list[0].position.x, t_pelvis.y + Mathf.Abs(aai.list[0].position.y), aai.list[0].position.z);
+                head.localRotation = Quaternion.Euler(eyerot.x-180f, eyerot.y-180f, eyerot.z);
+            }
+            yield return null;
+
+            //---Aim
+            Transform aim = ovrm.relatedHandleParent.transform.Find("Aim");
+            aimrot.z = Mathf.Abs(aimrot.z);
+            {
+                //Vector3 aimcenter = (aai.list[11].position + aai.list[12].position) / 2;
+                //tmpobj.transform.position = aimcenter;
+                //tmpobj.transform.localRotation = Quaternion.Euler(aimrot);
+                TranslateDummyPoint(tmpobj.transform, aimrot, aai.list[11].position, aai.list[12].position, t_pelvis);
+                yield return null;
+
+                tmpobj.transform.Translate(Vector3.forward);
+                aim.localPosition = new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tmpobj.transform.position.z);
+            }
+            yield return null;
+
+            //---LookAt
+            Transform lookat = ovrm.relatedHandleParent.transform.Find("LookAt");
+            {
+                Vector3 lookatrot = GetTwoPointAngleDirection(aai.list[9].position, aai.list[10].position, Vector3.right);
+                //lookat.localPosition = new Vector3(aai.list[0].position.x, t_pelvis.y + MathF.Abs(aai.list[0].position.y), tpose[3].z);
+                tmpobj.transform.position = lookat.position;
+                tmpobj.transform.localRotation = Quaternion.Euler(lookatrot.x, lookatrot.y, lookatrot.z);
+                yield return null;
+
+                //tmpobj.transform.Translate(Vector3.back);
+                lookat.localPosition = new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tpose[3].z);
+            }
+            yield return null;
+
+            //---EyeViewHandle
+            Transform eye = ovrm.relatedHandleParent.transform.Find("EyeViewHandle");
+            {
+                //Vector3 eyecenter = (aai.list[2].position + aai.list[5].position) / 2;
+                //tmpobj.transform.position = new Vector3(eyecenter.x, eyecenter.y + t_pelvis.y, eyecenter.z);
+                //tmpobj.transform.localRotation = Quaternion.Euler(eyerot);
+                TranslateDummyPoint(tmpobj.transform, eyerot, aai.list[2].position, aai.list[5].position, t_pelvis);
+                yield return null;
+
+                //tmpobj.transform.Translate(Vector3.back);
+                eye.localPosition = new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tpose[1].z);
+            }
+            yield return null;
+
+            //---left lower arm
+            Transform leftlowerarm = ovrm.relatedHandleParent.transform.Find("LeftLowerArm");
+            {
+                leftlowerarm.localPosition = new Vector3(aai.list[13].position.x, Mathf.Abs(aai.list[13].position.y) + t_pelvis.y, aai.list[13].position.z);
+            }
+            yield return null;
+
+            //---right lower arm
+            Transform rightlowerarm = ovrm.relatedHandleParent.transform.Find("RightLowerArm");
+            {
+                rightlowerarm.localPosition = new Vector3(aai.list[14].position.x, Mathf.Abs(aai.list[14].position.y) + t_pelvis.y, aai.list[14].position.z);
+            }
+            yield return null;
+
+            //---left hand
+            Transform lefthand = ovrm.relatedHandleParent.transform.Find("LeftHand");
+            {
+                lefthand.localPosition = new Vector3(aai.list[15].position.x, Mathf.Abs(aai.list[15].position.y) + t_pelvis.y, aai.list[15].position.z);
+            }
+            yield return null;
+
+            //---right hand
+            Transform righthand = ovrm.relatedHandleParent.transform.Find("RightHand");
+            {
+                righthand.localPosition = new Vector3(aai.list[16].position.x, Mathf.Abs(aai.list[16].position.y) + t_pelvis.y, aai.list[16].position.z);
+            }
+            yield return null;
+
+            //---left lower leg
+            Transform leftlowerleg = ovrm.relatedHandleParent.transform.Find("LeftLowerLeg");
+            {
+                leftlowerleg.localPosition = new Vector3(aai.list[25].position.x, t_pelvis.y - Mathf.Abs(aai.list[25].position.y), aai.list[25].position.z);
+            }
+            yield return null;
+
+            //---right lower leg
+            Transform rightlowerleg = ovrm.relatedHandleParent.transform.Find("RightLowerLeg");
+            {
+                rightlowerleg.localPosition = new Vector3(aai.list[26].position.x, t_pelvis.y - Mathf.Abs(aai.list[26].position.y), aai.list[26].position.z);
+            }
+            yield return null;
+
+            //---left foot
+            Transform leftfoot = ovrm.relatedHandleParent.transform.Find("LeftLeg");
+            Vector3 leftfootrot = GetTwoPointAngleDirection(aai.list[29].position, aai.list[31].position, Vector3.forward);
+            {
+                leftfoot.localPosition = new Vector3(aai.list[27].position.x, t_pelvis.y - Mathf.Abs(aai.list[27].position.y), aai.list[27].position.z);
+                leftfoot.localRotation = Quaternion.Euler(leftfootrot.x, leftfootrot.y-180f, leftfootrot.z+180f);
+            }
+            yield return null;
+
+            //---right foot
+            Transform rightfoot = ovrm.relatedHandleParent.transform.Find("RightLeg");
+            Vector3 rightfootrot = GetTwoPointAngleDirection(aai.list[30].position, aai.list[32].position, Vector3.forward);
+            {
+                rightfoot.localPosition = new Vector3(aai.list[28].position.x, t_pelvis.y - Mathf.Abs(aai.list[28].position.y), aai.list[28].position.z);
+                rightfoot.localRotation = Quaternion.Euler(rightfootrot.x, rightfootrot.y-180f, rightfootrot.z+180f);
+            }
+            yield return null;
+
+
+            //---IKParent
+            GameObject ikparent = ovrm.relatedHandleParent;
+            ikparent.transform.position = tpose[0];
+            //ikparent.transform.rotation = Quaternion.Euler(aai.list[0].rotation);
+        }
         /// <summary>
         /// Set IK transform (single)
         /// </summary>

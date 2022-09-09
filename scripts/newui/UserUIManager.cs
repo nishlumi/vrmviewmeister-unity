@@ -447,7 +447,15 @@ namespace UserUISpace
         }
         void wateropt1_OnClick()
         {
+            OperateActiveVRM oav =  GameObject.Find("IKHandleParent").GetComponent<OperateActiveVRM>();
+            OperateLoadedVRM ovrm = oav.ActiveAvatar.GetComponent<OperateLoadedVRM>();
             OperateStage os = GameObject.Find("Stage").GetComponent<OperateStage>();
+
+            ManageAvatarTransform mat = oav.ActiveAvatar.GetComponent<ManageAvatarTransform>();
+            Label datatext = rootElement.Q<Label>("dataText");
+            string data = datatext.text;
+            mat.SetIKTransformAll2(data);
+            return;
             //os.SetUserMaterial("wavefrequency,1\t1\t1\t1");
             /*
             AnimationRegisterOptions aro = new AnimationRegisterOptions();
@@ -459,13 +467,57 @@ namespace UserUISpace
             string js = JsonUtility.ToJson(aro);
             manim.SetDuration(js);
             */
-            os.SelectStage((int)StageKind.SeaNight);
 
-            GameObject sea = os.gameObject; //.transform.Find("DayTimeSeaStage").gameObject;
-            MeshRenderer mhr = sea.GetComponentInChildren<MeshRenderer>();
-            Debug.Log(mhr.material.name);
-            Vector4 vec = mhr.material.GetVector("_BumpTiling");
-            Debug.Log(vec.x.ToString() + ", " + vec.y.ToString() + ", " + vec.z.ToString() + ", " + vec.w.ToString());
+            /*
+            //ovrm.SetGravityPower(",tail01,1.0");
+            //oav.changeAvatarBlendShapeByName("Fcl_MTH_U,42");
+
+            //ovrm.SetHandFingerMode("f");
+            ovrm.LeftHandCtrl.currentPose = -1;
+            ovrm.RotateFinger("l", "i", new float[] { 0, 0, 0.50f, 0.50f, 0.50f});
+            */
+
+            Transform cube = GameObject.Find("Cube").transform;
+            Vector3 tmpsp1 = GameObject.Find("tmpsp1").transform.position; // new Vector3(0.1146f, 0.0027f, -0.0174f);
+            Vector3 tmpsp2 = GameObject.Find("tmpsp2").transform.position; //new Vector3(-0.1146f, -0.0031f, 0.0183f);
+            Vector3 tmpsp2_1 = new Vector3(tmpsp2.x, tmpsp2.y, tmpsp1.z);
+
+            GameObject.Find("tmpsp3").transform.position = (tmpsp1 + tmpsp2) / 2;
+            //GameObject.Find("tmpsp3").transform.Translate(Vector3.forward);
+            Vector3 tmpsp3 = GameObject.Find("tmpsp3").transform.position;
+
+            Vector3 sa_21 = (tmpsp2 - tmpsp1);
+            Vector3 sa_211 = (tmpsp2_1 - tmpsp1);
+            Vector3 diff = tmpsp1 - tmpsp2;
+            float aangle = Vector3.Angle(tmpsp1, tmpsp2);
+            float angle_x = Mathf.Atan2(Mathf.Abs(tmpsp1.x), Mathf.Abs(tmpsp2.x));
+            float angle_y = Mathf.Atan2(Mathf.Abs(tmpsp1.y), Mathf.Abs(tmpsp2.y));
+            float angle_z = Mathf.Atan2(Mathf.Abs(tmpsp1.z), Mathf.Abs(tmpsp2.z));
+
+            float angle_z2y = Mathf.Atan2(tmpsp2.z - tmpsp1.z, tmpsp2.x - tmpsp1.x) * Mathf.Rad2Deg * -1;
+            float angle_y2z = Mathf.Atan2(tmpsp2.y - tmpsp1.y, tmpsp2.x - tmpsp1.x) * Mathf.Rad2Deg;
+            Debug.Log(aangle);
+            Debug.Log(diff);
+            Debug.Log(angle_x.ToString() + "/" + angle_y.ToString() + "/" + angle_z.ToString());
+            
+            float rad = aangle * Mathf.Deg2Rad;
+            //Vector3 vec = new Vector3(0, Mathf.Cos(rad) * Mathf.Rad2Deg * -1, Mathf.Sin(rad) * Mathf.Rad2Deg * -1);
+            Vector3 vec = ManageAvatarTransform.GetTwoPointAngleDirection(tmpsp1, tmpsp2, Vector3.right); //new Vector3(0f, angle_z2y, angle_y2z);
+            Debug.Log(vec);
+            
+            
+            Quaternion nq = Quaternion.LookRotation(tmpsp2- tmpsp1);
+            Quaternion q_for = Quaternion.FromToRotation(tmpsp1, tmpsp2);
+            Debug.Log("LookAt=");
+            Debug.Log(nq.eulerAngles);
+            Debug.Log("FromTo=");
+            Debug.Log(q_for);
+            //cube.rotation = nq;
+            //cube.rotation = q_for;
+            cube.rotation = Quaternion.Euler(vec);
+
+            GameObject.Find("tmpsp3").transform.rotation = Quaternion.Euler(vec);
+            GameObject.Find("tmpsp3").transform.Translate(Vector3.forward);
         }
 
         //===============================================================================================
@@ -629,13 +681,18 @@ namespace UserUISpace
             UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
             NativeAnimationAvatar nav = null;
 
+            VisualElement projectpanel = rootElement.Q<VisualElement>("projectpanel");
+            TextField rolecast = projectpanel.Q<TextField>("proj_input_cast");
+
             if (currentSelectedRole.type == AF_TARGETTYPE.VRM)
             {
                 nav = fmc.LastLoaded;
+                rolecast.SetValueWithoutNotify(nav.avatarTitle);
             }
             else if (currentSelectedRole.type == AF_TARGETTYPE.OtherObject)
             {
                 nav = fmc.LastLoaded;
+                rolecast.SetValueWithoutNotify(nav.avatarTitle);
             }
             else if (currentSelectedRole.type == AF_TARGETTYPE.Light)
             {
@@ -662,8 +719,10 @@ namespace UserUISpace
             {
                 nav = fmc.OpenText(",tl");
             }
+
+            //manim.DetachAvatarFromRole(nav.roleName + ",role");
             manim.AttachAvatarToRole(currentSelectedRole.roleName + "," + nav.avatar.name);
-            manim.DetachAvatarFromRole(nav.roleName + ",role");
+            
         }
         void proj_btn_load_obj_OnClick()
         {

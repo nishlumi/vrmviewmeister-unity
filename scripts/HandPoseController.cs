@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using DG.Tweening;
 
 public class HandPoseController : MonoBehaviour
 {
@@ -8,20 +9,13 @@ public class HandPoseController : MonoBehaviour
     protected HumanPose humanPose;
     protected HumanPoseHandler poseHandler;
 
-    public bool switchLeft;
+    protected bool switchLeft;
     public HandPoseAsset normal;
-    public HandPoseAsset pose1;
-    public HandPoseAsset pose2;
-    public HandPoseAsset pose3;
-    public HandPoseAsset pose4;
-    public HandPoseAsset pose5;
-    public HandPoseAsset pose6;
+    public List<HandPoseAsset> poses;
+
+    public int currentPose;
     [Range(0f, 1f)] public float handPoseValue;
-    [Range(0f, 1f)] public float handPose2Value;
-    [Range(0f, 1f)] public float handPose3Value;
-    [Range(0f, 1f)] public float handPose4Value;
-    [Range(0f, 1f)] public float handPose5Value;
-    [Range(0f, 1f)] public float handPose6Value;
+    
     public HandPoseAsset.HandPose targetHandPose;
     public bool DisableFingerRoll;
 
@@ -47,42 +41,47 @@ public class HandPoseController : MonoBehaviour
         HumanBodyBones.RightHand,
     };
 
+    virtual protected void Awake()
+    {
+        poses = new List<HandPoseAsset>();
+    }
 
-    void Start()
+    virtual protected void Start()
     {
         animator = GetComponent<Animator>();
         poseHandler = new HumanPoseHandler(animator.avatar, animator.transform);
+        //switchLeft = true;
 
-        handPoseValue = 0f;
-        handPose2Value = 0f;
-        handPose3Value = 0f;
-        handPose4Value = 0f;
-        handPose5Value = 0f;
-        handPose6Value = 0f;
+        targetHandPose = new HandPoseAsset.HandPose();
+        targetHandPose.thumb = new HandPoseAsset.FingerPoseThumb();
+        targetHandPose.index = new HandPoseAsset.FingerPose();
+        targetHandPose.middle = new HandPoseAsset.FingerPose();
+        targetHandPose.ring = new HandPoseAsset.FingerPose();
+        targetHandPose.little = new HandPoseAsset.FingerPose();
+     
     }
 
-    void Update()
+    virtual protected void Update()
     {
-        bool pose1change = handPoseValue != 0f ? true : false;
-        bool pose2change = handPose2Value != 0f ? true : false;
-        bool pose3change = handPose3Value != 0f ? true : false;
-        bool pose4change = handPose4Value != 0f ? true : false;
-        bool pose5change = handPose5Value != 0f ? true : false;
-        bool pose6change = handPose6Value != 0f ? true : false;
+        
+        if (poses == null) return;
 
-
-        if (pose1change) targetHandPose.Lerp(normal.handPose, pose1.handPose, handPoseValue);
-        if (pose2change) targetHandPose.Lerp(normal.handPose, pose2.handPose, handPose2Value);
-        if (pose3change) targetHandPose.Lerp(normal.handPose, pose3.handPose, handPose3Value);
-        if (pose4change) targetHandPose.Lerp(normal.handPose, pose4.handPose, handPose4Value);
-        if (pose5change) targetHandPose.Lerp(normal.handPose, pose5.handPose, handPose5Value);
-        if (pose6change) targetHandPose.Lerp(normal.handPose, pose6.handPose, handPose6Value);
+        if ((0 <= currentPose) && (currentPose < poses.Count))
+        {
+            targetHandPose.Lerp(normal.handPose, poses[currentPose].handPose, handPoseValue);
+        }
+        /*else
+        {
+            targetHandPose.Lerp(normal.handPose, normal.handPose, 0f);
+        }*/
+        
 
     }
 
-    void LateUpdate()
+    virtual protected void LateUpdate()
     {
         if (targetHandPose == null) return;
+        if (poseHandler == null) return;
 
         // Humanoid.Muscle値を書き換えて指ポーズをセットしたい
         poseHandler.GetHumanPose(ref humanPose);
@@ -153,36 +152,227 @@ public class HandPoseController : MonoBehaviour
     public void ResetPose()
     {
         handPoseValue = 0f;
-        handPose2Value = 0f;
-        handPose3Value = 0f;
-        handPose4Value = 0f;
-        handPose5Value = 0f;
-        handPose6Value = 0f;
+    }
+    public void ResetManualPose()
+    {
+        targetHandPose.Lerp(normal.handPose, normal.handPose, 0f);
     }
     public void SetPose(int pos, float val)
     {
-        switch (pos) {
-            case 1:
-                handPoseValue = val;
-                break;
-            case 2:
-                handPose2Value = val;
-                break;
-            case 3:
-                handPose3Value = val;
-                break;
-            case 4:
-                handPose4Value = val;
-                break;
-            case 5:
-                handPose5Value = val;
-                break;
-            case 6:
-                handPose6Value = val;
-                break;
-            default:
-                ResetPose();
-                break;
+        currentPose = pos;
+        handPoseValue = val;        
+    }
+    public UserHandleSpace.AvatarFingerForHPC BackupFinger()
+    {
+        UserHandleSpace.AvatarFingerForHPC ret = new UserHandleSpace.AvatarFingerForHPC();
+        {
+            ret.Thumbs.Add(targetHandPose.thumb.spread);
+            ret.Thumbs.Add(targetHandPose.thumb.roll);
+            ret.Thumbs.Add(targetHandPose.thumb.stretched1);
+            ret.Thumbs.Add(targetHandPose.thumb.stretched2);
+            ret.Thumbs.Add(targetHandPose.thumb.stretched3);
+            ret.Thumbs.Add(targetHandPose.thumb.roll1);
+            ret.Thumbs.Add(targetHandPose.thumb.roll2);
+            ret.Thumbs.Add(targetHandPose.thumb.roll3);
         }
+        {
+            ret.Index.Add(targetHandPose.index.spread);
+            ret.Index.Add(targetHandPose.index.roll);
+            ret.Index.Add(targetHandPose.index.stretched1);
+            ret.Index.Add(targetHandPose.index.stretched2);
+            ret.Index.Add(targetHandPose.index.stretched3);
+        }
+        {
+            ret.Middle.Add(targetHandPose.middle.spread);
+            ret.Middle.Add(targetHandPose.middle.roll);
+            ret.Middle.Add(targetHandPose.middle.stretched1);
+            ret.Middle.Add(targetHandPose.middle.stretched2);
+            ret.Middle.Add(targetHandPose.middle.stretched3);
+        }
+        {
+            ret.Ring.Add(targetHandPose.ring.spread);
+            ret.Ring.Add(targetHandPose.ring.roll);
+            ret.Ring.Add(targetHandPose.ring.stretched1);
+            ret.Ring.Add(targetHandPose.ring.stretched2);
+            ret.Ring.Add(targetHandPose.ring.stretched3);
+        }
+        {
+            ret.Little.Add(targetHandPose.little.spread);
+            ret.Little.Add(targetHandPose.little.roll);
+            ret.Little.Add(targetHandPose.little.stretched1);
+            ret.Little.Add(targetHandPose.little.stretched2);
+            ret.Little.Add(targetHandPose.little.stretched3);
+        }
+
+        return ret;
+    }
+    public void PoseFinger(string finger, int count, float[] values)
+    {
+        if (finger == "t")
+        {
+            targetHandPose.thumb.spread = values[0];
+            targetHandPose.thumb.roll = values[1];
+            targetHandPose.thumb.stretched1 = values[2];
+            targetHandPose.thumb.stretched2 = values[3];
+            targetHandPose.thumb.stretched3 = values[4];
+            targetHandPose.thumb.roll1 = values[5];
+            targetHandPose.thumb.roll2 = values[6];
+            targetHandPose.thumb.roll3 = values[7];
+        }
+        else if (finger == "i")
+        {
+            targetHandPose.index.spread = values[0];
+            targetHandPose.index.roll = values[1];
+            targetHandPose.index.stretched1 = values[2];
+            targetHandPose.index.stretched2 = values[3];
+            targetHandPose.index.stretched3 = values[4];
+        }
+        else if (finger == "m")
+        {
+            targetHandPose.middle.spread = values[0];
+            targetHandPose.middle.roll = values[1];
+            targetHandPose.middle.stretched1 = values[2];
+            targetHandPose.middle.stretched2 = values[3];
+            targetHandPose.middle.stretched3 = values[4];
+        }
+        else if (finger == "r")
+        {
+            targetHandPose.ring.spread = values[0];
+            targetHandPose.ring.roll = values[1];
+            targetHandPose.ring.stretched1 = values[2];
+            targetHandPose.ring.stretched2 = values[3];
+            targetHandPose.ring.stretched3 = values[4];
+        }
+        else if (finger == "l")
+        {
+            targetHandPose.little.spread = values[0];
+            targetHandPose.little.roll = values[1];
+            targetHandPose.little.stretched1 = values[2];
+            targetHandPose.little.stretched2 = values[3];
+            targetHandPose.little.stretched3 = values[4];
+        }
+    }
+    public Sequence AnimationFinger(string finger, UserHandleSpace.AvatarFingerForHPC fingerCls, float duration, Sequence seq)
+    {
+        if (finger == "t")
+        {
+            seq.Join(DOTween.To(() => targetHandPose.thumb.spread, x => targetHandPose.thumb.spread = x, fingerCls.Thumbs[0], duration));
+            seq.Join(DOTween.To(() => targetHandPose.thumb.roll, x => targetHandPose.thumb.roll = x, fingerCls.Thumbs[1], duration));
+            seq.Join(DOTween.To(() => targetHandPose.thumb.stretched1, x => targetHandPose.thumb.stretched1 = x, fingerCls.Thumbs[2], duration));
+            seq.Join(DOTween.To(() => targetHandPose.thumb.stretched2, x => targetHandPose.thumb.stretched2 = x, fingerCls.Thumbs[3], duration));
+            seq.Join(DOTween.To(() => targetHandPose.thumb.stretched3, x => targetHandPose.thumb.stretched3 = x, fingerCls.Thumbs[4], duration));
+            seq.Join(DOTween.To(() => targetHandPose.thumb.roll1, x => targetHandPose.thumb.roll1 = x, fingerCls.Thumbs[5], duration));
+            seq.Join(DOTween.To(() => targetHandPose.thumb.roll2, x => targetHandPose.thumb.roll2 = x, fingerCls.Thumbs[6], duration));
+            seq.Join(DOTween.To(() => targetHandPose.thumb.roll3, x => targetHandPose.thumb.roll3 = x, fingerCls.Thumbs[7], duration));
+        }
+        else if (finger == "i")
+        {
+            seq.Join(DOTween.To(() => targetHandPose.index.spread, x => targetHandPose.index.spread = x, fingerCls.Index[0], duration));
+            seq.Join(DOTween.To(() => targetHandPose.index.roll, x => targetHandPose.index.roll = x, fingerCls.Index[1], duration));
+            seq.Join(DOTween.To(() => targetHandPose.index.stretched1, x => targetHandPose.index.stretched1 = x, fingerCls.Index[2], duration));
+            seq.Join(DOTween.To(() => targetHandPose.index.stretched2, x => targetHandPose.index.stretched2 = x, fingerCls.Index[3], duration));
+            seq.Join(DOTween.To(() => targetHandPose.index.stretched3, x => targetHandPose.index.stretched3 = x, fingerCls.Index[4], duration));
+
+        }
+        else if (finger == "m")
+        {
+            seq.Join(DOTween.To(() => targetHandPose.middle.spread, x => targetHandPose.middle.spread = x, fingerCls.Middle[0], duration));
+            seq.Join(DOTween.To(() => targetHandPose.middle.roll, x => targetHandPose.middle.roll = x, fingerCls.Middle[1], duration));
+            seq.Join(DOTween.To(() => targetHandPose.middle.stretched1, x => targetHandPose.middle.stretched1 = x, fingerCls.Middle[2], duration));
+            seq.Join(DOTween.To(() => targetHandPose.middle.stretched2, x => targetHandPose.middle.stretched2 = x, fingerCls.Middle[3], duration));
+            seq.Join(DOTween.To(() => targetHandPose.middle.stretched3, x => targetHandPose.middle.stretched3 = x, fingerCls.Middle[4], duration));
+        }
+        else if (finger == "r")
+        {
+            seq.Join(DOTween.To(() => targetHandPose.ring.spread, x => targetHandPose.ring.spread = x, fingerCls.Ring[0], duration));
+            seq.Join(DOTween.To(() => targetHandPose.ring.roll, x => targetHandPose.ring.roll = x, fingerCls.Ring[1], duration));
+            seq.Join(DOTween.To(() => targetHandPose.ring.stretched1, x => targetHandPose.ring.stretched1 = x, fingerCls.Ring[2], duration));
+            seq.Join(DOTween.To(() => targetHandPose.ring.stretched2, x => targetHandPose.ring.stretched2 = x, fingerCls.Ring[3], duration));
+            seq.Join(DOTween.To(() => targetHandPose.ring.stretched3, x => targetHandPose.ring.stretched3 = x, fingerCls.Ring[4], duration));
+
+        }
+        else if (finger == "l")
+        {
+            seq.Join(DOTween.To(() => targetHandPose.little.spread, x => targetHandPose.little.spread = x, fingerCls.Little[0], duration));
+            seq.Join(DOTween.To(() => targetHandPose.little.roll, x => targetHandPose.little.roll = x, fingerCls.Little[1], duration));
+            seq.Join(DOTween.To(() => targetHandPose.little.stretched1, x => targetHandPose.little.stretched1 = x, fingerCls.Little[2], duration));
+            seq.Join(DOTween.To(() => targetHandPose.little.stretched2, x => targetHandPose.little.stretched2 = x, fingerCls.Little[3], duration));
+            seq.Join(DOTween.To(() => targetHandPose.little.stretched3, x => targetHandPose.little.stretched3 = x, fingerCls.Little[4], duration));
+
+        }
+
+        return seq;
+    }
+    public static string StringifyFinger(UserHandleSpace.AvatarFingerForHPC fingerCls, string finger)
+    {
+        string ret = "";
+        List<string> strfloat = new List<string>();
+
+        if (finger == "t")
+        {
+            foreach (float v in fingerCls.Thumbs)
+            {
+                strfloat.Add(v.ToString());
+            }
+        }
+        else if (finger == "i")
+        {
+            foreach (float v in fingerCls.Index)
+            {
+                strfloat.Add(v.ToString());
+            }
+        }
+        else if (finger == "m")
+        {
+            foreach (float v in fingerCls.Middle)
+            {
+                strfloat.Add(v.ToString());
+            }
+        }
+        else if (finger == "r")
+        {
+            foreach (float v in fingerCls.Ring)
+            {
+                strfloat.Add(v.ToString());
+            }
+        }
+        else if (finger == "l")
+        {
+            foreach (float v in fingerCls.Little)
+            {
+                strfloat.Add(v.ToString());
+            }
+        }
+        ret = string.Join("&", strfloat);
+
+
+        return ret;
+    }
+    public static List<float> ParseFinger(string rottext, string finger)
+    {
+        List<float> ret = new List<float>();
+
+        if (finger == "t")
+        {
+            string[] sections = rottext.Split("&");
+
+            foreach (string sec in sections)
+            {
+                float v = float.TryParse(sec, out v) ? v : 0;
+                ret.Add(v);
+            }            
+        }
+        else if ((finger == "i") || (finger == "m") || (finger == "r") || (finger == "l"))
+        {
+            string[] sections = rottext.Split("&");
+
+            foreach (string sec in sections)
+            {
+                float v = float.TryParse(sec, out v) ? v : 0;
+                ret.Add(v);
+            }
+        }
+
+        return ret;
     }
 }

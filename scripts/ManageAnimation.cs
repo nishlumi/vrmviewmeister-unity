@@ -67,6 +67,8 @@ namespace UserHandleSpace
         const int CSV_VALCNT = 3;
         const int CSV_BEGINVAL = 4;
 
+        const int PROJECT_VERSION = 2;
+
         //-------------------------------------------------------------------------
         // Important objects
 
@@ -94,6 +96,10 @@ namespace UserHandleSpace
         private int bkupScreenWidth;
         private int bkupScreenHeight;
 
+        public KeyOperationMode keyOperationMode;
+        public float cfg_dist_cam2view;
+        public float cfg_keymove_speed_rot;
+        public float cfg_keymove_speed_trans;
 
 
         protected NativeAnimationAvatar SingleMotionTargetRole = null;
@@ -132,9 +138,14 @@ namespace UserHandleSpace
             seqInIndex = 1;
             currentSeq = null;
             oldPreviewMarker = 1;
+            keyOperationMode = KeyOperationMode.MoveCamera;
 
             bkupScreenWidth = Screen.width;
             bkupScreenHeight = Screen.height;
+
+            cfg_dist_cam2view = 2.5f;
+            cfg_keymove_speed_rot = 0.1f;
+            cfg_keymove_speed_trans = cfg_keymove_speed_rot / 10f;
 
             ChangeFullIKType(false);
         }
@@ -260,6 +271,23 @@ namespace UserHandleSpace
                 }
             }
             return ret;
+        }
+        public void SetValFromOuter(string param)
+        {
+            string[] prm = param.Split(',');
+            configLab.SetValFromOuter(param);
+            if (prm[1] == "distance_camera_viewpoint")
+            {
+                cfg_dist_cam2view = configLab.GetFloatVal("distance_camera_viewpoint", 2.5f);
+            }
+            else if (prm[1] == "camera_keymove_speed")
+            {
+                cfg_keymove_speed_trans = configLab.GetFloatVal("camera_keymove_speed", 0.01f);  //cfg_keymove_speed_rot / 10;
+            }
+            else if (prm[1] == "camera_keyrotate_speed")
+            {
+                cfg_keymove_speed_rot = configLab.GetFloatVal("camera_keyrotate_speed", 0.1f);
+            }
         }
         //===========================================================================================================================
         //  Utility functions
@@ -1047,6 +1075,62 @@ namespace UserHandleSpace
             });
 
         }
+        public string CheckAndSetAvatarId(string prefix, int instanceID)
+        {
+            string ret = "";
+
+            bool isLoop = true;
+
+            while (isLoop)
+            {
+                DateTime curdt = DateTime.Now;
+                string tmpname = prefix + curdt.AddMilliseconds(instanceID).ToString("yyyyMMddHHmmssFFFFFFF") ; //DateTime.Now.ToFileTime().ToString();
+                NativeAnimationAvatar chknav = GetCastByAvatar(tmpname);
+                if (chknav == null)
+                {
+                    ret = tmpname;
+                    isLoop = false;
+                }                
+            }
+            
+
+            return ret;
+        }
+        public int CheckAvatarTitleExist(string title, AF_TARGETTYPE type)
+        {
+            List<NativeAnimationAvatar> existCnt = currentProject.casts.FindAll(tmpnav =>
+            {
+                if (type == tmpnav.type)
+                {
+                    OperateLoadedBase olb = tmpnav.avatar.GetComponent<OperateLoadedBase>();
+                    if (olb != null)
+                    {
+                        if (olb.Title.IndexOf(title) > -1)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            });
+            int ret = 0;
+            if (existCnt.Count > 0)
+            {
+                string lasttitle = existCnt.Last<NativeAnimationAvatar>().avatar.GetComponent<OperateLoadedBase>().Title;
+                string[] tarr = lasttitle.Split("_");
+
+                int lastintstr = 0;
+                if (int.TryParse(tarr[tarr.Length - 1], out lastintstr))
+                {
+                    ret = lastintstr + 1;
+                }
+                else
+                {
+                    ret = existCnt.Count + 1;
+                }
+            }
+            return ret;
+        }
 
         /// <summary>
         /// Check wheather title is exist in casts. if exised, return next counter.
@@ -1236,7 +1320,7 @@ namespace UserHandleSpace
             string rtitle = "";
             if (vmeta != null)
             {
-                rtitle = vmeta.Meta.Title;
+                rtitle = vmeta.Meta.Title != null ? vmeta.Meta.Title : "";
             }
 
             bool isExists = false;
@@ -1917,12 +2001,171 @@ namespace UserHandleSpace
 
             return ret;
         }
+        public void GetEaseFromOuter(string param)
+        {
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
+            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
+
+            int js = (int)curframe.ease;
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveIntVal(js);
+#endif
+
+        }
+        /// <summary>
+        /// Set Easing
+        /// </summary>
+        /// <param name="param">JSON-string for AnimationRegisterOptions</param>
+        public void SetEase(string param)
+        {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
+
+            int nearmin = GetNearMinFrameIndex(actor, aro.index);
+            NativeAnimationFrame minframe = actor.frames[nearmin]; // GetFrame(actor, nearmin);
+            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
+            //---update "ease" only
+            curframe.ease = aro.ease;
+
+            /* NOT USE
+            //---start Preview
+            AnimationParsingOptions apo = new AnimationParsingOptions();
+            apo.index = nearmin;
+            apo.finalizeIndex = nearmin;
+            apo.targetId = aro.targetId;
+            apo.targetType = aro.targetType;
+            string[] roles = GetRoleSpecifiedAvatar(aro.targetId);
+            apo.targetRole = roles[0];
 
 
-//===========================================================================================================================
-//  Play functions
-//===========================================================================================================================
-        
+            PreviewSingleFrame(apo);
+            apo.index = aro.index;
+            apo.finalizeIndex = aro.index;
+            PreviewSingleFrame(apo);
+            */
+            string js = "{ " +
+                "\"roleName\": \"" + actor.targetRole + "\"," +
+                "\"avatarId\" : \"" + actor.targetId + "\"," +
+                "\"type\": " + (int)aro.targetType + "," +
+                "\"nearMinIndex\": " + minframe.index + "," +
+                "\"index\":" + aro.index +
+            "}";
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(js);
+#endif
+        }
+        public void GetDurationFromOuter(string param)
+        {
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
+
+            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
+            float js = curframe.duration;
+            //Debug.Log("duration="+js.ToString());
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(js);
+#endif
+        }
+        /// <summary>
+        /// Set duration manually
+        /// </summary>
+        /// <param name="param">JSON-string for AnimationRegisterOptions</param>
+        public void SetDuration(string param)
+        {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
+            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
+            curframe.duration = aro.duration;
+        }
+        public void SetBaseDuration(float param)
+        {
+            if (param != 0f)
+            {
+                currentProject.baseDuration = param;
+            }
+        }
+        public void GetBaseDurationFromOuter()
+        {
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(currentProject.baseDuration);
+#endif
+        }
+        /// <summary>
+        /// Reset frame duration.(all frame)
+        /// </summary>
+        /// <param name="param">JSON-string for AnimationRegisterOptions</param>
+        public void ResetAutoDuration(string param)
+        {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
+            AdjustAllFrameDuration(actor, currentProject.baseDuration);
+        }
+
+        /// <summary>
+        /// Get specified range of duration of specified avatar(timeline, role)
+        /// </summary>
+        /// <param name="param">[0] - role name, [1] - start frame number, [2] - end frame number</param>
+        public void GetAvatarDurationBetween(string param)
+        {
+            string[] prms = param.Split(",");
+            int st = int.TryParse(prms[1], out st) ? st : 0;
+            int ed = int.TryParse(prms[2], out ed) ? ed : currentProject.timelineFrameLength;
+            NativeAnimationAvatar nav = GetCastInProject(prms[0]);
+            float ret = 0f;
+
+            if (nav != null)
+            {
+                NativeAnimationFrameActor naf =  GetFrameActorFromRole(nav.roleName, nav.type);
+                if (naf != null)
+                {
+                    for (int i = 0; i < naf.frames.Count; i++)
+                    {
+                        if ((st <= naf.frames[i].index) && (naf.frames[i].index <= ed))
+                        {
+                            ret += naf.frames[i].duration;
+                        }
+                    }
+                }
+            }
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(ret);
+#endif
+        }
+
+
+        //===========================================================================================================================
+        //  Play functions
+        //===========================================================================================================================
+
         /// <summary>
         /// Parse body of Animation Process. (apply ease at end)
         /// </summary>
@@ -2437,135 +2680,6 @@ namespace UserHandleSpace
 
             PreviewProcessBody(animateFlow, actor, aro, false);
         }
-        public void GetEaseFromOuter(string param)
-        {
-            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
-            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
-            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
-
-            int js = (int)curframe.ease;
-#if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveIntVal(js);
-#endif
-
-        }
-        /// <summary>
-        /// Set Easing
-        /// </summary>
-        /// <param name="param">JSON-string for AnimationRegisterOptions</param>
-        public void SetEase(string param)
-        {
-            if (currentProject.isReadOnly || currentProject.isSharing) return;
-
-            if (currentSeq != null)
-            {
-                currentSeq.Kill();
-                currentSeq = null;
-            }
-
-            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
-
-            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
-
-            int nearmin = GetNearMinFrameIndex(actor, aro.index);
-            NativeAnimationFrame minframe = actor.frames[nearmin]; // GetFrame(actor, nearmin);
-            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
-            //---update "ease" only
-            curframe.ease = aro.ease;
-
-            /* NOT USE
-            //---start Preview
-            AnimationParsingOptions apo = new AnimationParsingOptions();
-            apo.index = nearmin;
-            apo.finalizeIndex = nearmin;
-            apo.targetId = aro.targetId;
-            apo.targetType = aro.targetType;
-            string[] roles = GetRoleSpecifiedAvatar(aro.targetId);
-            apo.targetRole = roles[0];
-
-
-            PreviewSingleFrame(apo);
-            apo.index = aro.index;
-            apo.finalizeIndex = aro.index;
-            PreviewSingleFrame(apo);
-            */
-            string js = "{ " +
-                "\"roleName\": \"" + actor.targetRole + "\"," +
-                "\"avatarId\" : \"" + actor.targetId + "\"," + 
-                "\"type\": " + (int)aro.targetType + "," +
-                "\"nearMinIndex\": " + minframe.index + "," + 
-                "\"index\":" + aro.index + 
-            "}";
-#if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveStringVal(js);
-#endif
-        }
-        public void GetDurationFromOuter(string param)
-        {
-            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
-
-            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
-            
-            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
-            float js = curframe.duration;
-            //Debug.Log("duration="+js.ToString());
-#if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveFloatVal(js);
-#endif
-        }
-        /// <summary>
-        /// Set duration manually
-        /// </summary>
-        /// <param name="param">JSON-string for AnimationRegisterOptions</param>
-        public void SetDuration(string param)
-        {
-            if (currentProject.isReadOnly || currentProject.isSharing) return;
-
-            if (currentSeq != null)
-            {
-                currentSeq.Kill();
-                currentSeq = null;
-            }
-
-            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
-
-            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
-            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
-            curframe.duration = aro.duration;
-        }
-        public void SetBaseDuration(float param)
-        {
-            if (param != 0f)
-            {
-                currentProject.baseDuration = param;
-            }
-        }
-        public void GetBaseDurationFromOuter()
-        {
-#if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveFloatVal(currentProject.baseDuration);
-#endif
-        }
-        /// <summary>
-        /// Reset frame duration.(all frame)
-        /// </summary>
-        /// <param name="param">JSON-string for AnimationRegisterOptions</param>
-        public void ResetAutoDuration(string param)
-        {
-            if (currentProject.isReadOnly || currentProject.isSharing) return;
-
-            if (currentSeq != null)
-            {
-                currentSeq.Kill();
-                currentSeq = null;
-            }
-
-            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
-
-            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
-            AdjustAllFrameDuration(actor, currentProject.baseDuration);
-        }
-
         public void StartAllTimeline(string param)
         {
             StartAllTimeline(JsonUtility.FromJson<AnimationParsingOptions>(param));

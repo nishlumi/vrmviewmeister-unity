@@ -77,7 +77,8 @@ public class ConfigSettingLabs : MonoBehaviour
         if (!PlayerPrefs.HasKey("enable_foot_autorotate")) SetIntVal("enable_foot_autorotate", 0);
         if (!PlayerPrefs.HasKey("focus_camera_onselect")) SetIntVal("focus_camera_onselect", 0);
 
-        if (!PlayerPrefs.HasKey("camera_keymove_speed")) SetFloatVal("camera_keymove_speed", 0.1f);
+        if (!PlayerPrefs.HasKey("camera_keymove_speed")) SetFloatVal("camera_keymove_speed", 0.01f);
+        if (!PlayerPrefs.HasKey("camera_keyrotate_speed")) SetFloatVal("camera_keyrotate_speed", 0.1f);
 
         if (!PlayerPrefs.HasKey("recover_tomax_overframe")) SetIntVal("recover_tomax_overframe", 1);
 

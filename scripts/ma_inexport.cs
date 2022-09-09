@@ -45,12 +45,17 @@ namespace UserHandleSpace
 
             string ln = "";
 
+            ln = mat.name + CST_SEPSTR_PROP;
+            //if (currentProject.version >= 2)
+            {
+                ln += mat.matName + CST_SEPSTR_PROP;
+            }
+            ln += mat.shaderName + CST_SEPSTR_PROP;
+
             //---standard
             if (mat.shaderName.ToLower() == "standard")
             {
-                ln = mat.name + CST_SEPSTR_PROP +
-                    mat.shaderName + CST_SEPSTR_PROP +
-                    "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
+                ln += "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
                     mat.blendmode.ToString() + CST_SEPSTR_PROP +
                     mat.texturePath + CST_SEPSTR_PROP +
                     mat.metallic.ToString() + CST_SEPSTR_PROP +
@@ -61,27 +66,30 @@ namespace UserHandleSpace
             //---VRM/MToon
             else if (mat.shaderName.ToLower() == "vrm/mtoon")
             {
-                ln = mat.name + CST_SEPSTR_PROP +
-                    mat.shaderName + CST_SEPSTR_PROP +
-                    "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
+                ln += "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
                     mat.cullmode.ToString() + CST_SEPSTR_PROP +
                     mat.blendmode.ToString() + CST_SEPSTR_PROP +
                     mat.texturePath + CST_SEPSTR_PROP +
+                    //---v1 = 6, v2 = 7
                     "#" + ColorUtility.ToHtmlStringRGBA(mat.emissioncolor) + CST_SEPSTR_PROP +
                     "#" + ColorUtility.ToHtmlStringRGBA(mat.shadetexcolor) + CST_SEPSTR_PROP +
                     mat.shadingtoony.ToString() + CST_SEPSTR_PROP +
                     "#" + ColorUtility.ToHtmlStringRGBA(mat.rimcolor) + CST_SEPSTR_PROP +
                     mat.rimfresnel.ToString() + CST_SEPSTR_PROP +
                     mat.srcblend.ToString() + CST_SEPSTR_PROP +
-                    mat.dstblend.ToString()
+                    mat.dstblend.ToString() + CST_SEPSTR_PROP +
+                    //---v2 = 14
+                    mat.cutoff.ToString() + CST_SEPSTR_PROP +
+                    mat.shadingshift.ToString() + CST_SEPSTR_PROP +
+                    mat.receiveshadow.ToString() + CST_SEPSTR_PROP +
+                    mat.shadinggrade.ToString() + CST_SEPSTR_PROP +
+                    mat.lightcolorattenuation.ToString()
                 ;
             }
             //---FX/Water4
             else if ( (mat.shaderName.ToLower() == "fx/water4") || (mat.shaderName.ToLower() == "fx/simplewater4") )
             {
-                ln = mat.name + CST_SEPSTR_PROP +
-                    mat.shaderName + CST_SEPSTR_PROP +
-                    "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
+                ln += "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
                     mat.fresnelScale.ToString() + CST_SEPSTR_PROP +
                     "#" + ColorUtility.ToHtmlStringRGBA(mat.reflectionColor) + CST_SEPSTR_PROP +
                     "#" + ColorUtility.ToHtmlStringRGBA(mat.specularColor) + CST_SEPSTR_PROP +
@@ -97,17 +105,13 @@ namespace UserHandleSpace
             }
             else if (mat.shaderName.ToLower() == "fx/water (basic)")
             {
-                ln = mat.name + CST_SEPSTR_PROP +
-                    mat.shaderName + CST_SEPSTR_PROP +
-                    mat.waveScale.ToString() + CST_SEPSTR_PROP +
+                ln += mat.waveScale.ToString() + CST_SEPSTR_PROP +
                     mat.waveSpeed.x + CST_SEPSTR_PROP + mat.waveSpeed.y + CST_SEPSTR_PROP + mat.waveSpeed.z + CST_SEPSTR_PROP + mat.waveSpeed.w
                 ;
             }
             else if (mat.shaderName.ToLower() == "lux water/watersurface")
             {
-                ln = mat.name + CST_SEPSTR_PROP +
-                    mat.shaderName + CST_SEPSTR_PROP +
-                    mat.waveScale.ToString()
+                ln += mat.waveScale.ToString()
                 ;
             }
 
@@ -124,23 +128,28 @@ namespace UserHandleSpace
                 MaterialProperties mat = new MaterialProperties();
                 string[] matc = matstr.Split(sepprop);
 
-                
+                int inx = 0;
 
-                mat.name = matc[0];
-                mat.shaderName = matc[1];
+                mat.name = matc[inx++];
+                if (currentProject.version >= 2)
+                {
+                    mat.matName = matc[inx++];
+                }
+                mat.shaderName = matc[inx++];
 
                 if (mat.shaderName.ToLower() == "standard")
                 {
                     //---most less is 8 items.
                     if (matc.Length < 8) continue;
 
-                    mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
-                    mat.blendmode = float.TryParse(matc[3], out mat.blendmode) ? mat.blendmode : 0;
-                    mat.texturePath = matc[4];
+                    mat.color = ColorUtility.TryParseHtmlString(matc[inx++], out mat.color) ? mat.color : Color.white;
+                    mat.blendmode = float.TryParse(matc[inx++], out mat.blendmode) ? mat.blendmode : 0;
+                    mat.texturePath = matc[inx++];
 
-                    mat.metallic = float.TryParse(matc[5], out mat.metallic) ? mat.metallic : 0;
-                    mat.glossiness = float.TryParse(matc[6], out mat.glossiness) ? mat.glossiness : 0;
-                    mat.emissioncolor = ColorUtility.TryParseHtmlString(matc[7], out mat.emissioncolor) ? mat.emissioncolor : Color.white;
+                    //v1 = 5 ~ 7, v2 = 6 ~ 8
+                    mat.metallic = float.TryParse(matc[inx++], out mat.metallic) ? mat.metallic : 0;
+                    mat.glossiness = float.TryParse(matc[inx++], out mat.glossiness) ? mat.glossiness : 0;
+                    mat.emissioncolor = ColorUtility.TryParseHtmlString(matc[inx++], out mat.emissioncolor) ? mat.emissioncolor : Color.white;
 
                 }
                 else if (mat.shaderName.ToLower() == "vrm/mtoon")
@@ -148,18 +157,30 @@ namespace UserHandleSpace
                     //---most less is 13 items.
                     if (matc.Length < 13) continue;
 
-                    mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
-                    mat.cullmode = float.TryParse(matc[3], out mat.cullmode) ? mat.cullmode : 0;
-                    mat.blendmode = float.TryParse(matc[4], out mat.blendmode) ? mat.blendmode : 0;
-                    mat.texturePath = matc[5];
+                    // v1 = 2 ~ 5, v2 = 3 ~ 6
+                    mat.color = ColorUtility.TryParseHtmlString(matc[inx++], out mat.color) ? mat.color : Color.white;
+                    mat.cullmode = float.TryParse(matc[inx++], out mat.cullmode) ? mat.cullmode : 0;
+                    mat.blendmode = float.TryParse(matc[inx++], out mat.blendmode) ? mat.blendmode : 0;
+                    mat.texturePath = matc[inx++];
 
-                    mat.emissioncolor = ColorUtility.TryParseHtmlString(matc[6], out mat.emissioncolor) ? mat.emissioncolor : Color.white;
-                    mat.shadetexcolor = ColorUtility.TryParseHtmlString(matc[7], out mat.shadetexcolor) ? mat.shadetexcolor : Color.white;
-                    mat.shadingtoony = float.TryParse(matc[8], out mat.shadingtoony) ? mat.shadingtoony : 0;
-                    mat.rimcolor = ColorUtility.TryParseHtmlString(matc[9], out mat.rimcolor) ? mat.rimcolor : Color.white;
-                    mat.rimfresnel = float.TryParse(matc[10], out mat.rimfresnel) ? mat.rimfresnel : 0;
-                    mat.srcblend = float.TryParse(matc[11], out mat.srcblend) ? mat.srcblend : 0;
-                    mat.dstblend = float.TryParse(matc[12], out mat.dstblend) ? mat.dstblend : 0;
+                    // v1 = 6 ~ 12, v2 = 7 ~ 13
+                    mat.emissioncolor = ColorUtility.TryParseHtmlString(matc[inx++], out mat.emissioncolor) ? mat.emissioncolor : Color.white;
+                    mat.shadetexcolor = ColorUtility.TryParseHtmlString(matc[inx++], out mat.shadetexcolor) ? mat.shadetexcolor : Color.white;
+                    mat.shadingtoony = float.TryParse(matc[inx++], out mat.shadingtoony) ? mat.shadingtoony : 0;
+                    mat.rimcolor = ColorUtility.TryParseHtmlString(matc[inx++], out mat.rimcolor) ? mat.rimcolor : Color.white;
+                    mat.rimfresnel = float.TryParse(matc[inx++], out mat.rimfresnel) ? mat.rimfresnel : 0;
+                    mat.srcblend = float.TryParse(matc[inx++], out mat.srcblend) ? mat.srcblend : 0;
+                    mat.dstblend = float.TryParse(matc[inx++], out mat.dstblend) ? mat.dstblend : 0;
+                    // v2 = 14
+                    if ((currentProject.version >= 2) && (matc.Length > 17))
+                    {
+                        mat.cutoff = float.TryParse(matc[inx++], out mat.cutoff) ? mat.cutoff : 0.5f;
+                        mat.shadingshift = float.TryParse(matc[inx++], out mat.shadingshift) ? mat.shadingshift : 0;
+                        mat.receiveshadow = float.TryParse(matc[inx++], out mat.receiveshadow) ? mat.receiveshadow : 1;
+                        mat.shadinggrade = float.TryParse(matc[inx++], out mat.shadinggrade) ? mat.shadinggrade : 1;
+                        mat.lightcolorattenuation = float.TryParse(matc[inx++], out mat.lightcolorattenuation) ? mat.lightcolorattenuation : 0;
+                    }
+                    
 
                 }
                 else if ( (mat.shaderName.ToLower() == "fx/water4") || (mat.shaderName.ToLower() == "fx/simplewater4") )
@@ -167,53 +188,55 @@ namespace UserHandleSpace
                     //---most less is 31 items.
                     if (matc.Length < 31) continue;
 
-                    mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
-                    mat.fresnelScale = float.TryParse(matc[3], out mat.fresnelScale) ? mat.fresnelScale : 0;
-                    mat.reflectionColor = ColorUtility.TryParseHtmlString(matc[4], out mat.reflectionColor) ? mat.reflectionColor : Color.white;
-                    mat.specularColor = ColorUtility.TryParseHtmlString(matc[5], out mat.specularColor) ? mat.specularColor : Color.white;
-                    {
-                        float x = float.TryParse(matc[6], out x) ? x : 0;
-                        float y = float.TryParse(matc[7], out y) ? y : 0;
-                        float z = float.TryParse(matc[8], out z) ? z : 0;
-                        float w = float.TryParse(matc[9], out w) ? w : 0;
+                    // v1 = 2 ~ 5, v2 = 3 ~ 6
+                    mat.color = ColorUtility.TryParseHtmlString(matc[inx++], out mat.color) ? mat.color : Color.white;
+                    mat.fresnelScale = float.TryParse(matc[inx++], out mat.fresnelScale) ? mat.fresnelScale : 0;
+                    mat.reflectionColor = ColorUtility.TryParseHtmlString(matc[inx++], out mat.reflectionColor) ? mat.reflectionColor : Color.white;
+                    mat.specularColor = ColorUtility.TryParseHtmlString(matc[inx++], out mat.specularColor) ? mat.specularColor : Color.white;
+                    { // v1 = 6 ~ 29, v2 = 7 ~ 30
+                        float x = float.TryParse(matc[inx++], out x) ? x : 0;
+                        float y = float.TryParse(matc[inx++], out y) ? y : 0;
+                        float z = float.TryParse(matc[inx++], out z) ? z : 0;
+                        float w = float.TryParse(matc[inx++], out w) ? w : 0;
                         mat.waveAmplitude = new Vector4(x, y, z, w);
                     }
                     {
-                        float x = float.TryParse(matc[10], out x) ? x : 0;
-                        float y = float.TryParse(matc[11], out y) ? y : 0;
-                        float z = float.TryParse(matc[12], out z) ? z : 0;
-                        float w = float.TryParse(matc[13], out w) ? w : 0;
+                        float x = float.TryParse(matc[inx++], out x) ? x : 0;
+                        float y = float.TryParse(matc[inx++], out y) ? y : 0;
+                        float z = float.TryParse(matc[inx++], out z) ? z : 0;
+                        float w = float.TryParse(matc[inx++], out w) ? w : 0;
                         mat.waveFrequency = new Vector4(x, y, z, w);
                     }
                     {
-                        float x = float.TryParse(matc[14], out x) ? x : 0;
-                        float y = float.TryParse(matc[15], out y) ? y : 0;
-                        float z = float.TryParse(matc[16], out z) ? z : 0;
-                        float w = float.TryParse(matc[17], out w) ? w : 0;
+                        float x = float.TryParse(matc[inx++], out x) ? x : 0;
+                        float y = float.TryParse(matc[inx++], out y) ? y : 0;
+                        float z = float.TryParse(matc[inx++], out z) ? z : 0;
+                        float w = float.TryParse(matc[inx++], out w) ? w : 0;
                         mat.waveSteepness = new Vector4(x, y, z, w);
                     }
                     {
-                        float x = float.TryParse(matc[18], out x) ? x : 0;
-                        float y = float.TryParse(matc[19], out y) ? y : 0;
-                        float z = float.TryParse(matc[20], out z) ? z : 0;
-                        float w = float.TryParse(matc[21], out w) ? w : 0;
+                        float x = float.TryParse(matc[inx++], out x) ? x : 0;
+                        float y = float.TryParse(matc[inx++], out y) ? y : 0;
+                        float z = float.TryParse(matc[inx++], out z) ? z : 0;
+                        float w = float.TryParse(matc[inx++], out w) ? w : 0;
                         mat.waveSpeed = new Vector4(x, y, z, w);
                     }
                     {
-                        float x = float.TryParse(matc[22], out x) ? x : 0;
-                        float y = float.TryParse(matc[23], out y) ? y : 0;
-                        float z = float.TryParse(matc[24], out z) ? z : 0;
-                        float w = float.TryParse(matc[25], out w) ? w : 0;
+                        float x = float.TryParse(matc[inx++], out x) ? x : 0;
+                        float y = float.TryParse(matc[inx++], out y) ? y : 0;
+                        float z = float.TryParse(matc[inx++], out z) ? z : 0;
+                        float w = float.TryParse(matc[inx++], out w) ? w : 0;
                         mat.waveDirectionAB = new Vector4(x, y, z, w);
                     }
                     {
-                        float x = float.TryParse(matc[26], out x) ? x : 0;
-                        float y = float.TryParse(matc[27], out y) ? y : 0;
-                        float z = float.TryParse(matc[28], out z) ? z : 0;
-                        float w = float.TryParse(matc[29], out w) ? w : 0;
+                        float x = float.TryParse(matc[inx++], out x) ? x : 0;
+                        float y = float.TryParse(matc[inx++], out y) ? y : 0;
+                        float z = float.TryParse(matc[inx++], out z) ? z : 0;
+                        float w = float.TryParse(matc[inx++], out w) ? w : 0;
                         mat.waveDirectionCD = new Vector4(x, y, z, w);
                     }
-                    mat.waveScale = float.TryParse(matc[30], out mat.waveScale) ? mat.waveScale : 0;
+                    // v1 = 30, v2 = 31
+                    mat.waveScale = float.TryParse(matc[inx++], out mat.waveScale) ? mat.waveScale : 0;
 
                 }
                 else if (mat.shaderName.ToLower() == "fx/water (basic)")
@@ -221,35 +244,21 @@ namespace UserHandleSpace
                     //---most less is 7 items.
                     if (matc.Length < 7) continue;
 
-                    mat.waveScale = float.TryParse(matc[2], out mat.waveScale) ? mat.waveScale : 0;
-                    {
-                        float x = float.TryParse(matc[3], out x) ? x : 0;
-                        float y = float.TryParse(matc[4], out y) ? y : 0;
-                        float z = float.TryParse(matc[5], out z) ? z : 0;
-                        float w = float.TryParse(matc[6], out w) ? w : 0;
+                    // v1 = 2, v2 = 3
+                    mat.waveScale = float.TryParse(matc[inx++], out mat.waveScale) ? mat.waveScale : 0;
+                    { // v1 = 3 ~ 6, v2 = 4 ~ 7
+                        float x = float.TryParse(matc[inx++], out x) ? x : 0;
+                        float y = float.TryParse(matc[inx++], out y) ? y : 0;
+                        float z = float.TryParse(matc[inx++], out z) ? z : 0;
+                        float w = float.TryParse(matc[inx++], out w) ? w : 0;
                         mat.waveSpeed = new Vector4(x, y, z, w);
                     }
                 }
                 else if (mat.shaderName.ToLower() == "lux water/watersurface")
                 {
-                    
-                    mat.waveScale = float.TryParse(matc[2], out mat.waveScale) ? mat.waveScale : 0;
+                    // v1 = 2, v2 = 3
+                    mat.waveScale = float.TryParse(matc[inx++], out mat.waveScale) ? mat.waveScale : 0;
                 }
-                /*
-                mat.color = ColorUtility.TryParseHtmlString(matc[2], out mat.color) ? mat.color : Color.white;
-                mat.cullmode = float.TryParse(matc[3], out mat.cullmode) ? mat.cullmode : 0;
-                mat.blendmode = float.TryParse(matc[4], out mat.blendmode) ? mat.blendmode : 0;
-                mat.texturePath = matc[5];
-                mat.metallic = float.TryParse(matc[6], out mat.metallic) ? mat.metallic : 0;
-                mat.glossiness = float.TryParse(matc[7], out mat.glossiness) ? mat.glossiness : 0;
-                mat.emissioncolor = ColorUtility.TryParseHtmlString(matc[8], out mat.emissioncolor) ? mat.emissioncolor : Color.white;
-                mat.shadetexcolor = ColorUtility.TryParseHtmlString(matc[9], out mat.shadetexcolor) ? mat.shadetexcolor : Color.white;
-                mat.shadingtoony = float.TryParse(matc[10], out mat.shadingtoony) ? mat.shadingtoony : 0;
-                mat.rimcolor = ColorUtility.TryParseHtmlString(matc[11], out mat.rimcolor) ? mat.rimcolor : Color.white;
-                mat.rimfresnel = float.TryParse(matc[12], out mat.rimfresnel) ? mat.rimfresnel : 0;
-                mat.srcblend = float.TryParse(matc[13], out mat.srcblend) ? mat.srcblend : 0;
-                mat.dstblend = float.TryParse(matc[14], out mat.dstblend) ? mat.dstblend : 0;
-                */
                 matProp.Add(mat);
             }
             if (matProp.Count > 0) ret = true;
@@ -387,12 +396,27 @@ namespace UserHandleSpace
                     //---Here, Value must be 2.
                     if (valueCount > 1)
                     {
-                        float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+                        //---parse preset hand pose (4 ~ 5)
+                        float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, 2); 
                         atp.animationType = AF_MOVETYPE.NormalTransform;
                         atp.handpose = new List<float>();
                         atp.isHandPose = 1;
                         atp.handpose.Add(vec3[0]);
                         atp.handpose.Add(vec3[1]);
+
+                        // manually finger pose (6 ~ 10)
+                        AvatarFingerForHPC afih = new AvatarFingerForHPC();
+                        if (lst.Length > 10) {
+                            afih.Thumbs = HandPoseController.ParseFinger(lst[6], "t");
+                            afih.Index = HandPoseController.ParseFinger(lst[7], "i");
+                            afih.Middle = HandPoseController.ParseFinger(lst[8], "m");
+                            afih.Ring = HandPoseController.ParseFinger(lst[9], "r");
+                            afih.Little = HandPoseController.ParseFinger(lst[10], "l");
+                        }
+
+                        atp.animationType = AF_MOVETYPE.NormalTransform;
+                        atp.isHandPose = 1;
+                        atp.fingerpose = afih;
 
                     }
 
@@ -762,6 +786,7 @@ namespace UserHandleSpace
                     }
                     else if (movetype == "collider")
                     {
+                        atp.animationType = AF_MOVETYPE.Collider;
                         string[] target = optParts.Split('%');
                         atp.VRMColliderTarget = new List<string>(target);
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
@@ -1009,11 +1034,22 @@ namespace UserHandleSpace
                         ret.Add(((int)atp.vrmBone).ToString());
                         ret.Add("");
                         ret.Add("normaltransform");
-                        ret.Add(atp.handpose.Count.ToString());
+
+                        ret.Add("7");
+                        // preset hand pose (4 ~ 5)
                         atp.handpose.ForEach(hand =>
                         {
                             ret.Add(hand.ToString());
                         });
+                        
+
+                        //--- manually finger pose (6 ~ 10)
+                        ret.Add(HandPoseController.StringifyFinger(atp.fingerpose, "t"));
+                        ret.Add(HandPoseController.StringifyFinger(atp.fingerpose, "i"));
+                        ret.Add(HandPoseController.StringifyFinger(atp.fingerpose, "m"));
+                        ret.Add(HandPoseController.StringifyFinger(atp.fingerpose, "r"));
+                        ret.Add(HandPoseController.StringifyFinger(atp.fingerpose, "l"));
+
                     }
                     else if (atp.animationType == AF_MOVETYPE.BlendShape)
                     {
@@ -1545,130 +1581,148 @@ namespace UserHandleSpace
 //===========================================================================================================================
         public void NewProject()
         {
-            //---destroy current project
-            for (int i = currentProject.casts.Count-1; i >= 0; i--)
+            try
             {
-                NativeAnimationAvatar cast = currentProject.casts[i];
-
-                //---destroy real objects
-                if (cast.type == AF_TARGETTYPE.Audio)
+                //---destroy current project
+                for (int i = currentProject.casts.Count - 1; i >= 0; i--)
                 {
-                    OperateLoadedAudio ola = cast.avatar.GetComponent<OperateLoadedAudio>();
-                    if (ola != null)
+                    NativeAnimationAvatar cast = currentProject.casts[i];
+
+                    //---destroy real objects
+                    if (cast.type == AF_TARGETTYPE.Audio)
                     {
-                        List<string> str = ola.ListAudio();
-                        str.ForEach(item =>
+                        OperateLoadedAudio ola = cast.avatar.GetComponent<OperateLoadedAudio>();
+                        if (ola != null)
                         {
-                            ola.RemoveAudio(item);
-                        });
-                    }
+                            List<string> str = ola.ListAudio();
+                            str.ForEach(item =>
+                            {
+                                ola.RemoveAudio(item);
+                            });
+                        }
 
-                }
-                else if (cast.type == AF_TARGETTYPE.SystemEffect)
-                {
-                    cast.avatar.GetComponent<ManageSystemEffect>().SetDefault();
-                }
-                else if (cast.type == AF_TARGETTYPE.Stage)
-                {
-                    cast.avatar.GetComponent<OperateStage>().SetDefault();
-                }
-                else
-                {
-                    if (cast.avatar != null)
+                    }
+                    else if (cast.type == AF_TARGETTYPE.SystemEffect)
                     {
-                        DestroyEffectiveAvatar(cast.avatar, cast.ikparent, cast.type);
+                        cast.avatar.GetComponent<ManageSystemEffect>().SetDefault();
                     }
+                    else if (cast.type == AF_TARGETTYPE.Stage)
+                    {
+                        cast.avatar.GetComponent<OperateStage>().SetDefault();
+                    }
+                    else
+                    {
+                        if (cast.avatar != null)
+                        {
+                            DestroyEffectiveAvatar(cast.avatar, cast.ikparent, cast.type);
+                        }
+                    }
+                    //---detach and remove cast and timeline actor
+                    DeleteAvatarFromCast(cast.roleName + "," + (int)cast.type);
+
+
                 }
-                //---detach and remove cast and timeline actor
-                DeleteAvatarFromCast(cast.roleName + "," + (int)cast.type);
+                //Debug.Log("New Project:1:" + currentProject.casts.Count.ToString());
+                currentProject.casts.Clear();
+                /*foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
+                {
+                    actor.frames.Clear();
+                }
+                currentProject.timeline.characters.Clear();
+                */
+
+                //---clear materials in the project
+                if ((currentProject != null) && (currentProject.materialManager != null))
+                {
+                    currentProject.materialManager.Dispose();
+                }
+
+                //Debug.Log("New Project:2:" + currentProject.materialManager.ToString());
 
 
+                currentProject = null;
+
+                //---new project
+                currentProject = new NativeAnimationProject(initialFrameCount);
+
+                //[Edit point] 2022.09.xx
+                currentProject.version = PROJECT_VERSION;
+
+                //Debug.Log("New Project:3:");
+                //--fixed objects-------------------------------------------------------------------------------------------
+                FirstAddFixedAvatar("SystemEffect", gameObject, gameObject, "SystemEffect", AF_TARGETTYPE.SystemEffect);
+                GameObject[] audios = GameObject.FindGameObjectsWithTag("AudioPlayer");
+                for (int i = 0; i < audios.Length; i++)
+                {
+                    GameObject audio = audios[i];
+                    FirstAddFixedAvatar(audio.name, audio, audio, audio.name, AF_TARGETTYPE.Audio);
+                }
+                GameObject stage = GameObject.FindGameObjectWithTag("GroundWorld");
+                FirstAddFixedAvatar("Stage", stage, stage, "Stage", AF_TARGETTYPE.Stage);
+
+                //Debug.Log("New Project:4:");
+                /*
+                //--non-fixed objects------------------------------------------------------------------------------------
+                GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+                for (int i = 0; i < players.Length; i++)
+                {
+                    ManageAvatarTransform mat = players[i].GetComponent<ManageAvatarTransform>();
+                    OperateLoadedVRM olvrm = players[i].GetComponent<OperateLoadedVRM>();
+
+                    float[] calcBodyInfo = mat.ParseBodyInfo(olvrm.GetTPoseBodyInfo());
+                    List<Vector3> bodyinfoList = mat.ParseBodyInfoList(olvrm.GetTPoseBodyInfo(), olvrm.relatedHandleParent);
+
+                    bool isoverwrite = false;
+
+                    FirstAddAvatar2(out isoverwrite, players[i].name, players[i], olvrm.relatedHandleParent, "VRM", AF_TARGETTYPE.VRM, calcBodyInfo, bodyinfoList);
+                }
+                GameObject[] others = GameObject.FindGameObjectsWithTag("OtherPlayer");
+                for (int i = 0; i < others.Length; i++)
+                {
+                    OperateLoadedOther olo = others[i].GetComponent<OperateLoadedOther>();
+
+                    FirstAddAvatar(others[i].name, others[i], olo.relatedHandleParent, "OtherObject", AF_TARGETTYPE.OtherObject);
+                }
+                GameObject[] lights = GameObject.FindGameObjectsWithTag("LightPlayer");
+                for (int i = 0; i < lights.Length; i++)
+                {
+                    OperateLoadedLight oll = lights[i].GetComponent<OperateLoadedLight>();
+                    FirstAddAvatar(lights[i].name, lights[i], oll.relatedHandleParent, "Light", AF_TARGETTYPE.Light);
+                }
+                GameObject[] cameras = GameObject.FindGameObjectsWithTag("CameraPlayer");
+                for (int i = 0; i < cameras.Length; i++)
+                {
+                    OperateLoadedCamera olc = cameras[i].GetComponent<OperateLoadedCamera>();
+
+                    FirstAddAvatar(cameras[i].name, cameras[i], olc.relatedHandleParent, "Camera", AF_TARGETTYPE.Camera);
+                }
+                Transform txtarea = MsgArea.transform;
+                for (int i = 0; i < txtarea.childCount; i++)
+                {
+                    GameObject text = txtarea.GetChild(i).gameObject;
+                    //OperateLoadedText olt = text.GetComponent<OperateLoadedText>();
+                    FirstAddAvatar(text.name, text, null, "Text", AF_TARGETTYPE.Text);
+                }
+                Transform imgarea = ImgArea.transform;
+                for (int i = 0; i < imgarea.childCount; i++)
+                {
+                    GameObject img = imgarea.GetChild(i).gameObject;
+                    //OperateLoadedUImage olui = img.GetComponent<OperateLoadedUImage>();
+                    FirstAddAvatar(img.name, img, null, "UImage", AF_TARGETTYPE.UImage);
+                }
+                GameObject[] eff = GameObject.FindGameObjectsWithTag("EffectDestination");
+                for (int i = 0; i < eff.Length; i++)
+                {
+                    OperateLoadedEffect oll = eff[i].GetComponent<OperateLoadedEffect>();
+                    FirstAddAvatar(eff[i].name, eff[i], eff[i], "Effect", AF_TARGETTYPE.Effect);
+                }
+                */
             }
-            currentProject.casts.Clear();
-            /*foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
+            catch (Exception e)
             {
-                actor.frames.Clear();
+                Debug.Log(e.Message);
             }
-            currentProject.timeline.characters.Clear();
-            */
-
-            //---clear materials in the project
-            currentProject.materialManager.Dispose();
-
-
-
-            currentProject = null;
-
-            //---new project
-            currentProject = new NativeAnimationProject(initialFrameCount);
-
-            //--fixed objects-------------------------------------------------------------------------------------------
-            FirstAddFixedAvatar("SystemEffect", gameObject, gameObject, "SystemEffect", AF_TARGETTYPE.SystemEffect);
-            GameObject[] audios = GameObject.FindGameObjectsWithTag("AudioPlayer");
-            for (int i = 0; i < audios.Length; i++)
-            {
-                GameObject audio = audios[i];
-                FirstAddFixedAvatar(audio.name, audio, audio, audio.name, AF_TARGETTYPE.Audio);
-            }
-            GameObject stage = GameObject.FindGameObjectWithTag("GroundWorld");
-            FirstAddFixedAvatar("Stage", stage, stage, "Stage", AF_TARGETTYPE.Stage);
-
-            /*
-            //--non-fixed objects------------------------------------------------------------------------------------
-            GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
-            for (int i = 0; i < players.Length; i++)
-            {
-                ManageAvatarTransform mat = players[i].GetComponent<ManageAvatarTransform>();
-                OperateLoadedVRM olvrm = players[i].GetComponent<OperateLoadedVRM>();
-
-                float[] calcBodyInfo = mat.ParseBodyInfo(olvrm.GetTPoseBodyInfo());
-                List<Vector3> bodyinfoList = mat.ParseBodyInfoList(olvrm.GetTPoseBodyInfo(), olvrm.relatedHandleParent);
-
-                bool isoverwrite = false;
-
-                FirstAddAvatar2(out isoverwrite, players[i].name, players[i], olvrm.relatedHandleParent, "VRM", AF_TARGETTYPE.VRM, calcBodyInfo, bodyinfoList);
-            }
-            GameObject[] others = GameObject.FindGameObjectsWithTag("OtherPlayer");
-            for (int i = 0; i < others.Length; i++)
-            {
-                OperateLoadedOther olo = others[i].GetComponent<OperateLoadedOther>();
-
-                FirstAddAvatar(others[i].name, others[i], olo.relatedHandleParent, "OtherObject", AF_TARGETTYPE.OtherObject);
-            }
-            GameObject[] lights = GameObject.FindGameObjectsWithTag("LightPlayer");
-            for (int i = 0; i < lights.Length; i++)
-            {
-                OperateLoadedLight oll = lights[i].GetComponent<OperateLoadedLight>();
-                FirstAddAvatar(lights[i].name, lights[i], oll.relatedHandleParent, "Light", AF_TARGETTYPE.Light);
-            }
-            GameObject[] cameras = GameObject.FindGameObjectsWithTag("CameraPlayer");
-            for (int i = 0; i < cameras.Length; i++)
-            {
-                OperateLoadedCamera olc = cameras[i].GetComponent<OperateLoadedCamera>();
-
-                FirstAddAvatar(cameras[i].name, cameras[i], olc.relatedHandleParent, "Camera", AF_TARGETTYPE.Camera);
-            }
-            Transform txtarea = MsgArea.transform;
-            for (int i = 0; i < txtarea.childCount; i++)
-            {
-                GameObject text = txtarea.GetChild(i).gameObject;
-                //OperateLoadedText olt = text.GetComponent<OperateLoadedText>();
-                FirstAddAvatar(text.name, text, null, "Text", AF_TARGETTYPE.Text);
-            }
-            Transform imgarea = ImgArea.transform;
-            for (int i = 0; i < imgarea.childCount; i++)
-            {
-                GameObject img = imgarea.GetChild(i).gameObject;
-                //OperateLoadedUImage olui = img.GetComponent<OperateLoadedUImage>();
-                FirstAddAvatar(img.name, img, null, "UImage", AF_TARGETTYPE.UImage);
-            }
-            GameObject[] eff = GameObject.FindGameObjectsWithTag("EffectDestination");
-            for (int i = 0; i < eff.Length; i++)
-            {
-                OperateLoadedEffect oll = eff[i].GetComponent<OperateLoadedEffect>();
-                FirstAddAvatar(eff[i].name, eff[i], eff[i], "Effect", AF_TARGETTYPE.Effect);
-            }
-            */
+            
 
         }
         public void OpenProject(string url)
@@ -2174,6 +2228,7 @@ namespace UserHandleSpace
         public AnimationProject Body_SaveProject(NativeAnimationProject napro)
         {
             AnimationProject aniproj = new AnimationProject(initialFrameCount);
+            aniproj.version = PROJECT_VERSION;
             aniproj.isSharing = napro.isSharing;
             aniproj.isReadOnly = napro.isReadOnly;
             aniproj.isNew = false;

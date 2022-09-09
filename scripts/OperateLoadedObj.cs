@@ -792,7 +792,7 @@ namespace UserHandleSpace
             GameObject leftshoulder = Instantiate(copyleftshoulder, copyleftshoulder.transform.position, Quaternion.identity, chest.transform);
             leftshoulder.name = "LeftShoulder"; 
             //leftshoulder.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-            leftshoulder.transform.localRotation = Quaternion.Euler(0f, 4.765f, -1.158f);
+            leftshoulder.transform.localRotation = Quaternion.Euler(0f, 4.765f, 1.158f);
             leftshoulder.transform.localScale = new Vector3(1f, 1f, 1f);
             UserHandleOperation leftsld = leftshoulder.GetComponent<UserHandleOperation>();
             leftsld.PartsName = "leftshoulder";
@@ -813,7 +813,9 @@ namespace UserHandleSpace
             leftlowerarm.tag = "IKHandle";
             leftlowerarm.GetComponent<UserHandleOperation>().PartsName = "leftlowerarm";
             leftlowerarm.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            leftlowerarm.transform.position = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm).transform.position;
+            Vector3 leftlowervec = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm).transform.position;
+            leftlowervec.z += 0.01f;
+            leftlowerarm.transform.position = leftlowervec;
             leftlowerarm.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
             GameObject copylefthand = (GameObject)Resources.Load("IKHandleSphereLeft");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -853,7 +855,9 @@ namespace UserHandleSpace
             rightlowerarm.tag = "IKHandle";
             rightlowerarm.GetComponent<UserHandleOperation>().PartsName = "rightlowerarm";
             rightlowerarm.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            rightlowerarm.transform.position = animator.GetBoneTransform(HumanBodyBones.RightLowerArm).transform.position;
+            Vector3 rightlowervec = animator.GetBoneTransform(HumanBodyBones.RightLowerArm).transform.position;
+            rightlowervec.z += 0.01f;
+            rightlowerarm.transform.position = rightlowervec;
             rightlowerarm.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
             GameObject copyrighthand = (GameObject)Resources.Load("IKHandleSphereRight");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);

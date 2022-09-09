@@ -122,13 +122,30 @@ namespace UserHandleSpace
 
                         mat.SetTexture("_MainTex", null);
                     }
-                    Destroy(mat);
+                    //Destroy(mat);
                 }
                 mat = null;
             }
             userSharedMaterials.Clear();
             userSharedTextureFiles.Clear();
             backupTextureFiles.Clear();
+            Renderer[] mrs = GetComponentsInChildren<Renderer>();
+            foreach (var mr in mrs)
+            {
+                foreach (var mat in mr.sharedMaterials)
+                {
+                    Destroy(mat);
+                }
+            }
+            foreach (var mr in mrs)
+            {
+                foreach (var mat in mr.materials)
+                {
+                    Destroy(mat);
+                }
+            }
+
+            
         }
 
         /// <summary>

@@ -641,8 +641,7 @@ namespace UserVRMSpace
 
             //yield return null;
 
-
-            pendingInstance.gameObject.name = "vrm_" + DateTime.Now.ToFileTime().ToString();
+            pendingInstance.gameObject.name = managa.CheckAndSetAvatarId("vrm_", pendingInstance.gameObject.GetInstanceID());
             pendingInstance.gameObject.tag = "Player";
             pendingInstance.gameObject.layer = LayerMask.NameToLayer("Player");
 
@@ -709,10 +708,10 @@ namespace UserVRMSpace
             pendingContext.Meshes.ForEach(callmesh1);*/
             //---Body Mesh own
             SkinnedMeshRenderer mat_b_mesh = mat_b.GetComponent<SkinnedMeshRenderer>();
-            hei = mat_b_mesh.bounds.size.y;
-            //bodyBounds.x = mat_b_mesh.bounds.size.x;
-            //bodyBounds.y += mat_b_mesh.bounds.size.y;
-            //bodyBounds.z = mat_b_mesh.bounds.size.z;
+            SkinnedMeshRenderer mat_f_mesh = mat_f.GetComponent<SkinnedMeshRenderer>();
+
+            //hei = mat_b_mesh.bounds.size.y;
+            hei = mat_f_mesh.bounds.max.y;
 
             hei = System.Math.Round(hei, 2, System.MidpointRounding.AwayFromZero);
             string strHeight = (hei * 100).ToString() + " cm";
@@ -826,22 +825,34 @@ namespace UserVRMSpace
             
             ManageAvatarTransform mat = contextRoot.GetComponent<ManageAvatarTransform>();
             List<GameObject> meshcnt = mat.CheckSkinnedMeshAvailable();
+            GameObject mat_f = null;
             GameObject mat_b = null;
+            SkinnedMeshRenderer mat_b_mesh = null;
+            float hei = 0;
+
             if (meshcnt.Count == 1)
             {
                 mat_b = meshcnt[0];
                 //---Irregular VRM (ex: Abiss Horizon, etc)
                 //mat_b.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
+                mat_b_mesh = mat_b.GetComponent<SkinnedMeshRenderer>();
+
+                hei = mat_b_mesh.bounds.max.y;
             }
             else
             {
                 //---VRM made by VRoid Studio etc
-                //GameObject mat_f = mat.GetFaceMesh();
+                mat_f = mat.GetFaceMesh();
+                SkinnedMeshRenderer mat_f_mesh = mat_f.GetComponent<SkinnedMeshRenderer>();
+
                 mat_b = mat.GetBodyMesh();
+                mat_b_mesh = mat_b.GetComponent<SkinnedMeshRenderer>();
                 //GameObject mat_h = mat.GetHairMesh();
                 //if (mat_f != null) mat_f.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
                 //if (mat_b != null) mat_b.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
                 //if (mat_h != null) mat_h.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
+
+                hei = mat_f_mesh.bounds.max.y;
             }
 
             //context.ShowMeshes();
@@ -860,10 +871,9 @@ namespace UserVRMSpace
 
             CapsuleCollider bc = contextRoot.AddComponent<CapsuleCollider>();
             Vector3 bodyBounds = new Vector3(0, 0, 0);
-            //double hei = 0;
+            
 
             //---Body Mesh own
-            SkinnedMeshRenderer mat_b_mesh = mat_b.GetComponent<SkinnedMeshRenderer>();
             bodyBounds.x = mat_b_mesh.bounds.size.x;
             bodyBounds.y += mat_b_mesh.bounds.size.y;
             bodyBounds.z = mat_b_mesh.bounds.size.z;
@@ -872,7 +882,7 @@ namespace UserVRMSpace
 
             bc.center = mat_b_mesh.bounds.center;
             bc.radius = mat_b_mesh.bounds.extents.x * 0.5f;
-            bc.height = mat_b_mesh.bounds.size.y;
+            bc.height = hei; // mat_b_mesh.bounds.size.y;
 
 
 
@@ -889,6 +899,7 @@ namespace UserVRMSpace
             olvrm.InitializeBlendShapeList();
             olvrm.ListGravityInfo();
             olvrm.RegisterUserMaterial();
+            olvrm.ListProxyBlendShape();
 
             bool useFullBodyIK = false; // configLab.GetIntVal("use_fullbody_bipedik") == 1 ? true : false;
 
@@ -951,12 +962,16 @@ namespace UserVRMSpace
 
             //---for hand IK
             SetupHand(contextRoot, conanime);
+            olvrm.SetRelateHandController();
+            //olvrm.SetHandFingerMode("2");
+
 
             contextRoot.transform.rotation = Quaternion.Euler(new Vector3(0f, 0f, 0f));
             OperateActiveVRM ovrm = ikworld.GetComponent<OperateActiveVRM>();
             //ovrm.ActivateAvatar(contextRoot.name,false);
             ovrm.EnableTransactionHandle(null, ikparent);
             ovrm.AddAvatarBox(contextRoot.name, null, ikparent);
+
 
             //ManageAnimation mana = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
 
@@ -982,11 +997,11 @@ namespace UserVRMSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
                 ReceiveStringVal(js);
 #endif
+                lastLoadedAvatar = nav;
             }
 
             pendingContext = null;
 
-            lastLoadedAvatar = nav;
         }
 
         public void DestroyVRM(string param)
@@ -1125,7 +1140,8 @@ namespace UserVRMSpace
             OtherObjectInformation obi = OnShowedOtherObject(oth);
 
             //---change ID to timestamp 
-            oth.name = "obj_" + DateTime.Now.ToFileTime().ToString();  //_loadedObjectFileName == "" ? oth.name : _loadedObjectFileName;
+            //oth.name = "obj_" + DateTime.Now.ToFileTime().ToString();  //_loadedObjectFileName == "" ? oth.name : _loadedObjectFileName;
+            oth.name = managa.CheckAndSetAvatarId("obj_",oth.GetInstanceID());
             ikcube.name = "ikparent_" + oth.name;
 
             obi.id = oth.name;
@@ -1559,17 +1575,30 @@ namespace UserVRMSpace
             GameObject copyoth = Instantiate(copyprim, copyprim.transform.position, Quaternion.identity, managa.AvatarArea.transform);  //GameObject.CreatePrimitive(ptype);
             copyoth.name = "BlankObject";
 
+            MeshRenderer mr = copyprim.GetComponentInChildren<MeshRenderer>();
+
+
             GameObject oth = new GameObject();
 
             copyoth.transform.SetParent(oth.transform);
 
             //---avatar object
             oth.transform.SetParent(managa.AvatarArea.transform);
-            oth.name = "obj_" + DateTime.Now.ToFileTime().ToString();  //_loadedObjectFileName == "" ? oth.name : _loadedObjectFileName;
+            oth.name = managa.CheckAndSetAvatarId("obj_",oth.GetInstanceID()); // + DateTime.Now.ToFileTime().ToString();  //_loadedObjectFileName == "" ? oth.name : _loadedObjectFileName;
             oth.tag = "OtherPlayer";
             oth.layer = LayerMask.NameToLayer("Player");
             OperateLoadedOther ol = oth.AddComponent<OperateLoadedOther>();
             oth.AddComponent<ManageAvatarTransform>();
+
+            //--- Create unique material for This Blank Object
+            Material mat = new Material(mr.sharedMaterial);
+            mat.name = "mat_" + oth.name;
+            MeshRenderer cmr = copyoth.GetComponentInChildren<MeshRenderer>();
+            if (cmr != null)
+            {
+                cmr.sharedMaterial = mat;
+            }
+            
 
             //---ikparent
             GameObject copycube = (GameObject)Resources.Load("IKHandleCube");
@@ -1663,7 +1692,7 @@ namespace UserVRMSpace
             GameObject[] lt = ikworld.GetComponent<OperateLoadedObj>().CreateLight(param);
 
 
-            lt[0].name = "lit_" + DateTime.Now.ToFileTime().ToString();
+            lt[0].name = managa.CheckAndSetAvatarId("lit_",lt[0].GetInstanceID()); // + DateTime.Now.ToFileTime().ToString();
             lt[0].tag = "LightPlayer";
             lt[0].layer = LayerMask.NameToLayer("Player");
             OperateLoadedLight ol = lt[0].AddComponent<OperateLoadedLight>();
@@ -1798,7 +1827,7 @@ namespace UserVRMSpace
             GameObject[] lt = ikworld.GetComponent<OperateLoadedObj>().CreateCamera();
 
 
-            lt[0].name = "cam_" + DateTime.Now.ToFileTime().ToString();
+            lt[0].name = managa.CheckAndSetAvatarId("cam_",lt[0].GetInstanceID()); // + DateTime.Now.ToFileTime().ToString();
             lt[0].tag = "CameraPlayer";
             lt[0].layer = LayerMask.NameToLayer("Player");
             OperateLoadedCamera ol = lt[0].AddComponent<OperateLoadedCamera>();
@@ -1927,7 +1956,7 @@ namespace UserVRMSpace
             GameObject txt = ikworld.GetComponent<OperateLoadedObj>().CreateText(prm[0], prm[1]);
 
 
-            txt.name = "txt_" + DateTime.Now.ToFileTime().ToString();
+            txt.name = managa.CheckAndSetAvatarId("txt_",txt.GetInstanceID()); // + DateTime.Now.ToFileTime().ToString();
             txt.tag = "TextPlayer";
             txt.layer = LayerMask.NameToLayer("UserUI");
             txt.AddComponent<ManageAvatarTransform>();
@@ -2153,7 +2182,7 @@ namespace UserVRMSpace
             Image imgcon = img.AddComponent<Image>();
             imgcon.sprite = spr;
 
-            img.name = "uimg_" + DateTime.Now.ToFileTime().ToString();
+            img.name = managa.CheckAndSetAvatarId("uimg_",img.GetInstanceID()); // + DateTime.Now.ToFileTime().ToString();
             img.layer = LayerMask.NameToLayer("UserUI");
             img.tag = "UImagePlayer";
 
@@ -2284,7 +2313,7 @@ namespace UserVRMSpace
             GameObject empt = new GameObject();
             empt.transform.SetParent(viewBody.transform);
 
-            empt.name = "img_" + DateTime.Now.ToFileTime().ToString();
+            empt.name = managa.CheckAndSetAvatarId("img_",empt.GetInstanceID()); // + DateTime.Now.ToFileTime().ToString();
             empt.tag = "OtherPlayer";
             empt.layer = LayerMask.NameToLayer("Player");
             plat.transform.SetParent(empt.transform);
@@ -2375,7 +2404,7 @@ namespace UserVRMSpace
             GameObject ikworld = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
             GameObject[] lt = ikworld.GetComponent<OperateLoadedObj>().CreateEffect();
 
-            lt[0].name = "eff_" + DateTime.Now.ToFileTime().ToString();
+            lt[0].name = managa.CheckAndSetAvatarId("eff_", lt[0].GetInstanceID()); // + DateTime.Now.ToFileTime().ToString();
             lt[0].tag = "EffectDestination";
             lt[0].layer = LayerMask.NameToLayer("Player");
             lt[0].AddComponent<ManageAvatarTransform>();

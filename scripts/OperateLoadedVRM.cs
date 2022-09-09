@@ -24,7 +24,8 @@ namespace UserHandleSpace
         [DllImport("__Internal")]
         private static extern void ReceiveFloatVal(float val);
 
-        
+        const string PREFIX_PROXY = "PROX:";
+
 
         /**
          *  This class is manager function, all VRM
@@ -50,18 +51,18 @@ namespace UserHandleSpace
 
         private ManageAnimation manim;
 
-        //private float[] bodyInfoFloat;
-        /*
-        private bool isFixMoving;
+        public bool isHandPosing = true;
+        public LeftHandPoseController LeftHandCtrl;
+        public RightHandPoseController RightHandCtrl;
+        public AvatarFingerForHPC LeftFingerBackupHPC;
+        public AvatarFingerForHPC RightFingerBackupHPC;
 
-        private Vector3 oldPosition;
-        private Quaternion oldRotation;
-        private Vector3 defaultPosition;
-        private Quaternion defaultRotation;
-        private Vector3 defaultColliderPosition;
-
-        private Vector3 oldikposition;
-        */
+        public int LeftCurrentHand = 0;
+        public float LeftHandValue = 0;
+        public int RightCurrentHand = 0;
+        public float RightHandValue = 0;
+        public AvatarFingerInHand LeftFingerBkup;
+        public AvatarFingerInHand RightFingerBkup;
 
         // Start is called before the first frame update
         private void Awake()
@@ -83,6 +84,9 @@ namespace UserHandleSpace
             ikMappingList = new List<AvatarIKMappingClass>();
             //userSharedProperties = new MaterialProperties();
 
+            LeftFingerBkup = new AvatarFingerInHand();
+            RightFingerBkup = new AvatarFingerInHand();
+
         }
         void Start() 
         {
@@ -90,7 +94,7 @@ namespace UserHandleSpace
             manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
 
             blink = GetComponent<Blinker>();
-            blendShapeList.Clear();
+            /*blendShapeList.Clear();
             
             List<string> lst = ListAvatarBlendShape();
             lst.ForEach(item =>
@@ -100,7 +104,7 @@ namespace UserHandleSpace
                 BasicStringFloatList lsf = new BasicStringFloatList(arr[0], value);
                 blendShapeList.Add(lsf);
 
-            });
+            });*/
         }
 
         // Update is called once per frame
@@ -153,6 +157,21 @@ namespace UserHandleSpace
             userSharedMaterials.Clear();
             userSharedTextureFiles.Clear();
             backupTextureFiles.Clear();
+            Renderer[] mrs = GetComponentsInChildren<Renderer>();
+            foreach (var mr in mrs)
+            {
+                foreach (var mat in mr.sharedMaterials)
+                {
+                    Destroy(mat);
+                }
+            }
+            foreach (var mr in mrs)
+            {
+                foreach (var mat in mr.materials)
+                {
+                    Destroy(mat);
+                }
+            }
         }
         public VRMImporterContext GetContext()
         {
@@ -422,8 +441,11 @@ namespace UserHandleSpace
                 VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
                 for (int i = 0; i < bones.Length; i++)
                 {
-                    if ((bones[i].m_comment == arr[0]) && (bones[i].RootBones[0].gameObject.name == arr[1]))
+                    //Debug.Log(arr[0] + "," + arr[1] + " vs bones[" + i + "]-" + bones[i].m_comment + "," + bones[i].RootBones[0].gameObject.name);
+                    string bonecomment = bones[i].m_comment == null ? "" : bones[i].m_comment;
+                    if ((bonecomment == arr[0]) && (bones[i].RootBones[0].gameObject.name == arr[1]))
                     {
+                        //Debug.Log(";[" + arr[0] + "," + arr[1] + ":" + bones[i].m_comment + "," + bones[i].RootBones[0].gameObject.name + "]");
                         bones[i].m_gravityPower = val;
                         VRMGravityInfo vgi = GetGravityInfo(arr[0] + "," + arr[1]);
                         if (vgi != null) vgi.power = val;
@@ -516,8 +538,8 @@ namespace UserHandleSpace
             const string SEPSTR = "\t";
             string ret = "";
 
-            LeftHandPoseController ctl = GetComponent<LeftHandPoseController>();
-            RightHandPoseController ctr = GetComponent<RightHandPoseController>();
+            LeftHandPoseController ctl = LeftHandCtrl;
+            RightHandPoseController ctr = RightHandCtrl;
 
             List<string> matlist = ListUserMaterial();
             string matjs = string.Join("\r\n", matlist.ToArray());
@@ -536,9 +558,9 @@ namespace UserHandleSpace
             //             ,
             //            name=value
 
-            ret = "l," + ctl.currentPose.ToString() + "," + ctl.handPoseValue.ToString()
+            ret = "l," + LeftCurrentHand.ToString() + "," + LeftHandValue.ToString()
                     + "=" +
-                    "r," + ctr.currentPose.ToString() + "," + ctr.handPoseValue.ToString()
+                    "r," + RightCurrentHand.ToString() + "," + RightHandValue.ToString()
                 + SEPSTR + 
                 blendshape
                 + SEPSTR + 
@@ -577,6 +599,17 @@ namespace UserHandleSpace
 #endif
             return ret;
         }
+        public void ListFingerPoseClass()
+        {
+            BackupFingerNative();
+
+            string[] js = { JsonUtility.ToJson(LeftFingerBackupHPC), JsonUtility.ToJson(RightFingerBackupHPC) };
+
+            string ret = string.Join("\t", js);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
         /// <summary>
         /// Change Hand Pose
         /// </summary>
@@ -591,19 +624,376 @@ namespace UserHandleSpace
             //Debug.Log("unity . int=" + posetype);
             //Debug.Log("unity . float=" + value);
 
-            LeftHandPoseController ctl = GetComponent<LeftHandPoseController>();
-            RightHandPoseController ctr = GetComponent<RightHandPoseController>();
+            //LeftHandPoseController ctl = GetComponent<LeftHandPoseController>();
+            //RightHandPoseController ctr = GetComponent<RightHandPoseController>();
 
             if (handtype == "l")
             {
-                ctl.ResetPose();
-                ctl.SetPose(posetype, value);
+                LeftHandCtrl.ResetPose();
+                LeftHandCtrl.SetPose(posetype, value);
             }
             else
             {
-                ctr.ResetPose();
-                ctr.SetPose(posetype, value);
+                RightHandCtrl.ResetPose();
+                RightHandCtrl.SetPose(posetype, value);
             }
+        }
+        public void SetBackupHandPosing(string hand, int currentpose, float handvalue, AvatarFingerForHPC hpc)
+        {
+            if (hand == "r")
+            {
+                RightCurrentHand = currentpose;
+                RightHandValue = handvalue;
+                RightFingerBackupHPC.Copy(hpc);
+            }
+            else if (hand == "l")
+            {
+                LeftCurrentHand = currentpose;
+                LeftHandValue = handvalue;
+                LeftFingerBackupHPC.Copy(hpc);
+            }
+        }
+        public void BackupFingerNative()
+        {
+            LeftFingerBackupHPC = LeftHandCtrl.BackupFinger();
+            RightFingerBackupHPC = RightHandCtrl.BackupFinger();
+        }
+        //=== Hand(Finger) new functions =============================****************************************-----------------------
+        public void SetRelateHandController()
+        {
+            LeftHandCtrl = GetComponent<LeftHandPoseController>();
+            RightHandCtrl = GetComponent<RightHandPoseController>();
+
+        }
+        public void SetHandFingerMode(string param)
+        {
+            if (param == "1")
+            { //1 - handposing
+                isHandPosing = true;
+                LeftHandCtrl.enabled = true;
+                RightHandCtrl.enabled = true;
+            }
+            else if (param == "2")
+            { //2 - finger manually posing
+                isHandPosing = false;
+                LeftHandCtrl.enabled = false;
+                RightHandCtrl.enabled = false;
+            }
+        }
+        public Transform GetTargetFinger(string hand, string finger, int section)
+        {
+            Animator anim = GetComponent<Animator>();
+            Transform ret = null;
+
+            HumanBodyBones hbb = HumanBodyBones.LastBone;
+            if (hand == "r")
+            {
+                if ((finger == "t") && (section == 0)) hbb = HumanBodyBones.RightThumbProximal;
+                if ((finger == "t") && (section == 1)) hbb = HumanBodyBones.RightThumbIntermediate;
+                if ((finger == "t") && (section == 2)) hbb = HumanBodyBones.RightThumbDistal;
+
+                if ((finger == "i") && (section == 0)) hbb = HumanBodyBones.RightIndexProximal;
+                if ((finger == "i") && (section == 1)) hbb = HumanBodyBones.RightIndexIntermediate;
+                if ((finger == "i") && (section == 2)) hbb = HumanBodyBones.RightIndexDistal;
+
+                if ((finger == "m") && (section == 0)) hbb = HumanBodyBones.RightMiddleProximal;
+                if ((finger == "m") && (section == 1)) hbb = HumanBodyBones.RightMiddleIntermediate;
+                if ((finger == "m") && (section == 2)) hbb = HumanBodyBones.RightMiddleDistal;
+
+                if ((finger == "r") && (section == 0)) hbb = HumanBodyBones.RightRingProximal;
+                if ((finger == "r") && (section == 1)) hbb = HumanBodyBones.RightRingIntermediate;
+                if ((finger == "r") && (section == 2)) hbb = HumanBodyBones.RightRingDistal;
+
+                if ((finger == "l") && (section == 0)) hbb = HumanBodyBones.RightLittleProximal;
+                if ((finger == "l") && (section == 1)) hbb = HumanBodyBones.RightLittleIntermediate;
+                if ((finger == "l") && (section == 2)) hbb = HumanBodyBones.RightLittleDistal;
+
+            }
+            else if (hand == "l")
+            {
+                if ((finger == "t") && (section == 0)) hbb = HumanBodyBones.LeftThumbProximal;
+                if ((finger == "t") && (section == 1)) hbb = HumanBodyBones.LeftThumbIntermediate;
+                if ((finger == "t") && (section == 2)) hbb = HumanBodyBones.LeftThumbDistal;
+
+                if ((finger == "i") && (section == 0)) hbb = HumanBodyBones.LeftIndexProximal;
+                if ((finger == "i") && (section == 1)) hbb = HumanBodyBones.LeftIndexIntermediate;
+                if ((finger == "i") && (section == 2)) hbb = HumanBodyBones.LeftIndexDistal;
+
+                if ((finger == "m") && (section == 0)) hbb = HumanBodyBones.LeftMiddleProximal;
+                if ((finger == "m") && (section == 1)) hbb = HumanBodyBones.LeftMiddleIntermediate;
+                if ((finger == "m") && (section == 2)) hbb = HumanBodyBones.LeftMiddleDistal;
+
+                if ((finger == "r") && (section == 0)) hbb = HumanBodyBones.LeftRingProximal;
+                if ((finger == "r") && (section == 1)) hbb = HumanBodyBones.LeftRingIntermediate;
+                if ((finger == "r") && (section == 2)) hbb = HumanBodyBones.LeftRingDistal;
+
+                if ((finger == "l") && (section == 0)) hbb = HumanBodyBones.LeftLittleProximal;
+                if ((finger == "l") && (section == 1)) hbb = HumanBodyBones.LeftLittleIntermediate;
+                if ((finger == "l") && (section == 2)) hbb = HumanBodyBones.LeftLittleDistal;
+            }
+            if (hbb != HumanBodyBones.LastBone)
+            {
+                ret = anim.GetBoneTransform(hbb);
+            }
+
+            return ret;
+        }
+        public void RotateFingerFromOuter(string param)
+        {
+            /* sep= , -> &
+             * [0] - 左右：r, l
+             * [1] - 親指、人差し指、中指、薬指、小指：t, i, m, r, l
+             * [2] - 値：0.xxf (& sep)
+             */
+            //Animator anim = GetComponent<Animator>();
+
+            string[] arr = param.Split(",");
+            string hand = arr[0];
+            string finger = arr[1];
+            List<float> fval = new List<float>();
+            string [] vals = arr[2].Split("&");
+            foreach (string v in vals)
+            {
+                float fv = float.TryParse(v, out fv) ? fv : 0;
+                fval.Add(fv);
+            }
+
+            RotateFinger(hand, finger, fval.ToArray());
+            
+        }
+        public void RotateFinger(string handRL, string finger, float[] values)
+        {
+            /*
+            Transform tran = GetTargetFinger(handRL, finger, section); //anim.GetBoneTransform(hbb);
+            Vector3 rot = new Vector3(tran.localRotation.eulerAngles.x, tran.localRotation.eulerAngles.y, tran.localRotation.eulerAngles.z);
+            if (dir == "x") rot.x = value;
+            if (dir == "y") rot.y = value;
+            if (dir == "z") rot.z = value;
+            tran.localRotation = Quaternion.Euler(rot);
+            */
+
+            if (handRL == "r")
+            {
+                RightHandCtrl.PoseFinger(finger, values.Length, values);
+            }
+            else if (handRL == "l")
+            {
+                LeftHandCtrl.PoseFinger(finger, values.Length, values);
+            }
+        }
+        public void SetBackupFinger(string hand, AvatarFingerInHand fingerCls)
+        {
+            if (hand == "r")
+            {
+                RightFingerBkup.Copy(fingerCls);
+            }
+            else if (hand == "l")
+            {
+                LeftFingerBkup.Copy(fingerCls);
+            }
+        }
+        public Vector3 GetFingerRotation(string hand, string finger, int section)
+        {
+            Vector3 ret = Vector3.zero;
+
+            Transform tran = GetTargetFinger(hand, finger, section);
+            ret = tran.localRotation.eulerAngles;
+
+            return ret;
+        }
+        public AvatarFingerInHand GetFingerRotationByClass(string hand)
+        {
+            AvatarFingerInHand ret = new AvatarFingerInHand();
+            Animator anim = GetComponent<Animator>();
+            if (hand == "r")
+            {
+                ret.Thumbs.Add(anim.GetBoneTransform(HumanBodyBones.RightThumbProximal).localRotation.eulerAngles);
+                ret.Thumbs.Add(anim.GetBoneTransform(HumanBodyBones.RightThumbIntermediate).localRotation.eulerAngles);
+                ret.Thumbs.Add(anim.GetBoneTransform(HumanBodyBones.RightThumbDistal).localRotation.eulerAngles);
+
+                ret.Index.Add(anim.GetBoneTransform(HumanBodyBones.RightIndexProximal).localRotation.eulerAngles);
+                ret.Index.Add(anim.GetBoneTransform(HumanBodyBones.RightIndexIntermediate).localRotation.eulerAngles);
+                ret.Index.Add(anim.GetBoneTransform(HumanBodyBones.RightIndexDistal).localRotation.eulerAngles);
+
+                ret.Middle.Add(anim.GetBoneTransform(HumanBodyBones.RightMiddleProximal).localRotation.eulerAngles);
+                ret.Middle.Add(anim.GetBoneTransform(HumanBodyBones.RightMiddleIntermediate).localRotation.eulerAngles);
+                ret.Middle.Add(anim.GetBoneTransform(HumanBodyBones.RightMiddleDistal).localRotation.eulerAngles);
+
+                ret.Ring.Add(anim.GetBoneTransform(HumanBodyBones.RightRingProximal).localRotation.eulerAngles);
+                ret.Ring.Add(anim.GetBoneTransform(HumanBodyBones.RightRingIntermediate).localRotation.eulerAngles);
+                ret.Ring.Add(anim.GetBoneTransform(HumanBodyBones.RightRingDistal).localRotation.eulerAngles);
+
+                ret.Little.Add(anim.GetBoneTransform(HumanBodyBones.RightLittleProximal).localRotation.eulerAngles);
+                ret.Little.Add(anim.GetBoneTransform(HumanBodyBones.RightLittleIntermediate).localRotation.eulerAngles);
+                ret.Little.Add(anim.GetBoneTransform(HumanBodyBones.RightLittleDistal).localRotation.eulerAngles);
+            }
+            else if (hand == "l")
+            {
+                ret.Thumbs.Add(anim.GetBoneTransform(HumanBodyBones.LeftThumbProximal).localRotation.eulerAngles);
+                ret.Thumbs.Add(anim.GetBoneTransform(HumanBodyBones.LeftThumbIntermediate).localRotation.eulerAngles);
+                ret.Thumbs.Add(anim.GetBoneTransform(HumanBodyBones.LeftThumbDistal).localRotation.eulerAngles);
+
+                ret.Index.Add(anim.GetBoneTransform(HumanBodyBones.LeftIndexProximal).localRotation.eulerAngles);
+                ret.Index.Add(anim.GetBoneTransform(HumanBodyBones.LeftIndexIntermediate).localRotation.eulerAngles);
+                ret.Index.Add(anim.GetBoneTransform(HumanBodyBones.LeftIndexDistal).localRotation.eulerAngles);
+
+                ret.Middle.Add(anim.GetBoneTransform(HumanBodyBones.LeftMiddleProximal).localRotation.eulerAngles);
+                ret.Middle.Add(anim.GetBoneTransform(HumanBodyBones.LeftMiddleIntermediate).localRotation.eulerAngles);
+                ret.Middle.Add(anim.GetBoneTransform(HumanBodyBones.LeftMiddleDistal).localRotation.eulerAngles);
+
+                ret.Ring.Add(anim.GetBoneTransform(HumanBodyBones.LeftRingProximal).localRotation.eulerAngles);
+                ret.Ring.Add(anim.GetBoneTransform(HumanBodyBones.LeftRingIntermediate).localRotation.eulerAngles);
+                ret.Ring.Add(anim.GetBoneTransform(HumanBodyBones.LeftRingDistal).localRotation.eulerAngles);
+
+                ret.Little.Add(anim.GetBoneTransform(HumanBodyBones.LeftLittleProximal).localRotation.eulerAngles);
+                ret.Little.Add(anim.GetBoneTransform(HumanBodyBones.LeftLittleIntermediate).localRotation.eulerAngles);
+                ret.Little.Add(anim.GetBoneTransform(HumanBodyBones.LeftLittleDistal).localRotation.eulerAngles);
+            }
+            return ret;
+        }
+        public Sequence AnimationFinger(string hand, string finger, AvatarFingerInHand fingerCls, float duration, Sequence seq)
+        {
+            Animator anim = GetComponent<Animator>();
+            Transform[] ft = new Transform[3] { null, null, null };
+            Transform[] fi = new Transform[3] { null, null, null };
+            Transform[] fm = new Transform[3] { null, null, null };
+            Transform[] fr = new Transform[3] { null, null, null };
+            Transform[] fl = new Transform[3] { null, null, null };
+            if (hand == "r")
+            {
+                ft[0] = anim.GetBoneTransform(HumanBodyBones.RightThumbProximal);
+                ft[1] = anim.GetBoneTransform(HumanBodyBones.RightThumbIntermediate);
+                ft[2] = anim.GetBoneTransform(HumanBodyBones.RightThumbDistal);
+
+                fi[0] = anim.GetBoneTransform(HumanBodyBones.RightIndexProximal);
+                fi[1] = anim.GetBoneTransform(HumanBodyBones.RightIndexIntermediate);
+                fi[2] = anim.GetBoneTransform(HumanBodyBones.RightIndexDistal);
+
+                fm[0] = anim.GetBoneTransform(HumanBodyBones.RightMiddleProximal);
+                fm[1] = anim.GetBoneTransform(HumanBodyBones.RightMiddleIntermediate);
+                fm[2] = anim.GetBoneTransform(HumanBodyBones.RightMiddleDistal);
+
+                fr[0] = anim.GetBoneTransform(HumanBodyBones.RightRingProximal);
+                fr[1] = anim.GetBoneTransform(HumanBodyBones.RightRingIntermediate);
+                fr[2] = anim.GetBoneTransform(HumanBodyBones.RightRingDistal);
+
+                fl[0] = anim.GetBoneTransform(HumanBodyBones.RightLittleProximal);
+                fl[1] = anim.GetBoneTransform(HumanBodyBones.RightLittleIntermediate);
+                fl[2] = anim.GetBoneTransform(HumanBodyBones.RightLittleDistal);
+            }
+            else if (hand == "l")
+            {
+                ft[0] = anim.GetBoneTransform(HumanBodyBones.LeftThumbProximal);
+                ft[1] = anim.GetBoneTransform(HumanBodyBones.LeftThumbIntermediate);
+                ft[2] = anim.GetBoneTransform(HumanBodyBones.LeftThumbDistal);
+
+                fi[0] = anim.GetBoneTransform(HumanBodyBones.LeftIndexProximal);
+                fi[1] = anim.GetBoneTransform(HumanBodyBones.LeftIndexIntermediate);
+                fi[2] = anim.GetBoneTransform(HumanBodyBones.LeftIndexDistal);
+
+                fm[0] = anim.GetBoneTransform(HumanBodyBones.LeftMiddleProximal);
+                fm[1] = anim.GetBoneTransform(HumanBodyBones.LeftMiddleIntermediate);
+                fm[2] = anim.GetBoneTransform(HumanBodyBones.LeftMiddleDistal);
+
+                fr[0] = anim.GetBoneTransform(HumanBodyBones.LeftRingProximal);
+                fr[1] = anim.GetBoneTransform(HumanBodyBones.LeftRingIntermediate);
+                fr[2] = anim.GetBoneTransform(HumanBodyBones.LeftRingDistal);
+
+                fl[0] = anim.GetBoneTransform(HumanBodyBones.LeftLittleProximal);
+                fl[1] = anim.GetBoneTransform(HumanBodyBones.LeftLittleIntermediate);
+                fl[2] = anim.GetBoneTransform(HumanBodyBones.LeftLittleDistal);
+            }
+            for (int i = 0; i < ft.Length; i++) seq.Join(ft[i].DOLocalRotate(fingerCls.Thumbs[i], duration));
+            for (int i = 0; i < fi.Length; i++) seq.Join(fi[i].DOLocalRotate(fingerCls.Index[i], duration));
+            for (int i = 0; i < fm.Length; i++) seq.Join(fm[i].DOLocalRotate(fingerCls.Middle[i], duration));
+            for (int i = 0; i < fr.Length; i++) seq.Join(fr[i].DOLocalRotate(fingerCls.Ring[i], duration));
+            for (int i = 0; i < fl.Length; i++) seq.Join(fl[i].DOLocalRotate(fingerCls.Little[i], duration));            
+
+            return seq;
+        }
+        public static string StringifyFingerRotation(AvatarFingerInHand fingerCls, string finger)
+        {
+            string ret = "";
+
+            if (finger == "t")
+            {
+                string sect1 = string.Join("&", new string[] { fingerCls.Thumbs[0].x.ToString(), fingerCls.Thumbs[0].y.ToString(), fingerCls.Thumbs[0].z.ToString() });
+                string sect2 = fingerCls.Thumbs[1].y.ToString();
+                string sect3 = fingerCls.Thumbs[2].y.ToString();
+
+                ret = sect1 + ":" + sect2 + ":" + sect3;
+            }
+            else if (finger == "i")
+            {
+                string sect1 = string.Join("&", new string[] { fingerCls.Index[0].y.ToString(), fingerCls.Index[0].z.ToString() });
+                string sect2 = fingerCls.Index[1].z.ToString();
+                string sect3 = fingerCls.Index[2].z.ToString();
+
+                ret = sect1 + ":" + sect2 + ":" + sect3;
+            }
+            else if (finger == "m")
+            {
+                string sect1 = string.Join("&", new string[] { fingerCls.Middle[0].y.ToString(), fingerCls.Middle[0].z.ToString() });
+                string sect2 = fingerCls.Middle[1].z.ToString();
+                string sect3 = fingerCls.Middle[2].z.ToString();
+
+                ret = sect1 + ":" + sect2 + ":" + sect3;
+            }
+            else if (finger == "r")
+            {
+                string sect1 = string.Join("&", new string[] { fingerCls.Ring[0].y.ToString(), fingerCls.Ring[0].z.ToString() });
+                string sect2 = fingerCls.Ring[1].z.ToString();
+                string sect3 = fingerCls.Ring[2].z.ToString();
+
+                ret = sect1 + ":" + sect2 + ":" + sect3;
+            }
+            else if (finger == "l")
+            {
+                string sect1 = string.Join("&", new string[] { fingerCls.Little[0].y.ToString(), fingerCls.Little[0].z.ToString() });
+                string sect2 = fingerCls.Little[1].z.ToString();
+                string sect3 = fingerCls.Little[2].z.ToString();
+
+                ret = sect1 + ":" + sect2 + ":" + sect3;
+            }
+
+            return ret;
+        }
+        public static List<Vector3> ParseFingerRotation(string rottext, string finger)
+        {
+            List<Vector3> ret = new List<Vector3>();
+
+            if (finger == "t")
+            {
+                string[] sections = rottext.Split(":");
+                string[] sect0 = sections[0].Split("&");
+                float x0 = float.TryParse(sect0[0], out x0) ? x0 : 0;
+                float y0 = float.TryParse(sect0[1], out y0) ? y0 : 0;
+                float z0 = float.TryParse(sect0[2], out z0) ? z0 : 0;
+                ret.Add(new Vector3(x0, y0, z0));
+
+                float y1 = float.TryParse(sections[1], out y1) ? y1 : 0;
+                ret.Add(new Vector3(0, y1, 0));
+
+                float y2 = float.TryParse(sections[1], out y2) ? y2 : 0;
+                ret.Add(new Vector3(0, y2, 0));
+            }
+            else if ((finger == "i") || (finger == "m") || (finger == "r") || (finger == "l"))
+            {
+                string[] sections = rottext.Split(":");
+                string[] sect0 = sections[0].Split("&");
+                float y0 = float.TryParse(sect0[1], out y0) ? y0 : 0;
+                float z0 = float.TryParse(sect0[2], out z0) ? z0 : 0;
+                ret.Add(new Vector3(0, y0, z0));
+
+                float z1 = float.TryParse(sections[1], out z1) ? z1 : 0;
+                ret.Add(new Vector3(0, 0, z1));
+
+                float z2 = float.TryParse(sections[1], out z2) ? z2 : 0;
+                ret.Add(new Vector3(0, 0, z2));
+            }
+            
+
+            return ret;
         }
 
 
@@ -644,19 +1034,10 @@ namespace UserHandleSpace
                 int bscnt = BSFace.sharedMesh.blendShapeCount;
                 for (int i = 0; i < bscnt; i++)
                 {
-                    ret.Add(BSFace.sharedMesh.GetBlendShapeName(i) + "=" + BSFace.GetBlendShapeWeight(i));
+                    ret.Add(BSFace.sharedMesh.GetBlendShapeName(i) + "=" + BSFace.GetBlendShapeWeight(i).ToString());
                 }
             }
 
-            return ret;
-        }
-        public List<string> ListBackupAvatarBlendShape()
-        {
-            List<string> ret = new List<string>();
-            for (int i = 0; i < blendShapeList.Count; i++)
-            {
-                ret.Add(blendShapeList[i].text + "=" + blendShapeList[i].value.ToString());
-            }
             return ret;
         }
         /// <summary>
@@ -672,6 +1053,53 @@ namespace UserHandleSpace
 #endif
             return ret;
         }
+
+        /// <summary>
+        /// Gert all blend shape proxy, the avatar has.
+        /// </summary>
+        /// <returns></returns>
+        public List<BasicStringFloatList> ListProxyBlendShape()
+        {
+            List<BasicStringFloatList> ret = new List<BasicStringFloatList>();
+            VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
+
+            IEnumerable<KeyValuePair<BlendShapeKey, float>> bsk = prox.GetValues();
+            IEnumerator<KeyValuePair<BlendShapeKey, float>> bslist = bsk.GetEnumerator();
+            while (bslist.MoveNext())
+            {
+                KeyValuePair<BlendShapeKey, float> bs = bslist.Current;
+                BasicStringFloatList bsf = new BasicStringFloatList(PREFIX_PROXY + bs.Key.Name, bs.Value);
+                ret.Add(bsf);
+            }
+            return ret;
+        }
+        public void ListProxyBlendShapeFromOuter()
+        {
+            List<BasicStringFloatList> lst = ListProxyBlendShape();
+            List<string> retlst = new List<string>();
+
+            foreach (BasicStringFloatList bsf in lst)
+            {
+                retlst.Add(bsf.text + "=" + bsf.value.ToString());
+            }
+
+            string ret = string.Join(",", retlst.ToArray());
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+        //----- backup blendshape ---------------------=============================
+        public List<string> ListBackupAvatarBlendShape()
+        {
+            List<string> ret = new List<string>();
+            for (int i = 0; i < blendShapeList.Count; i++)
+            {
+                ret.Add(blendShapeList[i].text + "=" + blendShapeList[i].value.ToString());
+                //Debug.Log(blendShapeList[i].text + "=" + blendShapeList[i].value.ToString());
+            }
+            
+            return ret;
+        }
         public void InitializeBlendShapeList()
         {
             blendShapeList.Clear();
@@ -682,9 +1110,28 @@ namespace UserHandleSpace
                 float value = -1f; // float.TryParse(arr[1], out value) ? value : -1f;
                 BasicStringFloatList lsf = new BasicStringFloatList(arr[0], value);
                 blendShapeList.Add(lsf);
-
             });
+
+            List<BasicStringFloatList> lst_px = ListProxyBlendShape();
+            lst_px.ForEach(item =>
+            {
+                blendShapeList.Add(item);
+            });
+            //Debug.Log(blendShapeList.Count);
         }
+        public void SetBlendShapeToBackup(string name, float value)
+        {
+            BasicStringFloatList bs = blendShapeList.Find(item =>
+            {
+                if (item.text == name) return true;
+                return false;
+            });
+            if (bs != null)
+            {
+                bs.value = value;
+            }
+        }
+        //------ getting blendshape ----------------------==========================
         public float getAvatarBlendShape(string param)
         {
             float ret = 0f;
@@ -720,18 +1167,65 @@ namespace UserHandleSpace
         {
             return BSFace.sharedMesh.GetBlendShapeIndex(name);
         }
-        public void SetBlendShapeToBackup(string name, float value)
+        public float getProxyBlendShape(string param)
         {
-            BasicStringFloatList bs = blendShapeList.Find(item =>
+            VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
+
+            float ret = 0f;
+            List<BasicStringFloatList> lst = ListProxyBlendShape();
+            for (int i = 0; i < lst.Count; i++)
             {
-                if (item.text == name) return true;
+                if (lst[i].text == param)
+                {
+
+                    BlendShapeClip bsclip = prox.BlendShapeAvatar.Clips.Find(cl =>
+                    {
+                        if (cl.Key.Name == param.Replace(PREFIX_PROXY, ""))
+                        {
+                            return true;
+                        }
+                        return false;
+                    });
+
+                    if (bsclip != null)
+                    {
+                        ret = prox.GetValue(bsclip.Key);
+                    }
+                    break;
+                }
+            }
+
+            return ret;
+        }
+        public void getProxyBlendShapeFromOuter(string param)
+        {
+            float ret = getProxyBlendShape(param);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(ret);
+#endif
+        }
+        public BlendShapeKey getProxyBlendShapeKey(string param)
+        {
+            VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
+            BlendShapeKey ret = BlendShapeKey.CreateUnknown("d%d"); //null代わりのダミーキー
+
+            BlendShapeClip bsclip = prox.BlendShapeAvatar.Clips.Find(cl =>
+            {
+                if (cl.Key.Name == param.Replace(PREFIX_PROXY, ""))
+                {
+                    return true;
+                }
                 return false;
             });
-            if (bs != null)
+
+            if (bsclip != null)
             {
-                bs.value = value;
+                ret = bsclip.Key;
             }
+
+            return ret;
         }
+        //------ setting blendshape ----------------------==========================
         public void changeAvatarBlendShape(string param)
         {
             string[] prm = param.Split(',');
@@ -762,6 +1256,34 @@ namespace UserHandleSpace
                 BSFace.SetBlendShapeWeight(index, value);
             }
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="param">equal separated string: [0] - key name, [1] - float value(already 0.xxf) </param>
+        public void changeProxyBlendShapeByName(string param)
+        {
+            VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
+
+            string[] prm = param.Split(',');
+            string shapename = prm[0];
+            float value = float.TryParse(prm[1], out value) ? value : 0f;
+
+            BlendShapeKey bskey = getProxyBlendShapeKey(shapename);
+            if (bskey.Name != "d%d")
+            {
+                prox.AccumulateValue(bskey, value);
+                prox.Apply();
+            }
+        }
+        public void changeProxyBlendShapeByName(BlendShapeKey shape, float value)
+        {
+            VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
+
+            prox.AccumulateValue(shape, value);
+            prox.Apply();
+        }
+        //----- blink ----------------------------------------==================
         public void GetBlinkEye()
         {
             string ret = "";

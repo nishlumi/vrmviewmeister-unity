@@ -35,6 +35,9 @@ public class OtherObjectDummyIK : MonoBehaviour
     private BasicTransformInformation bti;
     private ManageAnimation animarea;
 
+    private OperateActiveVRM oavrm;
+    private AvatarKeyOperator akeyo;
+
     private void Awake()
     {
         
@@ -48,6 +51,10 @@ public class OtherObjectDummyIK : MonoBehaviour
         bti = new BasicTransformInformation();
         bti.dimension = "3d";
         animarea = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+
+        GameObject ikhp = GameObject.FindGameObjectWithTag("IKHandleWorld");
+        oavrm = ikhp.GetComponent<OperateActiveVRM>();
+        akeyo = new AvatarKeyOperator(animarea.cfg_keymove_speed_rot, animarea.cfg_keymove_speed_trans);
     }
 
     // Update is called once per frame
@@ -81,9 +88,23 @@ public class OtherObjectDummyIK : MonoBehaviour
                     }
                 }
 #endif
-
             }
+            //---key operation for current selected avatar translation
+            /*
+            if (animarea.keyOperationMode == KeyOperationMode.MoveAvatar) 
+            { //this avatar is active ?
+                if (oavrm.ActiveAvatar.GetInstanceID() == relatedAvatar.GetInstanceID())
+                {
+                    akeyo.SetSpeed(animarea.cfg_keymove_speed_rot, animarea.cfg_keymove_speed_trans);
+                    akeyo.CallKeyOperation(gameObject);
+                }
+            }
+            */
         }
+    }
+    private void OnDestroy()
+    {
+        
     }
     public void SaveDefaultTransform(bool ispos, bool isrotate)
     {

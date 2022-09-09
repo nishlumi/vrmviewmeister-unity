@@ -54,6 +54,7 @@ namespace UserHandleSpace
         
 
         private ManageAnimation manim;
+        private AvatarKeyOperator akeyo;
 
         private List<GameObject> HasAvatarList;
 
@@ -77,15 +78,25 @@ namespace UserHandleSpace
             oldPosition = this.transform.position;
             oldRotation = this.transform.rotation;
 
+            akeyo = new AvatarKeyOperator(manim.cfg_keymove_speed_rot, manim.cfg_keymove_speed_trans);
+
             SaveDefaultTransform(true,true);
 
         }
 
         // Update is called once per frame
-        /*void Update()
+        void Update()
         {
-        
-        }*/
+            //---key operation for current selected avatar translation
+            if (manim.keyOperationMode == KeyOperationMode.MoveAvatar)
+            { //this avatar is active ?
+                if (ActiveAvatar != null)
+                {
+                    akeyo.SetSpeed(manim.cfg_keymove_speed_rot, manim.cfg_keymove_speed_trans);
+                    akeyo.CallKeyOperation(ActiveIKHandle);
+                }
+            }
+        }
         private void LateUpdate()
         {
         }
@@ -110,6 +121,9 @@ namespace UserHandleSpace
         */
         public void SetActiveFace()
         {
+            ManageAvatarTransform mat = ActiveAvatar.GetComponent<ManageAvatarTransform>();
+            ActiveFace = mat.GetFaceMesh().GetComponent<SkinnedMeshRenderer>();
+            /*
             int cnt = ActiveAvatar.transform.childCount;
             SkinnedMeshRenderer mesh = null;
             for (int i = 0; i < cnt; i++)
@@ -122,14 +136,8 @@ namespace UserHandleSpace
                         ActiveFace = mesh;
                     }
                 }
-                
-                /*if (ActiveAvatar.transform.GetChild(i).name == "Face")
-                {
-                    ActiveFace = ActiveAvatar.transform.GetChild(i).GetComponent<SkinnedMeshRenderer>();
-                    Debug.Log("Face BlendShape=" + ActiveFace.sharedMesh.blendShapeCount);
-                    
-                }*/
             }
+            */
         }
         public GameObject GetEffectiveActiveAvatar()
         {
@@ -617,8 +625,13 @@ namespace UserHandleSpace
             HasAvatarList.Add(ikparent);
             //BoxActivateAvatar.options.Add(opt);
 
-            UserUISpace.UserUIManager uuim = GameObject.Find("newUI").GetComponent<UserUISpace.UserUIManager>();
-            uuim.objlist_add_item(name);
+            GameObject newui = GameObject.Find("newUI");
+            if (newui != null)
+            {
+                UserUISpace.UserUIManager uuim = newui.GetComponent<UserUISpace.UserUIManager>();
+                uuim.objlist_add_item(name);
+            }
+            
 #endif
         }
         public void RemoveAvatarBox(GameObject ikparent)
@@ -634,8 +647,13 @@ namespace UserHandleSpace
                 //BoxActivateAvatar.options.RemoveAt(index);
                 HasAvatarList.RemoveAt(index);
 
-                UserUISpace.UserUIManager uuim = GameObject.Find("newUI").GetComponent<UserUISpace.UserUIManager>();
-                uuim.objlist_del_item(index);
+                GameObject newui = GameObject.Find("newUI");
+                if (newui != null)
+                {
+                    UserUISpace.UserUIManager uuim = GameObject.Find("newUI").GetComponent<UserUISpace.UserUIManager>();
+                    uuim.objlist_del_item(index);
+                }
+                
             }
 #endif
 
@@ -1102,6 +1120,7 @@ namespace UserHandleSpace
 #endif
             return ret;
         }
+        
         public float getAvatarBlendShape(string param)
         {
             float ret = 0f;

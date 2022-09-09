@@ -702,7 +702,8 @@ namespace UserHandleSpace
                 {
                     if (movedata.vrmBone == ParseIKBoneType.LeftHandPose)
                     {
-                        LeftHandPoseController lhand = naa.avatar.GetComponent<LeftHandPoseController>();
+                        LeftHandPoseController lhand = ovrm.LeftHandCtrl;
+
                         //---left
                         if (movedata.handpose.Count > 0)
                         {
@@ -714,18 +715,48 @@ namespace UserHandleSpace
                                 }, false));
                             }
                             //lhand.currentPose = (int)movedata.handpose[0];
+
+                            //---Preset hand posing
+                            if (movedata.handpose[0] > -1)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => lhand.handPoseValue, x => lhand.handPoseValue = x, movedata.handpose[1], frame.duration));
+                                else lhand.handPoseValue = (int)movedata.handpose[1];                                
+                            }
+                            else
+                            { //---Manually finger posing
+                                if (options.isExecuteForDOTween == 1)
+                                {
+                                    seq = lhand.AnimationFinger("t", movedata.fingerpose, frame.duration, seq);
+                                    seq = lhand.AnimationFinger("i", movedata.fingerpose, frame.duration, seq);
+                                    seq = lhand.AnimationFinger("m", movedata.fingerpose, frame.duration, seq);
+                                    seq = lhand.AnimationFinger("r", movedata.fingerpose, frame.duration, seq);
+                                    seq = lhand.AnimationFinger("l", movedata.fingerpose, frame.duration, seq);
+                                }
+                                else
+                                {
+                                    lhand.PoseFinger("t", movedata.fingerpose.Thumbs.Count, movedata.fingerpose.Thumbs.ToArray());
+                                    lhand.PoseFinger("i", movedata.fingerpose.Index.Count, movedata.fingerpose.Index.ToArray());
+                                    lhand.PoseFinger("m", movedata.fingerpose.Middle.Count, movedata.fingerpose.Middle.ToArray());
+                                    lhand.PoseFinger("r", movedata.fingerpose.Ring.Count, movedata.fingerpose.Ring.ToArray());
+                                    lhand.PoseFinger("l", movedata.fingerpose.Little.Count, movedata.fingerpose.Little.ToArray());
+                                }
+                            }
+
+                            if (options.isBuildDoTween == 0)
+                            {
+                                //ovrm.SetHandFingerMode(movedata.isHandPose.ToString());
+                                ovrm.SetBackupHandPosing("l", (int)movedata.handpose[0], movedata.handpose[1], movedata.fingerpose);
+                            }
                         }
-                        if (movedata.handpose.Count > 1)
-                        {
-                            if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => lhand.handPoseValue, x => lhand.handPoseValue = x, movedata.handpose[1], frame.duration));
-                            else lhand.handPoseValue = (int)movedata.handpose[1];
-                        }
+                        
+
 
                     }
 
                     if (movedata.vrmBone == ParseIKBoneType.RightHandPose)
                     {
-                        RightHandPoseController rhand = naa.avatar.GetComponent<RightHandPoseController>();
+                        RightHandPoseController rhand = ovrm.RightHandCtrl;
+
                         //---right
                         if (movedata.handpose.Count > 0)
                         {
@@ -737,12 +768,43 @@ namespace UserHandleSpace
                                 }, false));
                             }
                             //rhand.currentPose = (int)movedata.handpose[0];
+
+                            //---Preset hand posing
+                            if (movedata.handpose[0] > -1)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => rhand.handPoseValue, x => rhand.handPoseValue = x, movedata.handpose[1], frame.duration));
+                                else rhand.handPoseValue = (int)movedata.handpose[1];
+                            }
+                            else
+                            { //---Manually finger posing
+                                if (options.isExecuteForDOTween == 1)
+                                {
+                                    seq = rhand.AnimationFinger("t", movedata.fingerpose, frame.duration, seq);
+                                    seq = rhand.AnimationFinger("i", movedata.fingerpose, frame.duration, seq);
+                                    seq = rhand.AnimationFinger("m", movedata.fingerpose, frame.duration, seq);
+                                    seq = rhand.AnimationFinger("r", movedata.fingerpose, frame.duration, seq);
+                                    seq = rhand.AnimationFinger("l", movedata.fingerpose, frame.duration, seq);
+                                }
+                                else
+                                {
+                                    rhand.PoseFinger("t", movedata.fingerpose.Thumbs.Count, movedata.fingerpose.Thumbs.ToArray());
+                                    rhand.PoseFinger("i", movedata.fingerpose.Index.Count, movedata.fingerpose.Index.ToArray());
+                                    rhand.PoseFinger("m", movedata.fingerpose.Middle.Count, movedata.fingerpose.Middle.ToArray());
+                                    rhand.PoseFinger("r", movedata.fingerpose.Ring.Count, movedata.fingerpose.Ring.ToArray());
+                                    rhand.PoseFinger("l", movedata.fingerpose.Little.Count, movedata.fingerpose.Little.ToArray());
+                                }
+
+                            }
                         }
-                        if (movedata.handpose.Count > 1)
+                        
+
+                        if (options.isBuildDoTween == 0)
                         {
-                            if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => rhand.handPoseValue, x => rhand.handPoseValue = x, movedata.handpose[1], frame.duration));
-                            else rhand.handPoseValue = (int)movedata.handpose[1];
+                            //ovrm.isHandPosing = movedata.isHandPose == 1 ? true : false;
+                            ovrm.SetBackupHandPosing("r", (int)movedata.handpose[0], movedata.handpose[1], movedata.fingerpose);
                         }
+
+
 
                     }
 
@@ -755,32 +817,58 @@ namespace UserHandleSpace
             {
                 //OperateLoadedVRM mainface = naa.avatar.GetComponent<OperateLoadedVRM>();
                 SkinnedMeshRenderer face = ovrm.GetBlendShapeTarget();
+                VRMBlendShapeProxy prox = naa.avatar.GetComponent<VRMBlendShapeProxy>();
                 int maxcnt = face.sharedMesh.blendShapeCount;
                 foreach (BasicStringFloatList val in movedata.blendshapes)
                 {
                     float weight = val.value;
 
-                    string hitName = "";
-                    for (int chki = 0; chki < maxcnt; chki++)
-                    {
-                        if ((face.sharedMesh.GetBlendShapeName(chki) + "$").Contains(val.text+"$"))
+                    if (val.text.StartsWith("PROX:"))
+                    { //---from BlendShape Proxy
+                        
+                        BlendShapeKey key = ovrm.getProxyBlendShapeKey(val.text);
+                        if (key.Name != "d%d")
                         {
-                            hitName = face.sharedMesh.GetBlendShapeName(chki);
-                            break;
+                            
+                            //Debug.Log("val.text=" + val.text + " / " + key.Name + " = " + prox.GetValue(key).ToString() + " -> " + weight.ToString());
+                            float progress = prox.GetValue(key);
+                            if (options.isExecuteForDOTween == 1)
+                                seq.Join(DOTween.To(() => progress, x => progress = x, weight, frame.duration))
+                                    .OnUpdate(() =>
+                                    {
+                                        prox.AccumulateValue(key, progress);
+                                        prox.Apply();
+                                    });
+                            else ovrm.changeProxyBlendShapeByName(val.text + "=" + weight.ToString());
+
+                            //---backup as app blend shape key (prefix: PROX:)
+                            ovrm.SetBlendShapeToBackup(val.text, weight);
+                        }
+                        
+                    }
+                    else
+                    { //---from SkinnedMeshRenderer
+                        string hitName = "";
+                        for (int chki = 0; chki < maxcnt; chki++)
+                        {
+                            if ((face.sharedMesh.GetBlendShapeName(chki) + "$").Contains(val.text + "$"))
+                            {
+                                hitName = face.sharedMesh.GetBlendShapeName(chki);
+                                break;
+                            }
+                        }
+
+                        int bindex = face.sharedMesh.GetBlendShapeIndex(hitName);
+                        //if (bindex > -1) face.SetBlendShapeWeight(bindex, weight);
+
+                        if (bindex > -1)
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => face.GetBlendShapeWeight(bindex), x => face.SetBlendShapeWeight(bindex, x), weight, frame.duration));
+                            else ovrm.changeAvatarBlendShapeByName(val.text, val.value);  //face.SetBlendShapeWeight(bindex, weight);
+                                                                                          //---write as backup to Loaded setting.
+                            ovrm.SetBlendShapeToBackup(hitName, weight);
                         }
                     }
-                    
-                    int bindex = face.sharedMesh.GetBlendShapeIndex(hitName);
-                    //if (bindex > -1) face.SetBlendShapeWeight(bindex, weight);
-
-                    if (bindex > -1)
-                    {
-                        if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => face.GetBlendShapeWeight(bindex), x => face.SetBlendShapeWeight(bindex, x), weight, frame.duration));
-                        else ovrm.changeAvatarBlendShapeByName(val.text, val.value);  //face.SetBlendShapeWeight(bindex, weight);
-                        //---write as backup to Loaded setting.
-                        ovrm.SetBlendShapeToBackup(hitName, weight);
-                    }
-
                 }
             }
             if (movedata.animationType == AF_MOVETYPE.VRMBlink)
@@ -1101,6 +1189,7 @@ namespace UserHandleSpace
                 {
                     foreach (MaterialProperties mat in movedata.matProp)
                     {
+                        //Debug.Log("Parse, texturePath="+mat.texturePath);
                         seq = olo.SetMaterialTween(seq, mat.name, mat, frame.duration);
                         
                     }
@@ -2587,23 +2676,25 @@ namespace UserHandleSpace
             //---handpose
             if ((options.isBlendShapeOnly != 1) && (options.isCompileForLibrary != 1))
             {
-                LeftHandPoseController lhand = nav.avatar.avatar.GetComponent<LeftHandPoseController>();
-                RightHandPoseController rhand = nav.avatar.avatar.GetComponent<RightHandPoseController>();
+                LeftHandPoseController lhand = ovrm.LeftHandCtrl;
+                RightHandPoseController rhand = ovrm.RightHandCtrl;
 
                 AnimationTargetParts[] athand = new AnimationTargetParts[2];
                 athand[0] = new AnimationTargetParts();
                 athand[0].animationType = AF_MOVETYPE.NormalTransform;
                 athand[0].vrmBone = ParseIKBoneType.LeftHandPose;
-                athand[0].isHandPose = 1;
+                athand[0].isHandPose = ovrm.isHandPosing ? 1 : 2;
                 athand[0].handpose.Add((float)lhand.currentPose);
                 athand[0].handpose.Add(lhand.handPoseValue);
+                athand[0].fingerpose = ovrm.LeftHandCtrl.BackupFinger();
 
                 athand[1] = new AnimationTargetParts();
                 athand[1].animationType = AF_MOVETYPE.NormalTransform;
                 athand[1].vrmBone = ParseIKBoneType.RightHandPose;
-                athand[1].isHandPose = 1;
+                athand[1].isHandPose = ovrm.isHandPosing ? 1 : 2;
                 athand[1].handpose.Add((float)rhand.currentPose);
                 athand[1].handpose.Add(rhand.handPoseValue);
+                athand[1].fingerpose = ovrm.RightHandCtrl.BackupFinger();
 
                 frame.movingData.Add(athand[0]);
                 frame.movingData.Add(athand[1]);
@@ -2624,11 +2715,18 @@ namespace UserHandleSpace
                 atblendshape.vrmBone = ParseIKBoneType.BlendShape;
                 atblendshape.isBlendShape = 1;
 
+                //---From SkinnedMeshRenderer
                 int bscnt = face.sharedMesh.blendShapeCount;
                 for (int i = 0; i < bscnt; i++)
                 {
                     atblendshape.blendshapes.Add(new BasicStringFloatList(face.sharedMesh.GetBlendShapeName(i), face.GetBlendShapeWeight(i)));
 
+                }
+                //---From BlendShape Proxy (Key has always "PROX:" - prefix.)
+                List<BasicStringFloatList> proxlist =  ovrm.ListProxyBlendShape();
+                foreach (BasicStringFloatList bsf in proxlist)
+                { //---float value is already 0.xxf 
+                    atblendshape.blendshapes.Add(bsf);
                 }
 
                 //---blink
@@ -3006,7 +3104,7 @@ namespace UserHandleSpace
                 if (ole.targetEffect != null)
                 {
                     AnimationTargetParts atobj = new AnimationTargetParts();
-                    atobj.animPlaying = ole.GetPlayFlagEffect(0);
+                    atobj.animPlaying = ole.GetPlayFlagEffectFromOuter(0);
                     EffectCurrentStates ecs = ole.GetCurrentEffect();
                     atobj.effectGenre = ecs.genre; //nav.avatar.avatar.transform.parent.name;
                     atobj.effectName = ecs.effectName; //ole.targetEffect.name;

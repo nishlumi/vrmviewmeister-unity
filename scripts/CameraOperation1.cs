@@ -35,6 +35,7 @@ public class CameraOperation1 : MonoBehaviour
     private Vector3 lastMousePos;
     private Vector3 lastDragPos;
     private Vector3 newAngle = Vector3.zero;
+    private bool virtualRightClick;
 
     private Text Dbg_diff;
     private Text Dbg_mouse;
@@ -56,10 +57,15 @@ public class CameraOperation1 : MonoBehaviour
 
     private ManageAnimation manim;
 
+    public TMPro.TextMeshProUGUI KeyOperationModeView;
+
     // Start is called before the first frame update
     void Start()
     {
+        virtualRightClick = false;
+
         manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+
 
         //Debug.Log(RenderSettings.skybox.shader.name);
 
@@ -87,9 +93,9 @@ public class CameraOperation1 : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        distance_camera2viewpoint = configLab.GetFloatVal("distance_camera_viewpoint", 2.5f);
-        camera_keymove_speed = configLab.GetFloatVal("camera_keymove_speed", 0.1f);
-        camera_keymove_speed_t = camera_keymove_speed / 10;
+        //distance_camera2viewpoint = configLab.GetFloatVal("distance_camera_viewpoint", 2.5f);
+        //camera_keymove_speed = configLab.GetFloatVal("camera_keymove_speed", 0.1f);
+        //camera_keymove_speed_t = camera_keymove_speed / 10;
 
         if (isRotateMode)
         {
@@ -108,141 +114,216 @@ public class CameraOperation1 : MonoBehaviour
         }
         
         //---special shortcut key---
-        if (Input.GetKey(KeyCode.W))
-        { 
-            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-            {
-                //rotate to up
-                mainCamera.transform.Rotate(Vector3.left * camera_keymove_speed);
-                targetObject.transform.Rotate(Vector3.left * camera_keymove_speed);
-                targetObject.transform.position = mainCamera.transform.position;
-                targetObject.transform.Translate(Vector3.forward * distance_camera2viewpoint);
-            }
-            else
-            {
-                //to front
-                mainCamera.transform.Translate(Vector3.forward * camera_keymove_speed_t);
-                targetObject.transform.Translate(Vector3.forward * camera_keymove_speed_t);
-            }
-            
-        }
-        if (Input.GetKey(KeyCode.S))
+        if (manim.keyOperationMode == KeyOperationMode.MoveCamera)
         {
-            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+            if (Input.GetKey(KeyCode.W))
             {
-                //rotate to down
-                mainCamera.transform.Rotate(Vector3.right * camera_keymove_speed);
-                targetObject.transform.Rotate(Vector3.right * camera_keymove_speed);
-                targetObject.transform.position = mainCamera.transform.position;
-                targetObject.transform.Translate(Vector3.forward * distance_camera2viewpoint);
-            }
-            else
-            {
-                //to back
-                mainCamera.transform.Translate(Vector3.back * camera_keymove_speed_t);
-                targetObject.transform.Translate(Vector3.back * camera_keymove_speed_t);
-            }
-            
-        }
-        if (Input.GetKey(KeyCode.A))
-        {
-            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-            {
-                //rotate to left
-                mainCamera.transform.Rotate(Vector3.down * camera_keymove_speed);
-                targetObject.transform.Rotate(Vector3.down * camera_keymove_speed);
-                targetObject.transform.position = mainCamera.transform.position;
-                targetObject.transform.Translate(Vector3.forward * distance_camera2viewpoint);
-            }
-            else
-            {
-                //to left
-                mainCamera.transform.Translate(Vector3.left * camera_keymove_speed_t);
-                targetObject.transform.Translate(Vector3.left * camera_keymove_speed_t);
-            }
-            
-        }
-        if (Input.GetKey(KeyCode.D))
-        {
-            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-            {
-                //rotate to right
-                mainCamera.transform.Rotate(Vector3.up * camera_keymove_speed);
-                targetObject.transform.Rotate(Vector3.up * camera_keymove_speed);
-                targetObject.transform.position = mainCamera.transform.position;
-                targetObject.transform.Translate(Vector3.forward * distance_camera2viewpoint);
-            }
-            else
-            {
-                //to right
-                mainCamera.transform.Translate(Vector3.right * camera_keymove_speed_t);
-                targetObject.transform.Translate(Vector3.right * camera_keymove_speed_t);
-            }
-            
-        }
-        if (Input.GetKey(KeyCode.F))
-        { //to up
-            mainCamera.transform.Translate(Vector3.up * camera_keymove_speed_t);
-            targetObject.transform.Translate(Vector3.up * camera_keymove_speed_t);
-        }
-        if (Input.GetKey(KeyCode.V))
-        { //to down
-            mainCamera.transform.Translate(Vector3.down * camera_keymove_speed_t);
-            targetObject.transform.Translate(Vector3.down * camera_keymove_speed_t);
-        }
-        if (Input.GetKey(KeyCode.Q))
-        {
-            //reset rotation
-            mainCamera.transform.rotation = Quaternion.Euler(new Vector3(mainCamera.transform.rotation.eulerAngles.x, mainCamera.transform.rotation.eulerAngles.y, 0));
-        }
-        if (Input.GetKey(KeyCode.E))
-        { 
-        }
-        if (Input.GetKey(KeyCode.G))
-        { 
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    //rotate to up
+                    mainCamera.transform.Rotate(Vector3.left * manim.cfg_keymove_speed_rot);
+                    targetObject.transform.Rotate(Vector3.left * manim.cfg_keymove_speed_rot);
+                    targetObject.transform.position = mainCamera.transform.position;
+                    targetObject.transform.Translate(Vector3.forward * manim.cfg_dist_cam2view);
+                }
+                else
+                {
+                    //to front
+                    mainCamera.transform.Translate(Vector3.forward * manim.cfg_keymove_speed_trans);
+                    targetObject.transform.Translate(Vector3.forward * manim.cfg_keymove_speed_trans);
+                }
 
-        }
-        if (Input.GetKey(KeyCode.B))
-        { 
+            }
+            if (Input.GetKey(KeyCode.S))
+            {
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    //rotate to down
+                    mainCamera.transform.Rotate(Vector3.right * manim.cfg_keymove_speed_rot);
+                    targetObject.transform.Rotate(Vector3.right * manim.cfg_keymove_speed_rot);
+                    targetObject.transform.position = mainCamera.transform.position;
+                    targetObject.transform.Translate(Vector3.forward * manim.cfg_dist_cam2view);
+                }
+                else
+                {
+                    //to back
+                    mainCamera.transform.Translate(Vector3.back * manim.cfg_keymove_speed_trans);
+                    targetObject.transform.Translate(Vector3.back * manim.cfg_keymove_speed_trans);
+                }
 
+            }
+            if (Input.GetKey(KeyCode.A))
+            {
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    //rotate to left
+                    mainCamera.transform.Rotate(Vector3.down * manim.cfg_keymove_speed_rot);
+                    targetObject.transform.Rotate(Vector3.down * manim.cfg_keymove_speed_rot);
+                    targetObject.transform.position = mainCamera.transform.position;
+                    targetObject.transform.Translate(Vector3.forward * manim.cfg_dist_cam2view);
+                }
+                else
+                {
+                    //to left
+                    mainCamera.transform.Translate(Vector3.left * manim.cfg_keymove_speed_trans);
+                    targetObject.transform.Translate(Vector3.left * manim.cfg_keymove_speed_trans);
+                }
+
+            }
+            if (Input.GetKey(KeyCode.D))
+            {
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    //rotate to right
+                    mainCamera.transform.Rotate(Vector3.up * manim.cfg_keymove_speed_rot);
+                    targetObject.transform.Rotate(Vector3.up * manim.cfg_keymove_speed_rot);
+                    targetObject.transform.position = mainCamera.transform.position;
+                    targetObject.transform.Translate(Vector3.forward * manim.cfg_dist_cam2view);
+                }
+                else
+                {
+                    //to right
+                    mainCamera.transform.Translate(Vector3.right * manim.cfg_keymove_speed_trans);
+                    targetObject.transform.Translate(Vector3.right * manim.cfg_keymove_speed_trans);
+                }
+
+            }
+            if (Input.GetKey(KeyCode.F))
+            { //to up
+                mainCamera.transform.Translate(Vector3.up * manim.cfg_keymove_speed_trans);
+                targetObject.transform.Translate(Vector3.up * manim.cfg_keymove_speed_trans);
+            }
+            if (Input.GetKey(KeyCode.V))
+            { //to down
+                mainCamera.transform.Translate(Vector3.down * manim.cfg_keymove_speed_trans);
+                targetObject.transform.Translate(Vector3.down * manim.cfg_keymove_speed_trans);
+            }
+            if (Input.GetKey(KeyCode.Q))
+            {
+                //reset rotation
+                mainCamera.transform.rotation = Quaternion.Euler(new Vector3(mainCamera.transform.rotation.eulerAngles.x, mainCamera.transform.rotation.eulerAngles.y, 0));
+                ResetCenterTarget();
+            }
+            if (Input.GetKey(KeyCode.E))
+            {
+            }
+            if (Input.GetKey(KeyCode.G))
+            {
+
+            }
+            if (Input.GetKey(KeyCode.B))
+            {
+
+            }
+            if (Input.GetKey(KeyCode.X))
+            {
+
+            }
+            if (Input.GetKey(KeyCode.R))
+            {
+                ResetCameraFromOuter();
+            }
         }
-        if (Input.GetKey(KeyCode.X))
-        { 
+        if (Input.GetKeyDown(KeyCode.M))
+        {
+            if (manim.keyOperationMode == KeyOperationMode.MoveCamera)
+            {
+                manim.keyOperationMode = KeyOperationMode.MoveAvatar;
+                KeyOperationModeView.text = "O";
+            }
+            else if (manim.keyOperationMode == KeyOperationMode.MoveAvatar)
+            {
+                manim.keyOperationMode = KeyOperationMode.MoveCamera;
+                KeyOperationModeView.text = "C";
+            }
         }
+        if (Input.GetKey(KeyCode.I))
+        {
+            //manim.cfg_dist_cam2view += 0.1f;
+            float dist = Vector3.Distance(transform.position, targetObject.transform.position);
+            if (dist <= 5f)
+            {
+                targetObject.transform.Translate(Vector3.forward * 0.01f);
+                manim.cfg_dist_cam2view = dist;
+            }
+            else if (dist > 5f) 
+            {
+                manim.cfg_dist_cam2view = 5f;
+                targetObject.transform.Translate(Vector3.back * 0.01f);
+            }
+            
+        }
+        if (Input.GetKey(KeyCode.O))
+        {
+            float dist = Vector3.Distance(transform.position, targetObject.transform.position);
+            //manim.cfg_dist_cam2view -= 0.1f;
+            if (0.3f <= dist)
+            {
+                targetObject.transform.Translate(Vector3.back * 0.01f);
+                manim.cfg_dist_cam2view = dist;
+            }
+            else if (dist < 0.3f)
+            {
+                manim.cfg_dist_cam2view = 0.3f;
+                targetObject.transform.Translate(Vector3.forward * 0.01f);
+            }
+            
+        }
+
 
         //---Mouse Left button
+        //---Same as mouse right button 
         if (Input.GetMouseButtonDown(0))
         {
-            //---Same as mouse right button 
             if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
             {
+
                 lastMousePos = Input.mousePosition;
                 newAngle = transform.localEulerAngles;
+                virtualRightClick = true;
             }
-
-            //---Same as wheel drag
-            if (Input.GetKey(KeyCode.Space))
-            {
-                lastDragPos = Input.mousePosition;
-            }
-        }else if (Input.GetMouseButton(0))
+            
+        }
+        else  if (Input.GetMouseButton(0))
         {
-            //---Same as mouse right button 
-            if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+
+            if (virtualRightClick)
             {
                 execCameraRotater(Input.mousePosition);
+
             }
-            //---Same as wheel drag
-            if (Input.GetKey(KeyCode.Space))
+            
+        }
+        if ((Input.GetKeyUp(KeyCode.LeftControl)) || (Input.GetKeyUp(KeyCode.RightControl)))
+        {
+            virtualRightClick = false;
+        }
+        
+
+        //---Same as wheel drag
+        if (Input.GetKey(KeyCode.Space))
+        {
+            
+            if (Input.GetMouseButtonDown(0))
             {
-                /*var delta = lastDragPos - Input.mousePosition;
-                mainCamera.transform.Translate(delta * Time.deltaTime * 0.25f);
-                targetObject.transform.Translate(delta * Time.deltaTime * 0.25f);
                 lastDragPos = Input.mousePosition;
-                */
-                execCameraMover(Input.mousePosition);
+            }
+            else if (Input.GetMouseButton(0))
+            {
+                
+                //---Same as wheel drag
+                if (Input.GetKey(KeyCode.Space))
+                {
+                    /*var delta = lastDragPos - Input.mousePosition;
+                    mainCamera.transform.Translate(delta * Time.deltaTime * 0.25f);
+                    targetObject.transform.Translate(delta * Time.deltaTime * 0.25f);
+                    lastDragPos = Input.mousePosition;
+                    */
+                    execCameraMover(Input.mousePosition);
+                }
             }
         }
+        
 
         //---Mouse middle wheel
         if (Input.GetMouseButtonDown(2))
@@ -325,7 +406,7 @@ public class CameraOperation1 : MonoBehaviour
             mainCamera.transform.Rotate(Vector3.up, diff.x);
             mainCamera.transform.Rotate(Vector3.right, -diff.y); //mainCamera.transform.right
             targetObject.transform.position = mainCamera.transform.position;
-            targetObject.transform.Translate(Vector3.forward * distance_camera2viewpoint);
+            targetObject.transform.Translate(Vector3.forward * manim.cfg_dist_cam2view);
 
         }
         else
@@ -372,11 +453,15 @@ public class CameraOperation1 : MonoBehaviour
     public void ResetCameraFromOuter()
     {
         mainCamera.transform.position = new Vector3(0f, 1f, -2.5f);
-        targetObject.transform.position = new Vector3(0f, 0.5f, 0f);
         mainCamera.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
-        targetObject.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+        ResetCenterTarget();
 
         mainCamera.transform.parent.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+    }
+    public void ResetCenterTarget()
+    {
+        targetObject.transform.position = new Vector3(0f, 1f, 0f);
+        targetObject.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
     }
     public void FocusCameraToVRMFromOuter(string param)
     {
@@ -393,7 +478,7 @@ public class CameraOperation1 : MonoBehaviour
                 targetObject.transform.rotation = mainCamera.transform.rotation;
 
                 mainCamera.transform.position = newpos;
-                mainCamera.transform.position = new Vector3(newpos.x, newpos.y, newpos.z + -1 * distance_camera2viewpoint);
+                mainCamera.transform.position = new Vector3(newpos.x, newpos.y, newpos.z + -1 * manim.cfg_dist_cam2view);
 
 
                 if (nav.type == AF_TARGETTYPE.VRM)
@@ -422,7 +507,7 @@ public class CameraOperation1 : MonoBehaviour
                 OperateLoadedBase ovrm = nav.avatar.GetComponent<OperateLoadedBase>();
 
                 Vector3 newpos = new Vector3(
-                    ovrm.relatedHandleParent.transform.position.x, ovrm.relatedHandleParent.transform.position.y, ovrm.relatedHandleParent.transform.position.z - distance_camera2viewpoint
+                    ovrm.relatedHandleParent.transform.position.x, ovrm.relatedHandleParent.transform.position.y, ovrm.relatedHandleParent.transform.position.z - manim.cfg_dist_cam2view
                 );
 
                 if (ovrm.targetType == AF_TARGETTYPE.VRM)
@@ -435,7 +520,7 @@ public class CameraOperation1 : MonoBehaviour
                 }
                 Camera.main.transform.position = newpos;
 
-                newpos.z += distance_camera2viewpoint;
+                newpos.z += manim.cfg_dist_cam2view;
                 Camera.main.transform.DOLookAt(newpos, 0.1f);
                 targetObject.transform.position = newpos;
 
@@ -501,6 +586,21 @@ public class CameraOperation1 : MonoBehaviour
 
         execCameraMover(pos);
     }
+    public void ShowTargetObject(string param)
+    {
+        MeshRenderer mr = targetObject.GetComponent<MeshRenderer>();
+        Color col = mr.sharedMaterial.GetColor("_Color");
+
+        if (param == "1")
+        {
+            col.a = 0.25f;
+        }
+        else
+        {
+            col.a = 0f;
+        }
+        mr.sharedMaterial.SetColor("_Color", col);
+    }
 
 
     //*********************************************************************************************************
@@ -513,12 +613,14 @@ public class CameraOperation1 : MonoBehaviour
         if (param == 1)
         {
             canvas.transform.Find("GizmoRenderer").gameObject.SetActive(true);
+            KeyOperationModeView.gameObject.SetActive(true);
             //RectTransform rt = GameObject.Find("GizmoRenderer").GetComponent<RectTransform>();
             //rt.anchoredPosition = new Vector2(40, rt.anchoredPosition.y);
         }
         else
         {
             canvas.transform.Find("GizmoRenderer").gameObject.SetActive(false);
+            KeyOperationModeView.gameObject.SetActive(false);
             //RectTransform rt = GameObject.Find("GizmoRenderer").GetComponent<RectTransform>();
             //rt.anchoredPosition = new Vector2(-40, rt.anchoredPosition.y);
         }

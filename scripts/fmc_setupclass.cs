@@ -508,7 +508,7 @@ namespace UserVRMSpace
                     Vector3 newpos;
                     newpos.x = hanstrans.position.x;
                     newpos.y = hanstrans.position.y + 0.1f; // bnd.y < hanstrans.position.y ? hanstrans.position.y : bnd.y;
-                    newpos.z = -0.4f;
+                    newpos.z = (bnd.z < 0 ? bnd.z : bnd.z * -1f) - 0.2f;
                     hans.transform.position = newpos;
 
                     vik.solvers.lookAt.target = hans.transform;
@@ -526,7 +526,7 @@ namespace UserVRMSpace
                 {
                     Transform hanstrans = animator.GetBoneTransform(HumanBodyBones.Chest);
                     if (hanstrans == null) hanstrans = animator.GetBoneTransform(HumanBodyBones.Spine);
-                    hans.transform.position = new Vector3(hanstrans.position.x, hanstrans.position.y + 0.1f, -0.25f);
+                    hans.transform.position = new Vector3(hanstrans.position.x, hanstrans.position.y + 0.1f, (bnd.z < 0 ? bnd.z : bnd.z * -1f) - 0.25f); 
 
                     vik.solvers.aim.target = hans.transform;
                     vik.solvers.aim.IKPositionWeight = 1f;
@@ -547,8 +547,8 @@ namespace UserVRMSpace
                 else if (hans.name.IndexOf("LeftLowerArm") > -1)
                 {
                     Transform pt = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
-                    Vector3 hanspos = pt.position;
-                    hans.transform.position = hanspos;
+                    //Vector3 hanspos = pt.position;
+                    //hans.transform.position = hanspos;
 
                     RotationLimitHinge rlh = pt.gameObject.AddComponent<RotationLimitHinge>();
                     rlh.axis.x = 0f;
@@ -564,8 +564,8 @@ namespace UserVRMSpace
                 else if (hans.name.IndexOf("RightLowerArm") > -1)
                 {
                     Transform pt = animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
-                    Vector3 hanspos = pt.position;
-                    hans.transform.position = hanspos;
+                    //Vector3 hanspos = pt.position;
+                    //hans.transform.position = hanspos;
 
                     RotationLimitHinge rlh = pt.gameObject.AddComponent<RotationLimitHinge>();
                     rlh.axis.x = 0f;
@@ -704,21 +704,39 @@ namespace UserVRMSpace
             //hpc.switchLeft = true;
             hpl.targetHandPose = new HandPoseAsset.HandPose();
             hpl.normal = Instantiate((HandPoseAsset)Resources.Load("HandPose_open")); //;(HandPoseAsset)Resources.Load("HandPose_normal")
-            hpl.pose1 = Instantiate((HandPoseAsset)Resources.Load("HandPose_normal"));  //;(HandPoseAsset)Resources.Load("HandPose_open")
+            /*hpl.pose1 = Instantiate((HandPoseAsset)Resources.Load("HandPose_normal"));  //;(HandPoseAsset)Resources.Load("HandPose_open")
             hpl.pose2 = Instantiate((HandPoseAsset)Resources.Load("HandPose_close")); //;(HandPoseAsset)Resources.Load("HandPose_close")
             hpl.pose3 = Instantiate((HandPoseAsset)Resources.Load("HandPose_indicate")); //sam.pose3;(HandPoseAsset)Resources.Load("HandPose_indicate")
             hpl.pose4 = Instantiate((HandPoseAsset)Resources.Load("HandPose_peace")); //;(HandPoseAsset)Resources.Load("HandPose_peace")
             hpl.pose5 = Instantiate((HandPoseAsset)Resources.Load("HandPose_thumbsup")); //sam.pose5;(HandPoseAsset)Resources.Load("HandPose_thumbsup")
             hpl.pose6 = Instantiate((HandPoseAsset)Resources.Load("HandPose_glob1")); //sam.pose6;(HandPoseAsset)Resources.Load("HandPose_glob1")
+            */
+            hpl.poses.Add(Instantiate((HandPoseAsset)Resources.Load("HandPose_normal")));
+            hpl.poses.Add(Instantiate((HandPoseAsset)Resources.Load("HandPose_close")));
+            hpl.poses.Add(Instantiate((HandPoseAsset)Resources.Load("HandPose_indicate")));
+            hpl.poses.Add(Instantiate((HandPoseAsset)Resources.Load("HandPose_peace")));
+            hpl.poses.Add(Instantiate((HandPoseAsset)Resources.Load("HandPose_thumbsup")));
+            hpl.poses.Add(Instantiate((HandPoseAsset)Resources.Load("HandPose_glob1")));
 
             hpr.targetHandPose = new HandPoseAsset.HandPose();
             hpr.normal = Instantiate((HandPoseAsset)Resources.Load("HandPose_open")); //;(HandPoseAsset)Resources.Load("HandPose_normal")
+            /*
             hpr.pose1 = Instantiate((HandPoseAsset)Resources.Load("HandPose_normal"));  //;(HandPoseAsset)Resources.Load("HandPose_open")
             hpr.pose2 = Instantiate((HandPoseAsset)Resources.Load("HandPose_close")); //;(HandPoseAsset)Resources.Load("HandPose_close")
             hpr.pose3 = Instantiate((HandPoseAsset)Resources.Load("HandPose_indicate")); //sam.pose3;(HandPoseAsset)Resources.Load("HandPose_indicate")
             hpr.pose4 = Instantiate((HandPoseAsset)Resources.Load("HandPose_peace")); //;(HandPoseAsset)Resources.Load("HandPose_peace")
             hpr.pose5 = Instantiate((HandPoseAsset)Resources.Load("HandPose_thumbsup")); //sam.pose5;(HandPoseAsset)Resources.Load("HandPose_thumbsup")
             hpr.pose6 = Instantiate((HandPoseAsset)Resources.Load("HandPose_glob1")); //sam.pose6;(HandPoseAsset)Resources.Load("HandPose_glob1")
+            */
+            hpr.poses.Add(Instantiate((HandPoseAsset)Resources.Load("HandPose_normal")));
+            hpr.poses.Add(Instantiate((HandPoseAsset)Resources.Load("HandPose_close")));
+            hpr.poses.Add(Instantiate((HandPoseAsset)Resources.Load("HandPose_indicate")));
+            hpr.poses.Add(Instantiate((HandPoseAsset)Resources.Load("HandPose_peace")));
+            hpr.poses.Add(Instantiate((HandPoseAsset)Resources.Load("HandPose_thumbsup")));
+            hpr.poses.Add(Instantiate((HandPoseAsset)Resources.Load("HandPose_glob1")));
+
+            //hpl.enabled = false;
+            //hpr.enabled = false;
         }
 
     }

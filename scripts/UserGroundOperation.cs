@@ -30,6 +30,8 @@ namespace UserHandleSpace
         private BasicTransformInformation bti;
         private ManageAnimation animarea;
         private OperateLoadedVRM ovrm;
+        private OperateActiveVRM oavrm;
+        private AvatarKeyOperator akeyo;
 
         private void Awake()
         {
@@ -46,6 +48,10 @@ namespace UserHandleSpace
             animarea = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
 
             ovrm = relatedAvatar.GetComponent<OperateLoadedVRM>();
+
+            GameObject ikhp = GameObject.FindGameObjectWithTag("IKHandleWorld");
+            oavrm = ikhp.GetComponent<OperateActiveVRM>();
+            akeyo = new AvatarKeyOperator(animarea.cfg_keymove_speed_rot, animarea.cfg_keymove_speed_trans);
         }
 
         // Update is called once per frame
@@ -94,6 +100,17 @@ namespace UserHandleSpace
                         RightShoulderIK.rotation = animtrans.rotation;
                     }*/
                 }
+                /*
+                //---key operation for current selected avatar translation
+                if (animarea.keyOperationMode == KeyOperationMode.MoveAvatar) 
+                { //this avatar is active ?
+                    if (oavrm.ActiveAvatar.GetInstanceID() == relatedAvatar.GetInstanceID())
+                    {
+                        akeyo.SetSpeed(animarea.cfg_keymove_speed_rot, animarea.cfg_keymove_speed_trans);
+                        akeyo.CallKeyOperation(gameObject);
+                    }
+                }
+                */
             }
             oldPosition = transform.position;
             oldRotation = transform.rotation;

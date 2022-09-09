@@ -41,7 +41,7 @@ namespace UserHandleSpace
 
         protected Vector3 oldikposition;
 
-
+        protected List<NativeAnimationAvatar> copyToList;
 
         //---render texture----------------------------------
         protected string renderTextureParentId;
@@ -82,6 +82,7 @@ namespace UserHandleSpace
         {
             SaveDefaultTransform(true, true);
 
+            copyToList = new List<NativeAnimationAvatar>();
         }
 
         // Update is called once per frame
@@ -628,6 +629,7 @@ namespace UserHandleSpace
         }
 
 
+
         //########################################################################
         // Render texture (for OtherObject)
         //########################################################################
@@ -706,17 +708,19 @@ namespace UserHandleSpace
                 Material[] mats = null;
                 if (item.TryGetComponent<SkinnedMeshRenderer>(out skn))
                 {
-                    mats = skn.materials;
+                    //mats = skn.materials;
+                    mats = skn.sharedMaterials;
                 }
                 if (item.TryGetComponent<MeshRenderer>(out mr))
                 {
-                    mats = mr.materials;
+                    //mats = mr.materials;
+                    mats = mr.sharedMaterials;
                 }
                 if (mats != null)
                 {
                     foreach (Material mat in mats)
                     {
-                        string keyname = item.name + "_" + mat.name;
+                        string keyname = item.name;// + "_" + mat.name;
                         string newkeyname = "";
                         int dupCount = 0;
                         string suffix = "";
@@ -769,6 +773,7 @@ namespace UserHandleSpace
                 MaterialProperties matp = new MaterialProperties();
 
                 matp.name = kvp.Key;
+                matp.matName = mat.name;
                 
                 matp.shaderName = mat.shader.name;
                 
@@ -785,6 +790,10 @@ namespace UserHandleSpace
                     matp.rimfresnel = mat.GetFloat("_RimFresnelPower");
                     matp.srcblend = mat.GetFloat("_SrcBlend");
                     matp.dstblend = mat.GetFloat("_DstBlend");
+                    matp.cutoff = mat.GetFloat("_Cutoff");
+                    matp.shadingshift = mat.GetFloat("_ShadeShift");
+                    matp.receiveshadow = mat.GetFloat("_ReceiveShadowRate");
+                    matp.shadinggrade = mat.GetFloat("_ShadingGradeRate");
 
                     matp.texturePath = userSharedTextureFiles[kvp.Key].texturePath;
                     matp.textureRole = userSharedTextureFiles[kvp.Key].textureRole;
@@ -876,12 +885,13 @@ namespace UserHandleSpace
                 {
                     ret = (
                         param + SEPSTR +
+                        mat.name + SEPSTR + 
                         mat.shader.name + SEPSTR +
                         ColorUtility.ToHtmlStringRGBA(mat.color) + SEPSTR +
                         mat.GetFloat("_CullMode").ToString() + SEPSTR +
                         mat.GetFloat("_BlendMode").ToString() + SEPSTR +
                         texturePath + SEPSTR +
-                        //---6
+                        //---v1 = 6, v2 = 7
                         "0" + SEPSTR +
                         "0" + SEPSTR +
                         ColorUtility.ToHtmlStringRGBA(mat.GetColor("_EmissionColor")) + SEPSTR +
@@ -890,19 +900,26 @@ namespace UserHandleSpace
                         ColorUtility.ToHtmlStringRGBA(mat.GetColor("_RimColor")) + SEPSTR +
                         mat.GetFloat("_RimFresnelPower").ToString() + SEPSTR +
                         mat.GetFloat("_SrcBlend").ToString() + SEPSTR +
-                        mat.GetFloat("_DstBlend").ToString()
+                        mat.GetFloat("_DstBlend").ToString() + SEPSTR + 
+                        //---v2 = 16
+                        mat.GetFloat("_Cutoff").ToString() + SEPSTR + 
+                        mat.GetFloat("_ShadeShift").ToString() + SEPSTR + 
+                        mat.GetFloat("_ReceiveShadowRate").ToString() + SEPSTR + 
+                        mat.GetFloat("_ShadingGradeRate").ToString() + SEPSTR + 
+                        mat.GetFloat("_LightColorAttenuation").ToString()
                     );
                 }
                 else if (mat.shader.name.ToLower() == "standard")
                 {
                     ret = (
                         param + SEPSTR +
+                        mat.name + SEPSTR +
                         mat.shader.name + SEPSTR +
                         ColorUtility.ToHtmlStringRGBA(mat.color) + SEPSTR +
                         "0" + SEPSTR +
                         mat.GetFloat("_Mode").ToString() + SEPSTR +
                         texturePath + SEPSTR +
-                        //---6
+                        //---v1 = 6, v2 = 7
                         mat.GetFloat("_Metallic").ToString() + SEPSTR +
                         mat.GetFloat("_Glossiness").ToString() + SEPSTR +
                         ColorUtility.ToHtmlStringRGBA(mat.GetColor("_EmissionColor")) + SEPSTR +
@@ -911,6 +928,12 @@ namespace UserHandleSpace
                         ColorUtility.ToHtmlStringRGBA(Color.white) + SEPSTR +
                         "0" + SEPSTR +
                         "1" + SEPSTR +
+                        "0" + SEPSTR + 
+                        //---v2 = 16
+                        "0.5" + SEPSTR + 
+                        "0" + SEPSTR + 
+                        "1" + SEPSTR + 
+                        "1" + SEPSTR + 
                         "0"
                     );
                 }
@@ -924,12 +947,13 @@ namespace UserHandleSpace
                     Vector4 wdcd = mat.GetVector("_GDirectionCD");
                     ret = (
                         param + SEPSTR +
+                        mat.name + SEPSTR +
                         mat.shader.name + SEPSTR +
                         mat.GetFloat("_FresnelScale").ToString() + SEPSTR +
                         ColorUtility.ToHtmlStringRGBA(mat.GetColor("_BaseColor")) + SEPSTR +
                         ColorUtility.ToHtmlStringRGBA(mat.GetColor("_ReflectionColor")) + SEPSTR +
                         ColorUtility.ToHtmlStringRGBA(mat.GetColor("_SpecularColor")) + SEPSTR +
-                        //---6
+                        //---v1 = 6, v2 = 7
                         wa.x.ToString() + "," + wa.y.ToString() + "," + wa.z.ToString() + "," + wa.w.ToString() + SEPSTR +
                         wf.x.ToString() + "," + wf.y.ToString() + "," + wf.z.ToString() + "," + wf.w.ToString() + SEPSTR +
                         wt.x.ToString() + "," + wt.y.ToString() + "," + wt.z.ToString() + "," + wt.w.ToString() + SEPSTR +
@@ -941,20 +965,21 @@ namespace UserHandleSpace
             }
             /////Debug.Log("ret=" + ret);
             // 0 - key name
-            // 1 - shader name
-            // 2 - material color
-            // 3 - Cull mode
-            // 4 - Blend mode
-            // 5 - Texture name
-            // 6 - Metallic (Standard)
-            // 7 - Glossiness (Standard)
-            // 8 - Emission Color 
-            // 9 - Shade Texture Color (VRM/MToon)
-            // 10- Shaing Toony (VRM/MToon)
-            // 11- Rim Color (VRM/MToon)
-            // 12- Rim Fresnel Power (VRM/MToon)
-            // 13- SrcBlend (VRM/MToon)
-            // 14- DstBlend (VRM/MToon)
+            // 1 - material name
+            // 2 - shader name
+            // 3 - material color
+            // 4 - Cull mode
+            // 5 - Blend mode
+            // 6 - Texture name
+            // 7 - Metallic (Standard)
+            // 8 - Glossiness (Standard)
+            // 9 - Emission Color 
+            // 10- Shade Texture Color (VRM/MToon)
+            // 11- Shaing Toony (VRM/MToon)
+            // 12- Rim Color (VRM/MToon)
+            // 13- Rim Fresnel Power (VRM/MToon)
+            // 14- SrcBlend (VRM/MToon)
+            // 15- DstBlend (VRM/MToon)
 
             return ret;
         }
@@ -1021,6 +1046,13 @@ namespace UserHandleSpace
                         if (mat.shader.name.ToLower() == "vrm/mtoon")
                         {
                             mat.SetFloat("_CullMode", vmat.cullmode);
+                        }
+                    }
+                    else if (propname.ToLower() == "alphacutoff")
+                    {
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_Cutoff", vmat.cutoff);
                         }
                     }
                     else if (propname.ToLower() == "maintex")
@@ -1137,6 +1169,34 @@ namespace UserHandleSpace
                         {
                             mat.SetFloat("_ShadeToony", vmat.shadingtoony);
                         }   
+                    }
+                    else if (propname.ToLower() == "shadingshift")
+                    {
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_ShadeShift", vmat.shadingshift);
+                        }
+                    }
+                    else if (propname.ToLower() == "receiveshadow")
+                    {
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_ReceiveShadowRate", vmat.receiveshadow);
+                        }
+                    }
+                    else if (propname.ToLower() == "shadinggrade")
+                    {
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_ShadingGradeRate", vmat.shadinggrade);
+                        }
+                    }
+                    else if (propname.ToLower() == "lightcolorattenuation")
+                    {
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_LightColorAttenuation", vmat.shadinggrade);
+                        }
                     }
                     else if (propname.ToLower() == "rimcolor")
                     {
@@ -1299,6 +1359,14 @@ namespace UserHandleSpace
                             mat.SetFloat("_CullMode", fv);
                         }
                     }
+                    else if (propname.ToLower() == "alphacutoff")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_Cutoff", fv);
+                        }
+                    }
                     else if (propname.ToLower() == "maintex")
                     { //texture path or role name
                         /*
@@ -1310,6 +1378,7 @@ namespace UserHandleSpace
                          */
                         if ((userSharedTextureFiles[mat_name].texturePath == value) && (value == ""))
                         {
+                            //Debug.Log("texture clear");
                             mat.SetTexture("_MainTex", null);
                             mat.SetTexture("_MainTex", backupTextureFiles[mat_name].realTexture);
                             userSharedTextureFiles[mat_name].texturePath = value;
@@ -1321,7 +1390,6 @@ namespace UserHandleSpace
                             if (value.IndexOf(CAMERAROLE) > -1)
                             { //value: #Cameracam_12335667-------------------------------
                                 string rolename = value.Replace(CAMERAROLE, "");
-
 
                                 //---old texture nullize
                                 if (userSharedTextureFiles[mat_name].textureIsCamera == 0)
@@ -1347,7 +1415,7 @@ namespace UserHandleSpace
                                 { //---old is general texture
                                     manim.UnReferMaterial(OneMaterialType.Texture, userSharedTextureFiles[mat_name].texturePath);
                                 }
-
+                                //Debug.Log("  " + mat_name);
                                 mat.SetTexture("_MainTex", null);
                                 mat.SetTexture("_MainTex", backupTextureFiles[mat_name].realTexture);
                                 userSharedTextureFiles[mat_name].texturePath = value;
@@ -1377,6 +1445,7 @@ namespace UserHandleSpace
                                 NativeAP_OneMaterial nap = manim.FindTexture(value);
                                 if (nap != null)
                                 {
+                                    //Debug.Log(nap.materialType.ToString() + "/" + nap.name);
                                     mat.SetTexture("_MainTex", nap.ReferTexture2D());
                                     userSharedTextureFiles[mat_name].texturePath = value;
                                     userSharedTextureFiles[mat_name].textureRole = "";
@@ -1429,6 +1498,38 @@ namespace UserHandleSpace
                         if (mat.shader.name.ToLower() == "vrm/mtoon")
                         {
                             mat.SetFloat("_ShadeToony", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "shadingshift")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_ShadeShift", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "receiveshadow")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_ReceiveShadowRate", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "shadinggrade")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_ShadingGradeRate", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "lightcolorattenuation")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        {
+                            mat.SetFloat("_LightColorAttenuation", fv);
                         }
                     }
                     else if (propname.ToLower() == "rimcolor")
@@ -1595,21 +1696,17 @@ namespace UserHandleSpace
                 Material mat = userSharedMaterials[mat_name];
                 if (mat != null)
                 {
-                    seq.Join(DOVirtual.DelayedCall(duration, () =>
-                    {
-                        Shader target = Shader.Find(value.shaderName);
-                        if (target != null)
-                        {
-                            mat.shader = target;
-                        }
-                    }, false));
-
                     
                     if (value.shaderName.ToLower() == "standard")
                     {
                         seq.Join(DOVirtual.DelayedCall(duration, () =>
                         {
-                            SetUserMaterial(mat_name + ",maintex," + value.texturePath);
+                            Shader target = Shader.Find(value.shaderName);
+                            if (target != null)
+                            {
+                                mat.shader = target;
+                                SetUserMaterial(mat_name + ",maintex," + value.texturePath);
+                            }
                         }, false));
 
 
@@ -1626,7 +1723,13 @@ namespace UserHandleSpace
                     {
                         seq.Join(DOVirtual.DelayedCall(duration, () =>
                         {
-                            SetUserMaterial(mat_name + ",maintex," + value.texturePath);
+                            Shader target = Shader.Find(value.shaderName);
+                            if (target != null)
+                            {
+                                mat.shader = target;
+                                //Debug.Log("sequence join, delay, texture=" + value.texturePath);
+                                SetUserMaterial(mat_name + ",maintex," + value.texturePath);
+                            }
                         }, false));
 
 
@@ -1639,6 +1742,11 @@ namespace UserHandleSpace
                         if (mat.HasProperty("_RimFresnelPower")) seq.Join(mat.DOFloat(value.rimfresnel, "_RimFresnelPower", duration));
                         if (mat.HasProperty("_SrcBlend")) seq.Join(mat.DOFloat(value.srcblend, "_SrcBlend", duration));
                         if (mat.HasProperty("_DstBlend")) seq.Join(mat.DOFloat(value.dstblend, "_DstBlend", duration));
+                        if (mat.HasProperty("_Cutoff")) seq.Join(mat.DOFloat(value.cutoff, "_Cutoff", duration));
+                        if (mat.HasProperty("_ShadeShift")) seq.Join(mat.DOFloat(value.shadingshift, "_ShadeShift", duration));
+                        if (mat.HasProperty("_ReceiveShadowRate")) seq.Join(mat.DOFloat(value.receiveshadow, "_ReceiveShadowRate", duration));
+                        if (mat.HasProperty("_ShadingGradeRate")) seq.Join(mat.DOFloat(value.shadinggrade, "_ShadingGradeRate", duration));
+                        if (mat.HasProperty("_LightColorAttenuation")) seq.Join(mat.DOFloat(value.shadinggrade, "_LightColorAttenuation", duration));
 
                         seq.Join(DOVirtual.DelayedCall(duration, () => mat.EnableKeyword("EMISSION"), false));
                         if (mat.HasProperty("_EmissionColor")) seq.Join(mat.DOColor(value.emissioncolor, "_EmissionColor", duration));
@@ -1646,6 +1754,15 @@ namespace UserHandleSpace
                     }
                     else if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
                     {
+                        seq.Join(DOVirtual.DelayedCall(duration, () =>
+                        {
+                            Shader target = Shader.Find(value.shaderName);
+                            if (target != null)
+                            {
+                                mat.shader = target;
+                            }
+                        }, false));
+
                         if (mat.HasProperty("_FresnelScale")) seq.Join(mat.DOFloat(value.fresnelScale, "_FresnelScale", duration));
                         if (mat.HasProperty("_BaseColor")) seq.Join(mat.DOColor(value.color, "_BaseColor", duration));
                         if (mat.HasProperty("_ReflectionColor")) seq.Join(mat.DOColor(value.reflectionColor, "_ReflectionColor", duration));

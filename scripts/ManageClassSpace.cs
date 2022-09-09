@@ -23,6 +23,7 @@ namespace UserHandleSpace
     public class MaterialPropertiesBase
     {
         public string name = "";
+        public string matName = "";
         public string shaderName = "";
         //---standard / VRM/MToon
         public Color color = Color.white;
@@ -42,6 +43,11 @@ namespace UserHandleSpace
         public float rimfresnel = 0;
         public float srcblend = 0;
         public float dstblend = 0;
+        public float cutoff = 0.5f;
+        public float shadingshift = 0f;
+        public float receiveshadow = 1f;
+        public float shadinggrade = 1f;
+        public float lightcolorattenuation = 0f;
         //---FX/Water (Basic)
         public float waveScale = 0.0703f;
         //---FX/Water4
@@ -184,7 +190,11 @@ namespace UserHandleSpace
         LeftLower_LeftLeg,
         RightLower_RightLeg
     };
-
+    public enum KeyOperationMode
+    {
+        MoveCamera = 0,
+        MoveAvatar = 1
+    }
     [Serializable]
     public class AvatarTransformSaveClass
     {
@@ -355,6 +365,90 @@ namespace UserHandleSpace
         }
     }
 
+    [Serializable]
+    public class AvatarFingerInHand
+    {
+        public List<Vector3> Thumbs;
+        public List<Vector3> Index;
+        public List<Vector3> Middle;
+        public List<Vector3> Ring;
+        public List<Vector3> Little;
+        public AvatarFingerInHand()
+        {
+            Thumbs = new List<Vector3>();
+            Index = new List<Vector3>();
+            Middle = new List<Vector3>();
+            Ring = new List<Vector3>();
+            Little = new List<Vector3>();
+        }
+        public void Clear()
+        {
+            Thumbs.Clear();
+            Index.Clear();
+            Middle.Clear();
+            Ring.Clear();
+            Little.Clear();
+        }
+        public void Copy(AvatarFingerInHand src)
+        {
+            Clear();
+            src.Thumbs.ForEach(item =>
+            {
+                Thumbs.Add(item);
+            });
+            src.Index.ForEach(item =>
+            {
+                Index.Add(item);
+            });
+            src.Middle.ForEach(item =>
+            {
+                Middle.Add(item);
+            });
+            src.Ring.ForEach(item =>
+            {
+                Ring.Add(item);
+            });
+            src.Little.ForEach(item =>
+            {
+                Little.Add(item);
+            });
+        }
+    }
+    [Serializable]
+    public class AvatarFingerForHPC
+    {
+        public List<float> Thumbs;
+        public List<float> Index;
+        public List<float> Middle;
+        public List<float> Ring;
+        public List<float> Little;
+        public AvatarFingerForHPC()
+        {
+            Thumbs = new List<float>();
+            Index = new List<float>();
+            Middle = new List<float>();
+            Ring = new List<float>();
+            Little = new List<float>();
+        }
+        public void Clear()
+        {
+            Thumbs.Clear();
+            Index.Clear();
+            Middle.Clear();
+            Ring.Clear();
+            Little.Clear();
+        }
+        public void Copy(AvatarFingerForHPC src)
+        {
+            Thumbs = src.Thumbs.FindAll(item => { return true; });
+            Index = src.Index.FindAll(item => { return true; });
+            Middle = src.Middle.FindAll(item => { return true; });
+            Ring = src.Ring.FindAll(item => { return true; });
+            Little = src.Little.FindAll(item => { return true; });
+
+        }
+    }
+
 
     //===============================================================================================================
     //  Motion file class
@@ -507,6 +601,7 @@ namespace UserHandleSpace
         //---vrm options
         public int isHandPose;
         public List<float> handpose;
+        public AvatarFingerForHPC fingerpose;
         public int isBlendShape;
         public List<BasicStringFloatList> blendshapes;
         public int equipType;
@@ -610,6 +705,7 @@ namespace UserHandleSpace
             jumpNum = 0;
             jumpPower = 1f;
             isHandPose = 0;
+            fingerpose = new AvatarFingerForHPC();
             isBlendShape = 0;
             equipType = 0;
             equipDestinations = new List<AvatarEquipSaveClass>();
@@ -1637,7 +1733,7 @@ namespace UserHandleSpace
         public AnimationProject(int frameCount)
         {
             mkey = 0;
-            version = 1;
+            version = 0;
             casts = new List<AnimationAvatar>();
             timeline = new AnimationMotionTimeline();
             timelineFrameLength = frameCount;
@@ -1787,4 +1883,134 @@ namespace UserHandleSpace
         public float currentDuration = 0f;
         public float backupDuration = 0f;
     }
+
+
+
+    //==============================================================
+    //  key operation  class
+    //==============================================================
+    public class AvatarKeyOperator
+    {
+        public float movespeed;
+        public float transspeed;
+        public Space IsGlobalLocal;
+        private short opemode = 0; //0 - translate, 1 - rotation
+        public AvatarKeyOperator(float config_movespeed, float config_transspeed)
+        {
+            movespeed = config_movespeed;
+            transspeed = config_transspeed;
+            IsGlobalLocal = Space.World;
+        }
+        public void SetSpeed(float speed, float trans_speed)
+        {
+            movespeed = speed;
+            transspeed = trans_speed;
+        }
+        public void CallKeyOperation(GameObject ik)
+        {
+            if (Input.GetKey(KeyCode.W))
+            { //to front
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    ik.transform.Rotate(Vector3.right * movespeed, IsGlobalLocal);
+                }
+                else
+                {
+                    if (opemode == 0) ik.transform.Translate(Vector3.forward * transspeed, IsGlobalLocal);
+                    else if (opemode == 1) ik.transform.Rotate(Vector3.right * movespeed, IsGlobalLocal);
+
+                }
+                
+                
+            }
+            if (Input.GetKey(KeyCode.S))
+            { //to back
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    ik.transform.Rotate(Vector3.left * movespeed, IsGlobalLocal);
+                }
+                else
+                {
+                    if (opemode == 0) ik.transform.Translate(Vector3.back * transspeed, IsGlobalLocal);
+                    else if (opemode == 1) ik.transform.Rotate(Vector3.left * movespeed, IsGlobalLocal);
+
+                }
+            }
+            if (Input.GetKey(KeyCode.A))
+            { //to left
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    ik.transform.Rotate(Vector3.forward * movespeed, IsGlobalLocal);
+                }
+                else
+                {
+                    if (opemode == 0) ik.transform.Translate(Vector3.left * transspeed, IsGlobalLocal);
+                    else if (opemode == 1) ik.transform.Rotate(Vector3.forward * movespeed, IsGlobalLocal);
+
+                }
+            }
+            if (Input.GetKey(KeyCode.D))
+            { //to right
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    ik.transform.Rotate(Vector3.back * movespeed, IsGlobalLocal);
+                }
+                else
+                {
+                    if (opemode == 0) ik.transform.Translate(Vector3.right * transspeed, IsGlobalLocal);
+                    else if (opemode == 1) ik.transform.Rotate(Vector3.back * movespeed, IsGlobalLocal);
+
+                }
+            }
+            if (Input.GetKey(KeyCode.F))
+            { //to up
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    ik.transform.Rotate(Vector3.up * movespeed, IsGlobalLocal);
+                }
+                else
+                {
+                    if (opemode == 0) ik.transform.Translate(Vector3.up * transspeed, IsGlobalLocal);
+                    else if (opemode == 1) ik.transform.Rotate(Vector3.up * movespeed, IsGlobalLocal);
+
+                }
+            }
+            if (Input.GetKey(KeyCode.V))
+            { //to down
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    ik.transform.Rotate(Vector3.down * movespeed, IsGlobalLocal);
+                }
+                else
+                {
+                    if (opemode == 0) ik.transform.Translate(Vector3.down * transspeed, IsGlobalLocal);
+                    else if (opemode == 1) ik.transform.Rotate(Vector3.down * movespeed, IsGlobalLocal);
+
+                }
+            }
+            if (Input.GetKey(KeyCode.Q))
+            { //rotation  mode
+                //opemode = 1;
+                ik.transform.rotation = Quaternion.Euler(Vector3.zero);
+            }
+            if (Input.GetKey(KeyCode.E))
+            { //translate mode
+                //opemode = 0;
+            }
+            if (Input.GetKey(KeyCode.G))
+            {
+                
+            }
+            if (Input.GetKey(KeyCode.B))
+            {
+
+            }
+            if (Input.GetKey(KeyCode.X))
+            {
+                if (IsGlobalLocal == Space.Self) IsGlobalLocal = Space.World;
+                else if (IsGlobalLocal == Space.World) IsGlobalLocal = Space.Self;
+            }
+        }
+    }
+
 }

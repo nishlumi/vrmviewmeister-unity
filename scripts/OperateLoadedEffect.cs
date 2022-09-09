@@ -102,14 +102,17 @@ namespace UserHandleSpace
             string ret = "";
             Camera lt = transform.gameObject.GetComponent<Camera>();
 
-            int pflag = (int)GetPlayFlagEffect(0);
+            int pflag = (int)animationStartFlag;
             string js = GetCurrentEffectFromOuter(0);
 
-            int colliderTargetSize = EnumColliderTarget().Count;
+            List<string> targetvrms = EnumColliderTarget();
+            int colliderTargetSize = targetvrms.Count;
+            string vrmstext = string.Join(',', targetvrms);
 
-            ret = pflag.ToString() + "\t" + js + "\t" + isVRMCollider.ToString() + "\t" + vrmColliderSize.ToString() + "\t" + colliderTargetSize.ToString()
+            ret = pflag.ToString() + "\t" + js + "\t" + (isVRMCollider == true ? "1" : "0") + "\t" + vrmColliderSize.ToString() + "\t" + vrmstext
             ;
 
+            //Debug.Log("GetIndicatedPropertyFromOuter= " + ret);
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(ret);
 #endif
@@ -146,21 +149,21 @@ namespace UserHandleSpace
         /// </summary>
         /// <param name="genre"></param>
         /// <returns></returns>
-        public GameObject[] ListEffects(string genre)
+        public List<GameObject> ListEffects(string genre)
         {
-            GameObject[] ret = null;
+            List<GameObject> ret = new List<GameObject>();
             GameObject[] efs = GameObject.FindGameObjectsWithTag("EffectSystem");
             for (int i = 0; i < efs.Length; i++)
             {
                 if (genre.ToLower() == efs[i].name.ToLower())
                 {
-                    List<GameObject> gos = new List<GameObject>();
+                    //List<GameObject> gos = new List<GameObject>();
                     for (int c = 0; c < efs[i].transform.childCount; c++)
                     {
                         GameObject cld = efs[i].transform.GetChild(c).gameObject;
-                        gos.Add(cld);
+                        ret.Add(cld);
                     }
-                    ret = gos.ToArray();
+                    //ret = gos.ToArray();
                     break;
                 }
             }
@@ -168,12 +171,12 @@ namespace UserHandleSpace
         }
         public string ListEffectsFromOuter(string genre)
         {
-            GameObject[] efs = ListEffects(genre);
+            List<GameObject> efs = ListEffects(genre);
 
             string ret = "";
             List<string> arr = new List<string>();
 
-            for (int i = 0; i < efs.Length; i++)
+            for (int i = 0; i < efs.Count; i++)
             {
                 arr.Add(efs[i].name);
             }
@@ -195,10 +198,10 @@ namespace UserHandleSpace
             GameObject ret = null;
             string[] prm = param.Split(',');
 
-            GameObject[] effects = ListEffects(prm[0]);
+            List<GameObject> effects = ListEffects(prm[0]);
             if (effects != null)
             {
-                for (int i = 0; i < effects.Length; i++)
+                for (int i = 0; i < effects.Count; i++)
                 {
                     if (prm[1].ToLower() == effects[i].name.ToLower())
                     {
@@ -284,17 +287,21 @@ namespace UserHandleSpace
             ecs.effectName = EffectNames[1];
             ecs.effectList = new List<string>();
 
-            GameObject[] efs = ListEffects(ecs.genre);
+            List<GameObject> efs = ListEffects(ecs.genre);
 
-
-            for (int i = 0; i < efs.Length; i++)
+            //Debug.Log("efs.Length=" + efs.Count.ToString());
+            if (efs != null)
             {
-                ecs.effectList.Add(efs[i].name);
+                for (int i = 0; i < efs.Count; i++)
+                {
+                    ecs.effectList.Add(efs[i].name);
+                }
             }
 
 
-
             ret = JsonUtility.ToJson(ecs);
+            //Debug.Log("ret = JsonUtility.ToJson(ecs);");
+            //Debug.Log(ret);
 #if !UNITY_EDITOR && UNITY_WEBGL
             if (is_contacthtml == 1) ReceiveStringVal(ret);
 #endif
@@ -419,13 +426,17 @@ namespace UserHandleSpace
         /// </summary>
         /// <param name="is_contacthtml"></param>
         /// <returns>UserAnimationState</returns>
-        public UserAnimationState GetPlayFlagEffect(int is_contacthtml = 1)
+        public UserAnimationState GetPlayFlagEffectFromOuter(int is_contacthtml = 1)
         {
 #if !UNITY_EDITOR && UNITY_WEBGL
         if (is_contacthtml == 1) {
             ReceiveIntVal((int)animationStartFlag);
         }
 #endif
+            return animationStartFlag;
+        }
+        public UserAnimationState GetPlayFlagEffect()
+        {
             return animationStartFlag;
         }
 
@@ -509,8 +520,10 @@ namespace UserHandleSpace
         }
         public void ResetColliderTarget(List<string> rolelist)
         {
-            foreach (NativeAnimationAvatar cast in targetColliderCasts)
+            for (var i = targetColliderCasts.Count-1; i >= 0; i--)
             {
+                NativeAnimationAvatar cast = targetColliderCasts[i];
+
                 DelColliderTarget(cast);
             }
 
