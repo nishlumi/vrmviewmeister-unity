@@ -62,7 +62,8 @@ namespace UserHandleSpace
         // Start is called before the first frame update
         void Start()
         {
-            manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+            GameObject aarea = GameObject.Find("AnimateArea");
+            manim = aarea.GetComponent<ManageAnimation>();
             configLab = GameObject.Find("Canvas").GetComponent<ConfigSettingLabs>();
 
             HasAvatarList = new List<GameObject>();
@@ -736,12 +737,12 @@ namespace UserHandleSpace
             }
 
             //---test: change position of ViewPointObj
+            /*
             if (configLab.GetIntVal("focus_camera_onselect") == 1)
             {
                 Camera.main.gameObject.GetComponent<CameraOperation1>().FocusCameraToVRMFromOuter(ActiveAvatar.name);
-                /*GameObject vpo = GameObject.Find("ViewPointObj");
-                vpo.transform.position = ActiveAvatar.transform.position;*/
             }
+            */
 
         }
         public void DisableHandle_Avatar(GameObject ikparent, AF_TARGETTYPE type = AF_TARGETTYPE.Unknown)

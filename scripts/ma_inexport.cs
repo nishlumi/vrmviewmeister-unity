@@ -2326,6 +2326,7 @@ namespace UserHandleSpace
 
             AnimationSingleMotion asm = new AnimationSingleMotion();
 
+            asm.version = PROJECT_VERSION;
             asm.targetType = type;
             asm.compiled = currentPlayingOptions.isCompileAnimation;
 

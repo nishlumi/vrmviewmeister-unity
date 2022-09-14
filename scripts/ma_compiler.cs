@@ -1670,7 +1670,7 @@ namespace UserHandleSpace
                 )
                 {
                     ole.SetPlayFlagEffect(movedata.animPlaying);
-                    Debug.Log("animPlaying=" + ((int)movedata.animPlaying).ToString());
+                    //Debug.Log("animPlaying=" + ((int)movedata.animPlaying).ToString());
                     DOVirtual.DelayedCall(0.001f, async () =>
                     {
                         await ole.SetEffectRef("Effects/" + movedata.effectGenre + "/" + movedata.effectName);
@@ -1731,6 +1731,7 @@ namespace UserHandleSpace
             OperateStage os = naa.avatar.GetComponent<OperateStage>();
 
             //---Stage
+            /*
             if (movedata.animationType == AF_MOVETYPE.Stage)
             {
                 StageKind skind = (StageKind)movedata.stageType;
@@ -1745,61 +1746,66 @@ namespace UserHandleSpace
                         (skind == StageKind.SeaNight)
                     )
                     {
-                        if (options.isBuildDoTween == 1)
-                        {
-                            seq.Join(DOVirtual.DelayedCall(frame.duration,  () =>
-                            {
-                                os.SelectStage(movedata.stageType);
-                            }, false));
-                        }
-                        else
+                        seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
                         {
                             os.SelectStage(movedata.stageType);
-                        }
-                        
+                        }, false));
+
                     }
                     else
                     {
-                        if (options.isBuildDoTween == 1)
+                        seq.Join(DOVirtual.DelayedCall(frame.duration, async () =>
                         {
-
-                            seq.Join(DOVirtual.DelayedCall(frame.duration, async () =>
-                            {
-                                await os.SelectStageRef(movedata.stageType);
-                            }, false));
-                        }
-                        else
-                        {
-                            DOVirtual.DelayedCall(0.00001f, async () =>
-                            {
-                                await os.SelectStageRef(movedata.stageType);
-                            }, false);
-                        }
+                            await os.SelectStageRef(movedata.stageType);
+                        }, false));
                     }
-                   
-                    
+                }
+                if (options.isBuildDoTween == 0)
+                {
+                    if (
+                        (skind == StageKind.Default) ||
+                        (skind == StageKind.User) ||
+                        (skind == StageKind.BasicSeaLevel) ||
+                        (skind == StageKind.SeaDaytime) ||
+                        (skind == StageKind.SeaNight)
+                    )
+                    {
+                        os.SelectStage(movedata.stageType);
+                    }
+                    else
+                    {
+                        DOVirtual.DelayedCall(0.00001f, async () =>
+                        {
+                            await os.SelectStageRef(movedata.stageType);
+                        }, false);
+                    }
                 }
             }
+            */
             //---Stage property
             if (movedata.animationType == AF_MOVETYPE.StageProperty)
             {
                 StageKind skind = (StageKind)movedata.stageType;
 
+                //===During an animation
                 if (options.isExecuteForDOTween == 1)
                 {
-                    
-                    /*DOVirtual.DelayedCall(frame.duration, async () =>
+                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
                     {
-                        await os.SelectStageRef(movedata.stageType);
-                    });*/
+                        os.SelectStage(movedata.stageType);
+                    }, false));
 
                     if (skind == StageKind.Default)
                     {
                         //seq = os.SetDefaultStageColorTween(seq, movedata.color, frame.duration);
-                        
+
                     }
                     else if (skind == StageKind.User)
                     {
+
+                        //---temporary change for next material setting.
+                        os.SelectStage(movedata.stageType);
+
                         MaterialProperties mat0 = movedata.matProp[0];
                         MaterialProperties mat1 = movedata.matProp[1];
                         seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
@@ -1820,19 +1826,11 @@ namespace UserHandleSpace
                     }
                     else if ((skind == StageKind.SeaDaytime) || (skind == StageKind.SeaNight) || (skind == StageKind.BasicSeaLevel))
                     {
-                        if (os.GetActiveStageMaterial() != null)
-                        {
-                            seq = os.SetMaterialTween(seq, skind, movedata.vmatProp.name, movedata.vmatProp, frame.duration);
 
-                            //seq.Join(os.GetActiveStageMaterial().DOVector(movedata.wavespeed, "WaveSpeed", frame.duration));
-                            /*seq.Join(DOTween.To(() => os.GetWaterWaveSpeed("x"), x => os.SetWaterWaveSpeed("x", x), movedata.wavespeed.x, frame.duration));
-                            seq.Join(DOTween.To(() => os.GetWaterWaveSpeed("y"), x => os.SetWaterWaveSpeed("y", x), movedata.wavespeed.y, frame.duration));
-                            seq.Join(DOTween.To(() => os.GetWaterWaveSpeed("z"), x => os.SetWaterWaveSpeed("z", x), movedata.wavespeed.z, frame.duration));
-                            seq.Join(DOTween.To(() => os.GetWaterWaveSpeed("w"), x => os.SetWaterWaveSpeed("w", x), movedata.wavespeed.w, frame.duration));
-                            */
-                            //seq.Join(os.GetActiveStageMaterial().DOFloat(movedata.wavescale, "_WaveScale", frame.duration));
-                        }
+                        //---temporary change for next material setting.
+                        os.SelectStage(movedata.stageType);
 
+                        seq = os.SetMaterialTween(seq, skind, movedata.vmatProp.name, movedata.vmatProp, frame.duration);
                     }
 
                     //---wind zone
@@ -1846,17 +1844,19 @@ namespace UserHandleSpace
                     }
 
                 }
-
+                //===Preview or show a Frame 
                 if (options.isBuildDoTween == 0)
                 {
                     //--- below method is to set a value for saving and apply to UI !!!ONLY!!!
+                    os.SelectStage(movedata.stageType);
+
                     if (skind == StageKind.Default)
                     {
-                        if (os.GetActiveStageMaterial() != null)
-                        {
+                        //if (os.GetActiveStageMaterial() != null)
+                        //{
                             //os.SetDefaultStageColor(movedata.color);
                             //os.SetDefaultStageColorObject(movedata.color);
-                        }
+                        //}
                     }
                     else if (skind == StageKind.User)
                     {
@@ -3003,7 +3003,7 @@ namespace UserHandleSpace
             //GameObject imgobj = olo.GetEffectiveObject();
 
             atp.animationType = AF_MOVETYPE.ImageProperty;
-            atp.color = olo.GetBaseColor();
+            atp.color = olo.GetBaseColor(0);
 
             frame.movingData.Add(atp);
 
@@ -3177,31 +3177,36 @@ namespace UserHandleSpace
         {
             OperateStage os = nav.avatar.avatar.GetComponent<OperateStage>();
 
+            StageKind tmpstg = os.GetActiveStageType(0);
+
+            //---Stage itself (loop of frame.movingData is descendant...)
             AnimationTargetParts atp1 = new AnimationTargetParts();
             atp1.animationType = AF_MOVETYPE.Stage;
-            atp1.stageType = (int)os.GetActiveStageType();
+            atp1.stageType = (int)tmpstg;
             frame.movingData.Add(atp1);
 
             AnimationTargetParts atp = new AnimationTargetParts();
             atp.animationType = AF_MOVETYPE.StageProperty;
 
-            atp.stageType = (int)os.GetActiveStageType();
+            atp.stageType = (int)tmpstg;
 
             atp.color = os.GetDefaultStageColor(0);
 
             if (
-                (os.GetActiveStageType() == StageKind.BasicSeaLevel) ||
-                (os.GetActiveStageType() == StageKind.SeaDaytime) ||
-                (os.GetActiveStageType() == StageKind.SeaNight)
+                (tmpstg == StageKind.BasicSeaLevel) ||
+                (tmpstg == StageKind.SeaDaytime) ||
+                (tmpstg == StageKind.SeaNight)
             )
             {
-                atp.vmatProp = os.ListUserMaterialObject()[0];
+                //Debug.Log("stage type=" + tmpstg.ToString());
+                List<MaterialProperties> lstmp = os.ListUserMaterialObject();
+                if (lstmp.Count > 0) atp.vmatProp = lstmp[0];
             }
             //atp.wavescale = os.GetWaterWaveScale(0);
             //atp.wavespeed = os.GetWaterWaveSpeedFromOuter(0);
 
             //---user stage properties
-            if (os.GetActiveStageType() == StageKind.User)
+            if (tmpstg == StageKind.User)
             {
                 //atp.userStageMetallic = os.GetFloatUserStage("metallic");
                 //atp.userStageGlossiness = os.GetFloatUserStage("glossiness");
@@ -3233,6 +3238,7 @@ namespace UserHandleSpace
 
             frame.movingData.Add(atp);
 
+
             //---sky
             CameraOperation1 cam = os.GetCameraOperation();
             AnimationTargetParts atsky = new AnimationTargetParts();
@@ -3258,9 +3264,7 @@ namespace UserHandleSpace
             atlight.color = oll.GetColor();
             atlight.power = oll.GetPower();
             atlight.shadowStrength = oll.GetShadowPower();
-            frame.movingData.Add(atlight);
-
-            
+            frame.movingData.Add(atlight);         
 
 
             return frame;

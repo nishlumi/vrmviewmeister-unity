@@ -1997,15 +1997,11 @@ namespace UserHandleSpace
             { //translate mode
                 //opemode = 0;
             }
-            if (Input.GetKey(KeyCode.G))
-            {
-                
-            }
             if (Input.GetKey(KeyCode.B))
             {
 
             }
-            if (Input.GetKey(KeyCode.X))
+            if (Input.GetKeyDown(KeyCode.G))
             {
                 if (IsGlobalLocal == Space.Self) IsGlobalLocal = Space.World;
                 else if (IsGlobalLocal == Space.World) IsGlobalLocal = Space.Self;

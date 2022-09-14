@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.Networking;
 using DG.Tweening;
+using UnityStandardAssets.Water;
 
 namespace UserHandleSpace
 {
@@ -366,7 +367,7 @@ namespace UserHandleSpace
                 else
                 {
                     string sname = "Stage/" + StageNames[param];
-                    Debug.Log(sname);
+                    //Debug.Log(sname);
 
                     ActiveTargetStageHandle = Addressables.InstantiateAsync(sname);
 
@@ -414,7 +415,7 @@ namespace UserHandleSpace
         //-----------------------------------------------------------------------------------------------
         public Material GetActiveStageMaterial()
         {
-            Renderer r = ActiveStage.GetComponent<Renderer>();
+            Renderer r = ActiveStage.GetComponentInChildren<Renderer>();
             if (!r)
             {
                 return null;
@@ -471,7 +472,7 @@ namespace UserHandleSpace
             {
                 MeshRenderer mesh = ActiveStage.GetComponent<MeshRenderer>();
 
-                Debug.Log(mesh.sharedMaterial.color);
+                //Debug.Log(mesh.sharedMaterial.color);
                 Color color = default(Color);
                 if (ColorUtility.TryParseHtmlString(param, out color))
                 {
@@ -1082,7 +1083,7 @@ namespace UserHandleSpace
             if (GetActiveStageType() == StageKind.BasicSeaLevel)
             {
                 UnityStandardAssets.Water.GerstnerDisplace gerst = ActiveStage.GetComponent<UnityStandardAssets.Water.GerstnerDisplace>();
-                Debug.Log(gerst);
+                //Debug.Log(gerst);
                 gerst.enabled = false;
                 DOVirtual.DelayedCall(0.01f, () =>
                  {
@@ -1096,6 +1097,7 @@ namespace UserHandleSpace
 
             MeshRenderer hitmr = null;
             Material mat = null;
+            //Debug.Log("ActiveStage=" + ActiveStage.name + "/" + ActiveStageType.ToString());
             if ((ActiveStageType == StageKind.SeaDaytime) || (ActiveStageType == StageKind.SeaNight))
             {
                 hitmr = ActiveStage.GetComponentInChildren<MeshRenderer>();
@@ -1110,12 +1112,16 @@ namespace UserHandleSpace
                     mat = hitmr.sharedMaterial;
                     break;
                 }*/
-                mat = ActiveStage.GetComponent<UnityStandardAssets.Water.WaterBase>().sharedMaterial;
+                
+                //mat = ActiveStage.GetComponent<UnityStandardAssets.Water.WaterBase>().sharedMaterial;
+
+                hitmr = ActiveStage.GetComponentInChildren<MeshRenderer>();
+                mat = hitmr.sharedMaterial;
             }
+            //Debug.Log(hitmr);
             if (hitmr == null) return ret;
 
-            Debug.Log(hitmr.sharedMaterial.name + "/" + hitmr.sharedMaterial.shader.name);
-            Debug.Log(hitmr.material.name + "/" + hitmr.material.shader.name);
+            //Debug.Log(hitmr.sharedMaterial.name + "/" + hitmr.sharedMaterial.shader.name);
 
             if (mat != null)
             {
@@ -1185,7 +1191,9 @@ namespace UserHandleSpace
                     mat = hitmr.material;
                     break;
                 }*/
-                mat = ActiveStage.GetComponent<UnityStandardAssets.Water.WaterBase>().sharedMaterial;
+                //mat = ActiveStage.GetComponent<WaterBase>().sharedMaterial;
+                hitmr = ActiveStage.GetComponentInChildren<MeshRenderer>();
+                mat = hitmr.sharedMaterial;
             }
             if (hitmr == null) return "";
 
@@ -1198,7 +1206,7 @@ namespace UserHandleSpace
             List<MaterialProperties> umat = ListUserMaterialObject();
             //umat.Add(finalMatprop);
 
-            Debug.Log("umat=" + umat.Count.ToString());
+            //Debug.Log("umat=" + umat.Count.ToString());
 
             if (umat.Count > 0)
             {
@@ -1309,14 +1317,14 @@ namespace UserHandleSpace
             }
             else if (ActiveStageType == StageKind.BasicSeaLevel)
             {
-                /*MeshRenderer[] meshs = ActiveStage.GetComponentsInChildren<MeshRenderer>();
+                MeshRenderer[] meshs = ActiveStage.GetComponentsInChildren<MeshRenderer>();
                 foreach (MeshRenderer mr in meshs)
                 {
                     hitmr = mr;
-                    matlist.Add(hitmr.material);
+                    matlist.Add(hitmr.sharedMaterial);
                     //break;
-                }*/
-                matlist.Add(ActiveStage.GetComponent<UnityStandardAssets.Water.WaterBase>().sharedMaterial);
+                }
+                //matlist.Add(ActiveStage.GetComponent<WaterBase>().sharedMaterial);
             }
             if (hitmr == null) return;
 
@@ -1406,14 +1414,14 @@ namespace UserHandleSpace
             else if (ActiveStageType == StageKind.BasicSeaLevel)
             {
                 MeshRenderer[] meshs = ActiveStage.GetComponentsInChildren<MeshRenderer>();
-                Debug.Log("mesh count="+meshs.Length.ToString());
+                //Debug.Log("mesh count="+meshs.Length.ToString());
                 foreach (MeshRenderer mr in meshs)
                 {
                     hitmr = mr;
                     matlist.Add(hitmr.sharedMaterial);
                     //break;
                 }
-                matlist.Add(ActiveStage.GetComponent<UnityStandardAssets.Water.WaterBase>().sharedMaterial);
+                //matlist.Add(ActiveStage.GetComponent<WaterBase>().sharedMaterial);
             }
             //if (hitmr == null) return;
             //mat = hitmr.sharedMaterial;
@@ -1422,7 +1430,7 @@ namespace UserHandleSpace
 
             foreach (Material mat in matlist)
             {
-                Debug.Log(mat.name + " / " + mat.shader.name);
+                //Debug.Log(mat.name + " / " + mat.shader.name);
                 if (mat != null)
                 {
                     if (propname.ToLower() == "wavescale")
@@ -1558,26 +1566,32 @@ namespace UserHandleSpace
                     {
                         Vector4 vec = mat.GetVector("_BumpTiling");
                         vec.w = value.waveScale;
-                        mat.DOVector(vec, "_BumpTiling", duration);
+                        seq.Join(mat.DOVector(vec, "_BumpTiling", duration));
                     }
                 }
             }
             else if (skind == StageKind.BasicSeaLevel)
             {
-                Material mat = ActiveStage.GetComponent<UnityStandardAssets.Water.WaterBase>().sharedMaterial;
-                if (mat != null)
+                MeshRenderer[] meshs = ActiveStage.GetComponentsInChildren<MeshRenderer>();
+                //Debug.Log("mesh count=" + meshs.Length.ToString());
+                foreach (MeshRenderer mr in meshs)
                 {
-                    if (mat.HasProperty("_FresnelScale")) seq.Join(mat.DOFloat(value.fresnelScale, "_FresnelScale", duration));
-                    if (mat.HasProperty("_BaseColor")) seq.Join(mat.DOColor(value.color, "_BaseColor", duration));
-                    if (mat.HasProperty("_ReflectionColor")) seq.Join(mat.DOColor(value.reflectionColor, "_ReflectionColor", duration));
-                    if (mat.HasProperty("_SpecularColor")) seq.Join(mat.DOColor(value.specularColor, "_SpecularColor", duration));
-                    if (mat.HasProperty("_GAmplitude")) seq.Join(mat.DOVector(value.waveAmplitude, "_GAmplitude", duration));
-                    if (mat.HasProperty("_GFrequency")) seq.Join(mat.DOVector(value.waveFrequency, "_GFrequency", duration));
-                    if (mat.HasProperty("_GSteepness")) seq.Join(mat.DOVector(value.waveSteepness, "_GSteepness", duration));
-                    if (mat.HasProperty("_GSpeed")) seq.Join(mat.DOVector(value.waveSpeed, "_GSpeed", duration));
-                    if (mat.HasProperty("_GDirectionAB")) seq.Join(mat.DOVector(value.waveDirectionAB, "_GDirectionAB", duration));
-                    if (mat.HasProperty("_GDirectionCD")) seq.Join(mat.DOVector(value.waveDirectionCD, "_GDirectionCD", duration));
+                    if (mr.sharedMaterial != null)
+                    {
+                        if (mr.sharedMaterial.HasProperty("_FresnelScale")) seq.Join(mr.sharedMaterial.DOFloat(value.fresnelScale, "_FresnelScale", duration));
+                        if (mr.sharedMaterial.HasProperty("_BaseColor")) seq.Join(mr.sharedMaterial.DOColor(value.color, "_BaseColor", duration));
+                        if (mr.sharedMaterial.HasProperty("_ReflectionColor")) seq.Join(mr.sharedMaterial.DOColor(value.reflectionColor, "_ReflectionColor", duration));
+                        if (mr.sharedMaterial.HasProperty("_SpecularColor")) seq.Join(mr.sharedMaterial.DOColor(value.specularColor, "_SpecularColor", duration));
+                        if (mr.sharedMaterial.HasProperty("_GAmplitude")) seq.Join(mr.sharedMaterial.DOVector(value.waveAmplitude, "_GAmplitude", duration));
+                        if (mr.sharedMaterial.HasProperty("_GFrequency")) seq.Join(mr.sharedMaterial.DOVector(value.waveFrequency, "_GFrequency", duration));
+                        if (mr.sharedMaterial.HasProperty("_GSteepness")) seq.Join(mr.sharedMaterial.DOVector(value.waveSteepness, "_GSteepness", duration));
+                        if (mr.sharedMaterial.HasProperty("_GSpeed")) seq.Join(mr.sharedMaterial.DOVector(value.waveSpeed, "_GSpeed", duration));
+                        if (mr.sharedMaterial.HasProperty("_GDirectionAB")) seq.Join(mr.sharedMaterial.DOVector(value.waveDirectionAB, "_GDirectionAB", duration));
+                        if (mr.sharedMaterial.HasProperty("_GDirectionCD")) seq.Join(mr.sharedMaterial.DOVector(value.waveDirectionCD, "_GDirectionCD", duration));
+                    }
                 }
+                //Material mat = ActiveStage.GetComponent<UnityStandardAssets.Water.WaterBase>().sharedMaterial;
+                
                 
                 /*
                 MeshRenderer[] meshs = ActiveStage.GetComponentsInChildren<MeshRenderer>();
@@ -1700,7 +1714,7 @@ namespace UserHandleSpace
 
             editStage.terrainData.SetHeightsDelayLOD(0, 0, heights);
 
-            Debug.Log(editStage.terrainData.terrainLayers[0].diffuseTexture);
+            //Debug.Log(editStage.terrainData.terrainLayers[0].diffuseTexture);
             float[,,] alphamaps = editStage.terrainData.GetAlphamaps(0, 0, editStage.terrainData.alphamapResolution, editStage.terrainData.alphamapResolution);
             alphamaps[OFFSET_Z + 1, OFFSET_X + 1, 0] = 0.5f;
             alphamaps[OFFSET_Z + 1, OFFSET_X + 1, 2] = 0.5f;
@@ -1713,7 +1727,7 @@ namespace UserHandleSpace
             alphamaps[OFFSET_Z + 1, OFFSET_X - 1, 3] = 2f;
             editStage.terrainData.SetAlphamaps(0, 0, alphamaps);
 
-            Debug.Log(editStage.terrainData.detailPrototypes.Length);
+            //Debug.Log(editStage.terrainData.detailPrototypes.Length);
             int [,] details = editStage.terrainData.GetDetailLayer(0, 0, editStage.terrainData.detailResolution, editStage.terrainData.detailResolution, 0);
             details[editStage.terrainData.detailHeight/2 + 1, editStage.terrainData.detailWidth/2 + 1] = 100;
             editStage.terrainData.SetDetailLayer(0, 0, 0, details);

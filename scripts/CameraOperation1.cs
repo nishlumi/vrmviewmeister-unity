@@ -472,13 +472,16 @@ public class CameraOperation1 : MonoBehaviour
             NativeAnimationAvatar nav = manim.currentProject.casts[i];
             if ((nav.avatar != null) && (nav.avatar.name == param))
             {
+                ResetCameraFromOuter();
+
                 Animator animator = nav.avatar.GetComponent<Animator>();
-                Vector3 newpos = new Vector3(nav.avatar.transform.position.x, nav.avatar.transform.position.y + 2f, nav.avatar.transform.position.z);
-                targetObject.transform.DOMove(newpos, 0.2f);
+                Vector3 newpos = new Vector3(nav.avatar.transform.position.x, nav.avatar.transform.position.y, nav.avatar.transform.position.z);
+                mainCamera.transform.position = newpos;
+                mainCamera.transform.position = new Vector3(newpos.x, newpos.y, newpos.z + (-1 * manim.cfg_dist_cam2view));
+
+                targetObject.transform.position = newpos;
                 targetObject.transform.rotation = mainCamera.transform.rotation;
 
-                mainCamera.transform.position = newpos;
-                mainCamera.transform.position = new Vector3(newpos.x, newpos.y, newpos.z + -1 * manim.cfg_dist_cam2view);
 
 
                 if (nav.type == AF_TARGETTYPE.VRM)

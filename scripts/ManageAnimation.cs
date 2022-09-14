@@ -2194,7 +2194,8 @@ namespace UserHandleSpace
                 animateFlow.SetEase(frame.ease);
 
                 //---moving data loop for 1 avatar
-                for (int i = frame.movingData.Count - 1; i >= 0; i--)
+                //for (int i = frame.movingData.Count - 1; i >= 0; i--)
+                for (int i = 0; i < frame.movingData.Count; i++)
                 {
                     AnimationTargetParts movedata = frame.movingData[i];
 

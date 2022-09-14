@@ -631,11 +631,13 @@ namespace UserHandleSpace
             {
                 LeftHandCtrl.ResetPose();
                 LeftHandCtrl.SetPose(posetype, value);
+                LeftCurrentHand = LeftHandCtrl.currentPose;
             }
             else
             {
                 RightHandCtrl.ResetPose();
                 RightHandCtrl.SetPose(posetype, value);
+                RightCurrentHand = RightHandCtrl.currentPose;
             }
         }
         public void SetBackupHandPosing(string hand, int currentpose, float handvalue, AvatarFingerForHPC hpc)
