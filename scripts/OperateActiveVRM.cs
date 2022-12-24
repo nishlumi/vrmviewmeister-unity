@@ -58,6 +58,8 @@ namespace UserHandleSpace
 
         private List<GameObject> HasAvatarList;
 
+        public TMPro.TextMeshProUGUI KeyObjGlobalLocal;
+
 
         // Start is called before the first frame update
         void Start()
@@ -94,7 +96,7 @@ namespace UserHandleSpace
                 if (ActiveAvatar != null)
                 {
                     akeyo.SetSpeed(manim.cfg_keymove_speed_rot, manim.cfg_keymove_speed_trans);
-                    akeyo.CallKeyOperation(ActiveIKHandle);
+                    akeyo.CallKeyOperation(ActiveIKHandle, KeyObjGlobalLocal);
                 }
             }
         }

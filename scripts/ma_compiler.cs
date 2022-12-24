@@ -479,7 +479,7 @@ namespace UserHandleSpace
                             }
                         }
                     }
-
+                    
                     { //---Transform for IK
 
                         //---for blendable: get information of previous frame
@@ -528,7 +528,7 @@ namespace UserHandleSpace
                                 int vbone = (int)movedata.vrmBone;
 
                                 Vector3 repos = movedata.position;
-                                
+
                                 /*repos = CalculateDifferenceInHeight(
                                     curList[vbone],
                                     frame.useBodyInfo == UseBodyInfoType.TimelineCharacter ? targetObjects.bodyInfoList[vbone] : curList[vbone],
@@ -536,7 +536,15 @@ namespace UserHandleSpace
                                 );*/
 
                                 //---another version: Multiple height diff percentage to the pose value.
-                                repos = CalculateDifferenceByHeight(naa.bodyHeight, targetObjects.bodyHeight, movedata.position, movedata.vrmBone);
+                                /*if ((movedata.vrmBone == ParseIKBoneType.LeftLeg) || (movedata.vrmBone == ParseIKBoneType.RightLeg))
+                                { //---left and right leg(foot) is not change difference of the height. (as start position)
+                                    repos = movedata.position;
+                                }
+                                else*/
+                                {
+                                    repos = CalculateDifferenceByHeight(naa.bodyHeight, targetObjects.bodyHeight, movedata.position, movedata.vrmBone, 1, 1, 1);
+                                }
+                                
 
                                 //---for blendable
                                 if (options.isExecuteForDOTween == 1) seq.Join(realObject.transform.DOLocalMove(repos, frame.duration));
@@ -816,9 +824,11 @@ namespace UserHandleSpace
             if (movedata.animationType == AF_MOVETYPE.BlendShape)
             {
                 //OperateLoadedVRM mainface = naa.avatar.GetComponent<OperateLoadedVRM>();
-                SkinnedMeshRenderer face = ovrm.GetBlendShapeTarget();
+                //SkinnedMeshRenderer face = ovrm.GetBlendShapeTarget();
+                List<SkinnedMeshRenderer> facelist = ovrm.GetBlendShapeTargets();
+
                 VRMBlendShapeProxy prox = naa.avatar.GetComponent<VRMBlendShapeProxy>();
-                int maxcnt = face.sharedMesh.blendShapeCount;
+                //int maxcnt = face.sharedMesh.blendShapeCount;
                 foreach (BasicStringFloatList val in movedata.blendshapes)
                 {
                     float weight = val.value;
@@ -849,21 +859,31 @@ namespace UserHandleSpace
                     else
                     { //---from SkinnedMeshRenderer
                         string hitName = "";
-                        for (int chki = 0; chki < maxcnt; chki++)
+                        /*for (int chki = 0; chki < maxcnt; chki++)
                         {
                             if ((face.sharedMesh.GetBlendShapeName(chki) + "$").Contains(val.text + "$"))
                             {
                                 hitName = face.sharedMesh.GetBlendShapeName(chki);
                                 break;
                             }
-                        }
+                        }*/
 
-                        int bindex = face.sharedMesh.GetBlendShapeIndex(hitName);
+                        int bindex = -1; //face.sharedMesh.GetBlendShapeIndex(hitName);
                         //if (bindex > -1) face.SetBlendShapeWeight(bindex, weight);
+                        foreach (SkinnedMeshRenderer mesh in facelist)
+                        {
+                            bindex = ovrm.getAvatarBlendShapeIndex(mesh, val.text);
+                            if (bindex > -1)
+                            {
+                                hitName = val.text;
+                                break;
+                            }
+                        }
 
                         if (bindex > -1)
                         {
-                            if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => face.GetBlendShapeWeight(bindex), x => face.SetBlendShapeWeight(bindex, x), weight, frame.duration));
+                            //if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => face.GetBlendShapeWeight(bindex), x => face.SetBlendShapeWeight(bindex, x), weight, frame.duration));
+                            if (options.isExecuteForDOTween == 1) seq = ovrm.AnimationBlendShape(seq, val.text, weight, frame.duration);
                             else ovrm.changeAvatarBlendShapeByName(val.text, val.value);  //face.SetBlendShapeWeight(bindex, weight);
                                                                                           //---write as backup to Loaded setting.
                             ovrm.SetBlendShapeToBackup(hitName, weight);
@@ -2192,7 +2212,7 @@ namespace UserHandleSpace
 
         }
         /// <summary>
-        /// 
+        /// To change frame position 
         /// </summary>
         /// <param name="param">csv string - [0] avatar id, [1] avatar type, [2] old frame index, [3] new frame index</param>
         public void ChangeFramePosition(string param)
@@ -2250,6 +2270,101 @@ namespace UserHandleSpace
             //---returning value is an index of the Array ( not frame number )
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveIntVal(ret);
+#endif
+        }
+
+        /// <summary>
+        /// To insert frame. move previous/next frame position.
+        /// </summary>
+        /// <param name="param">csv string - [0] base frame index, [1] insert number, [2] insertion type (r - to right)</param>
+        public void InsertFrameDuring(string param)
+        {
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
+            string ret = "";
+
+            string[] prm = param.Split(',');
+            int newindex = int.TryParse(prm[0], out newindex) ? newindex : -1;
+            int insertCount = int.TryParse(prm[1], out insertCount) ? insertCount : 0;
+            string directiontype = prm[2] == "" ? "r" : prm[2]; //default is to right.
+
+            currentProject.timeline.characters.ForEach(chara =>
+            {
+                if (newindex > -1)
+                {
+                    for (int i = 0; i < chara.frames.Count; i++)
+                    {
+                        NativeAnimationFrame naf = chara.frames[i];
+                        if (naf.index >= newindex)
+                        {
+                            if (directiontype == "r")
+                            {
+                                naf.index += insertCount;
+                                naf.finalizeIndex += insertCount;
+                            }
+
+                        }
+                    }
+                }
+                
+            });
+            currentProject.timelineFrameLength += insertCount;
+            ret = newindex.ToString() + "," + insertCount.ToString();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+        /// <summary>
+        /// To delete frame. move next frame to left.
+        /// </summary>
+        /// <param name="param">csv string - [0] base frame index, [1] insert number</param>
+        public void DeleteFrame(string param)
+        {
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
+            string ret = "";
+
+            string[] prm = param.Split(',');
+            int newindex = int.TryParse(prm[0], out newindex) ? newindex : -1;
+            int deleteCount = int.TryParse(prm[1], out deleteCount) ? deleteCount : 0;
+            
+            currentProject.timeline.characters.ForEach(chara => 
+            {
+                int justhit = -1;
+                if (newindex > -1)
+                {
+                    for (int i = 0; i < chara.frames.Count; i++)
+                    {
+                        NativeAnimationFrame naf = chara.frames[i];
+                        if (naf.index == newindex)
+                        {
+                            justhit = i;
+                        }
+                        else if (naf.index > newindex)
+                        {
+                            naf.index -= deleteCount;
+                            naf.finalizeIndex -= deleteCount;
+                        }
+                    }
+                    if (justhit > -1)
+                    {
+                        chara.frames.RemoveAt(justhit);
+                    }
+                }
+            });
+            currentProject.timelineFrameLength -= deleteCount;
+
+            ret = newindex.ToString() + "," + deleteCount.ToString();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
 #endif
         }
         public void UnregisterFrame(string param)
@@ -2715,13 +2830,19 @@ namespace UserHandleSpace
                 atblendshape.vrmBone = ParseIKBoneType.BlendShape;
                 atblendshape.isBlendShape = 1;
 
-                //---From SkinnedMeshRenderer
-                int bscnt = face.sharedMesh.blendShapeCount;
+                //---From SkinnedMeshRenderer: newly: [mesh object name]:[blend shape name]
+                /*int bscnt = face.sharedMesh.blendShapeCount;
                 for (int i = 0; i < bscnt; i++)
                 {
                     atblendshape.blendshapes.Add(new BasicStringFloatList(face.sharedMesh.GetBlendShapeName(i), face.GetBlendShapeWeight(i)));
 
+                }*/
+                List<BasicStringFloatList> skinnedlist = ovrm.ListAvatarBlendShapeList();
+                foreach (BasicStringFloatList bsf in skinnedlist)
+                {
+                    atblendshape.blendshapes.Add(bsf);
                 }
+
                 //---From BlendShape Proxy (Key has always "PROX:" - prefix.)
                 List<BasicStringFloatList> proxlist =  ovrm.ListProxyBlendShape();
                 foreach (BasicStringFloatList bsf in proxlist)

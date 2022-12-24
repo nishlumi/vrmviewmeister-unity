@@ -34,6 +34,8 @@ namespace UserHandleSpace
         private List<string> bkuplist;
         private BasicNamedFloatList bkupProcessingList;
 
+        private ManageAnimation manim;
+
         private void Awake()
         {
             ppvol = PostProcessingArea.GetComponent<PostProcessVolume>();
@@ -44,7 +46,7 @@ namespace UserHandleSpace
         // Start is called before the first frame update
         void Start()
         {
-            ManageAnimation mana = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+            manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
             //mana.FirstAddFixedAvatar(gameObject.name, gameObject, gameObject, "SystemEffect", AF_TARGETTYPE.SystemEffect);
 
             bkuplist = new List<string>();
@@ -238,18 +240,57 @@ namespace UserHandleSpace
             }
             else if (effectName.ToLower() == "fxaa")
             {
-                PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
-                ppl.antialiasingMode = ena ? PostProcessLayer.Antialiasing.FastApproximateAntialiasing : PostProcessLayer.Antialiasing.None;
+                List<PostProcessLayer> arr_ppl = new List<PostProcessLayer>();
+                arr_ppl.Add(FrontCamera.GetComponent<PostProcessLayer>());
+
+                List<NativeAnimationAvatar> navs = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
+                navs.ForEach(nav =>
+                {
+                    arr_ppl.Add(nav.avatar.GetComponent<PostProcessLayer>());
+                });
+
+                //PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
+                arr_ppl.ForEach(ppl =>
+                {
+                    ppl.antialiasingMode = ena ? PostProcessLayer.Antialiasing.FastApproximateAntialiasing : PostProcessLayer.Antialiasing.None;
+                });
+                
             }
             else if (effectName.ToLower() == "smaa")
             {
-                PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
-                ppl.antialiasingMode = ena ? PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing : PostProcessLayer.Antialiasing.None;
+                List<PostProcessLayer> arr_ppl = new List<PostProcessLayer>();
+                arr_ppl.Add(FrontCamera.GetComponent<PostProcessLayer>());
+
+                List<NativeAnimationAvatar> navs = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
+                navs.ForEach(nav =>
+                {
+                    arr_ppl.Add(nav.avatar.GetComponent<PostProcessLayer>());
+                });
+
+                //PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
+                arr_ppl.ForEach(ppl =>
+                {
+                    ppl.antialiasingMode = ena ? PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing : PostProcessLayer.Antialiasing.None;
+                });
+
             }
             else if (effectName.ToLower() == "taa")
             {
-                PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
-                ppl.antialiasingMode = ena ? PostProcessLayer.Antialiasing.TemporalAntialiasing : PostProcessLayer.Antialiasing.None;
+                List<PostProcessLayer> arr_ppl = new List<PostProcessLayer>();
+                arr_ppl.Add(FrontCamera.GetComponent<PostProcessLayer>());
+
+                List<NativeAnimationAvatar> navs = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
+                navs.ForEach(nav =>
+                {
+                    arr_ppl.Add(nav.avatar.GetComponent<PostProcessLayer>());
+                });
+
+                //PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
+                arr_ppl.ForEach(ppl =>
+                {
+                    ppl.antialiasingMode = ena ? PostProcessLayer.Antialiasing.TemporalAntialiasing : PostProcessLayer.Antialiasing.None;
+                });
+                
             }
 
         }
@@ -506,32 +547,71 @@ namespace UserHandleSpace
             }
             else if (effectName.ToLower() == "fxaa")
             {
-                PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
-                ppl.antialiasingMode = isEnable ? PostProcessLayer.Antialiasing.FastApproximateAntialiasing : PostProcessLayer.Antialiasing.None;
-                if (isEnable)
+                List<PostProcessLayer> arr_ppl = new List<PostProcessLayer>();
+                arr_ppl.Add(FrontCamera.GetComponent<PostProcessLayer>());
+
+                List<NativeAnimationAvatar> navs = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
+                navs.ForEach(nav =>
                 {
-                    ppl.fastApproximateAntialiasing.fastMode = values[0] == 1f ? true : false;
-                }
+                    arr_ppl.Add(nav.avatar.GetComponent<PostProcessLayer>());
+                });
+
+                //PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
+                arr_ppl.ForEach(ppl =>
+                {
+                    ppl.antialiasingMode = isEnable ? PostProcessLayer.Antialiasing.FastApproximateAntialiasing : PostProcessLayer.Antialiasing.None;
+                    if (isEnable)
+                    {
+                        ppl.fastApproximateAntialiasing.fastMode = values[0] == 1f ? true : false;
+                    }
+                });
+                
 
             }
             else if (effectName.ToLower() == "smaa")
             {
-                PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
-                ppl.antialiasingMode = isEnable ? PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing : PostProcessLayer.Antialiasing.None;
-                if (isEnable)
+                List<PostProcessLayer> arr_ppl = new List<PostProcessLayer>();
+                arr_ppl.Add(FrontCamera.GetComponent<PostProcessLayer>());
+
+                List<NativeAnimationAvatar> navs = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
+                navs.ForEach(nav =>
                 {
-                    ppl.subpixelMorphologicalAntialiasing.quality = (SubpixelMorphologicalAntialiasing.Quality)values[0];
-                }
+                    arr_ppl.Add(nav.avatar.GetComponent<PostProcessLayer>());
+                });
+
+                //PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
+                arr_ppl.ForEach(ppl =>
+                {
+                    ppl.antialiasingMode = isEnable ? PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing : PostProcessLayer.Antialiasing.None;
+                    if (isEnable)
+                    {
+                        ppl.subpixelMorphologicalAntialiasing.quality = (SubpixelMorphologicalAntialiasing.Quality)values[0];
+                    }
+                });
+                
 
             }
             else if (effectName.ToLower() == "taa")
             {
-                PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
-                ppl.antialiasingMode = isEnable ? PostProcessLayer.Antialiasing.TemporalAntialiasing : PostProcessLayer.Antialiasing.None;
-                if (isEnable)
+                List<PostProcessLayer> arr_ppl = new List<PostProcessLayer>();
+                arr_ppl.Add(FrontCamera.GetComponent<PostProcessLayer>());
+
+                List<NativeAnimationAvatar> navs = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
+                navs.ForEach(nav =>
                 {
-                    ppl.temporalAntialiasing.sharpness = values[0];
-                }
+                    arr_ppl.Add(nav.avatar.GetComponent<PostProcessLayer>());
+                });
+
+                //PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
+                arr_ppl.ForEach(ppl =>
+                {
+                    ppl.antialiasingMode = isEnable ? PostProcessLayer.Antialiasing.TemporalAntialiasing : PostProcessLayer.Antialiasing.None;
+                    if (isEnable)
+                    {
+                        ppl.temporalAntialiasing.sharpness = values[0];
+                    }
+                });
+                
 
             }
 
@@ -824,43 +904,58 @@ namespace UserHandleSpace
         {
             string[] prm = param.Split(',');
             string name = prm[0];
-            
-            PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
-            if (ppl.antialiasingMode == PostProcessLayer.Antialiasing.FastApproximateAntialiasing)
-            {
-                if (name.ToLower() == "fastmode")
-                {
-                    ppl.fastApproximateAntialiasing.fastMode = prm[2] == "1" ? true : false;
-                }
-                else if (name.ToLower () == "keepalpha")
-                {
-                    ppl.fastApproximateAntialiasing.keepAlpha = prm[2] == "1" ? true : false;
-                }
-            }
-            else if (ppl.antialiasingMode == PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing)
-            {
-                float v = float.TryParse(prm[1], out v) ? v : 0f;
-                ppl.subpixelMorphologicalAntialiasing.quality = (SubpixelMorphologicalAntialiasing.Quality)v;
 
-            }
-            else if (ppl.antialiasingMode == PostProcessLayer.Antialiasing.TemporalAntialiasing)
+            List<PostProcessLayer> arr_ppl = new List<PostProcessLayer>();
+            arr_ppl.Add(FrontCamera.GetComponent<PostProcessLayer>());
+
+            List <NativeAnimationAvatar> navs =  manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
+            navs.ForEach(nav =>
             {
-                float v = float.TryParse(prm[1], out v) ? v : 0f;
-                if (name.ToLower() == "sharpness")
+                arr_ppl.Add(nav.avatar.GetComponent<PostProcessLayer>());
+            });
+
+            arr_ppl.ForEach(ppl =>
+            {
+                //PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
+                if (ppl.antialiasingMode == PostProcessLayer.Antialiasing.FastApproximateAntialiasing)
                 {
-                    ppl.temporalAntialiasing.sharpness = v;
+                    if (name.ToLower() == "fastmode")
+                    {
+                        ppl.fastApproximateAntialiasing.fastMode = prm[2] == "1" ? true : false;
+                    }
+                    else if (name.ToLower() == "keepalpha")
+                    {
+                        ppl.fastApproximateAntialiasing.keepAlpha = prm[2] == "1" ? true : false;
+                    }
                 }
-            }
+                else if (ppl.antialiasingMode == PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing)
+                {
+                    float v = float.TryParse(prm[1], out v) ? v : 0f;
+                    ppl.subpixelMorphologicalAntialiasing.quality = (SubpixelMorphologicalAntialiasing.Quality)v;
+
+                }
+                else if (ppl.antialiasingMode == PostProcessLayer.Antialiasing.TemporalAntialiasing)
+                {
+                    float v = float.TryParse(prm[1], out v) ? v : 0f;
+                    if (name.ToLower() == "sharpness")
+                    {
+                        ppl.temporalAntialiasing.sharpness = v;
+                    }
+                }
+            });
+
+            
         }
         public float GetAntiAlias(string param)
         {
             float ret = 0f;
-            PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
 
             string[] prm = param.Split(',');
             string name = prm[0];
             bool is_contacthtml = prm[1] == "1" ? true : false;
 
+
+            PostProcessLayer ppl = FrontCamera.GetComponent<PostProcessLayer>();
             if (ppl.antialiasingMode == PostProcessLayer.Antialiasing.FastApproximateAntialiasing)
             {
                 if (name.ToLower() == "fastmode")

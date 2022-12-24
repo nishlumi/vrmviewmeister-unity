@@ -16,6 +16,7 @@ using VRMShaders;
 
 using UserHandleSpace;
 using UserUISpace;
+using LumisIkApp;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -67,11 +68,11 @@ namespace UserVRMSpace
 
         public AllowedUser AllowedUser;
 
-        public UssageLicense ViolentUssage;
+        public int ViolentUssage;
 
-        public UssageLicense SexualUssage;
+        public int SexualUssage;
 
-        public UssageLicense CommercialUssage;
+        public int CommercialUssage;
 
         public string OtherPermissionUrl;
 
@@ -79,6 +80,16 @@ namespace UserVRMSpace
 
         public string OtherLicenseUrl;
 
+        //---for VRM1.0
+        public int PoliticalUssage;
+
+        public int AntiSocialUssage;
+
+        public string useCreditNotation;
+
+        public int AllowRedistribution;
+
+        public int AllowModification;
 
         public int isDuplicate;
         //public AnimationTargetParts motion = new AnimationTargetParts();
@@ -174,6 +185,9 @@ namespace UserVRMSpace
         //For file browser
         [DllImport("__Internal")]
         private static extern void FileImportCaptureClick();
+
+        [DllImport("__Internal")]
+        private static extern void sendObjectError(string type, string info);
 
         [DllImport("__Internal")]
         private static extern void sendVRMInfo(byte[] thumbnail, int size, string type, string info, string licenseType, string height, string blendShape);
@@ -491,6 +505,14 @@ namespace UserVRMSpace
             Addressables.Release(dHandle);
 
         }
+        public void CheckUniVRMVersionFromOuter()
+        {
+            string ret = "1x";
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+
         //=============================================================================================================================
         //  VRM functions
         //=============================================================================================================================
@@ -636,137 +658,162 @@ namespace UserVRMSpace
         {
             //PreviewLoad066_VRM(data);
             //PreviewLoad08x_VRM(data);
-            await PreviewLoad09x_VRM(data);
+            RuntimeGltfInstance vinst = await PreviewLoad09x_VRM(data);
 
-
-            //yield return null;
-
-            pendingInstance.gameObject.name = managa.CheckAndSetAvatarId("vrm_", pendingInstance.gameObject.GetInstanceID());
-            pendingInstance.gameObject.tag = "Player";
-            pendingInstance.gameObject.layer = LayerMask.NameToLayer("Player");
-
-            //Debug.Log("pendingInstance.gameObject.name=" + pendingInstance.gameObject.name);
-
-            ManageAvatarTransform mat = pendingInstance.gameObject.AddComponent<ManageAvatarTransform>();
-            List<GameObject> meshcnt = mat.CheckSkinnedMeshAvailable();
-            GameObject mat_f = null;
-            GameObject mat_b = null;
-            if (meshcnt.Count == 1)
+            if (vinst == null)
             {
-                mat_b = meshcnt[0];
-                //---Irregular VRM (ex: Abiss Horizon, etc)
-                mat_b.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
+                //---return VRM Meta information to WebGL
+#if !UNITY_EDITOR && UNITY_WEBGL
+            //Debug.Log("incolor="+incolor.Length);
+            if (isBackHTML) sendObjectError("ERROR","VRM\tloaderror");
+#endif
             }
             else
             {
-                //---VRM made by VRoid Studio etc
-                mat_f = mat.GetFaceMesh();
-                mat_b = mat.GetBodyMesh();
-                GameObject mat_h = mat.GetHairMesh();
-                /*
-                if (mat_f != null) mat_f.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
-                if (mat_b != null) mat_b.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
-                if (mat_h != null) mat_h.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
-                */
-            }
-            
+                //yield return null;
 
+                pendingInstance.gameObject.name = managa.CheckAndSetAvatarId("vrm_", pendingInstance.gameObject.GetInstanceID());
+                pendingInstance.gameObject.tag = "Player";
+                pendingInstance.gameObject.layer = LayerMask.NameToLayer("Player");
 
-            //--- load thumbnail
+                //Debug.Log("pendingInstance.gameObject.name=" + pendingInstance.gameObject.name);
 
-
-            //Animator conanime = pendingInstance.gameObject.GetComponent<Animator>();
-
-
-            //---check the height
-            //Transform thead = conanime.GetBoneTransform(HumanBodyBones.Head);
-            //Transform tfoot = conanime.GetBoneTransform(HumanBodyBones.RightFoot);
-            //float centery = context.Root.GetComponent<SkinnedMeshRenderer>().bounds.center.y;
-
-            //Debug.Log("Height=" + (thead.position.y - tfoot.position.y));
-            //Debug.Log(thead.position);
-            //this.thead_position = thead.position;
-            //this.thead_size = thead.lossyScale;
-
-            //Vector3 bodyBounds = new Vector3(0, 0, 0);
-            double hei = 0;
-
-            //---get Mesh bounds
-            /*
-            System.Action<UniGLTF.MeshWithMaterials> callmesh1 = (n) =>
-            {
-                if (n.Mesh.name.IndexOf("Body") > -1)
+                ManageAvatarTransform mat = pendingInstance.gameObject.AddComponent<ManageAvatarTransform>();
+                List<GameObject> meshcnt = mat.CheckSkinnedMeshAvailable();
+                GameObject mat_f = null;
+                GameObject mat_b = null;
+                if (meshcnt.Count == 1)
                 {
-                    hei += n.Mesh.bounds.size.y;   //System.Math.Round(n.Mesh.bounds.center.y * 2, 2, System.MidpointRounding.AwayFromZero);
-                    bodyBounds.x = n.Mesh.bounds.size.x;
-                    bodyBounds.y += n.Mesh.bounds.size.y;
-                    bodyBounds.z = n.Mesh.bounds.size.z;
-
-
+                    mat_b = meshcnt[0];
+                    //---Irregular VRM (ex: Abiss Horizon, etc)
+                    mat_b.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
                 }
-            };
-            pendingContext.Meshes.ForEach(callmesh1);*/
-            //---Body Mesh own
-            SkinnedMeshRenderer mat_b_mesh = mat_b.GetComponent<SkinnedMeshRenderer>();
-            SkinnedMeshRenderer mat_f_mesh = mat_f.GetComponent<SkinnedMeshRenderer>();
-
-            //hei = mat_b_mesh.bounds.size.y;
-            hei = mat_f_mesh.bounds.max.y;
-
-            hei = System.Math.Round(hei, 2, System.MidpointRounding.AwayFromZero);
-            string strHeight = (hei * 100).ToString() + " cm";
-            byte[] incolor = pendingVRMmeta.Thumbnail.EncodeToPNG();
-
-            VRMObjectInformation vrmoi = new VRMObjectInformation();
-
-            vrmoi.Title = pendingVRMmeta.Title;
-            vrmoi.Author = pendingVRMmeta.Author;
-            vrmoi.Version = pendingVRMmeta.Version;
-            vrmoi.ContactInformation = pendingVRMmeta.ContactInformation;
-            vrmoi.ExporterVersion = pendingVRMmeta.ExporterVersion;
-            vrmoi.Reference = pendingVRMmeta.Reference;
-            vrmoi.Thumbnail = pendingVRMmeta.Thumbnail;
-            vrmoi.LicenseType = pendingVRMmeta.LicenseType;
-            vrmoi.OtherLicenseUrl = pendingVRMmeta.OtherLicenseUrl;
-            vrmoi.AllowedUser = pendingVRMmeta.AllowedUser;
-            vrmoi.ViolentUssage = pendingVRMmeta.ViolentUssage;
-            vrmoi.SexualUssage = pendingVRMmeta.SexualUssage;
-            vrmoi.CommercialUssage = pendingVRMmeta.CommercialUssage;
-            vrmoi.id = pendingInstance.gameObject.name;
-            vrmoi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.VRM);
-
-            string json = JsonUtility.ToJson(vrmoi);
-
-            //---get BlendShapes
-            SkinnedMeshRenderer aface = null;
-            string blendShapeList = "";
-            
-            if (mat_f != null)
-            {
-                aface = mat_f.GetComponent<SkinnedMeshRenderer>();
-                if (aface != null)
+                else
                 {
-                    List<string> ret = new List<string>();
-                    int bscnt = aface.sharedMesh.blendShapeCount;
-                    for (int i = 0; i < bscnt; i++)
+                    //---VRM made by VRoid Studio etc
+                    mat_f = mat.GetFaceMesh();
+                    mat_b = mat.GetBodyMesh();
+                    GameObject mat_h = mat.GetHairMesh();
+                    /*
+                    if (mat_f != null) mat_f.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
+                    if (mat_b != null) mat_b.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
+                    if (mat_h != null) mat_h.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
+                    */
+                }
+
+
+
+                //--- load thumbnail
+
+
+                //Animator conanime = pendingInstance.gameObject.GetComponent<Animator>();
+
+
+                //---check the height
+                //Transform thead = conanime.GetBoneTransform(HumanBodyBones.Head);
+                //Transform tfoot = conanime.GetBoneTransform(HumanBodyBones.RightFoot);
+                //float centery = context.Root.GetComponent<SkinnedMeshRenderer>().bounds.center.y;
+
+                //Debug.Log("Height=" + (thead.position.y - tfoot.position.y));
+                //Debug.Log(thead.position);
+                //this.thead_position = thead.position;
+                //this.thead_size = thead.lossyScale;
+
+                //Vector3 bodyBounds = new Vector3(0, 0, 0);
+                double hei = 0;
+
+                //---get Mesh bounds
+                /*
+                System.Action<UniGLTF.MeshWithMaterials> callmesh1 = (n) =>
+                {
+                    if (n.Mesh.name.IndexOf("Body") > -1)
                     {
-                        ret.Add(aface.sharedMesh.GetBlendShapeName(i) + "=" + aface.GetBlendShapeWeight(i));
+                        hei += n.Mesh.bounds.size.y;   //System.Math.Round(n.Mesh.bounds.center.y * 2, 2, System.MidpointRounding.AwayFromZero);
+                        bodyBounds.x = n.Mesh.bounds.size.x;
+                        bodyBounds.y += n.Mesh.bounds.size.y;
+                        bodyBounds.z = n.Mesh.bounds.size.z;
+
 
                     }
-                    blendShapeList = string.Join(",", ret.ToArray());
+                };
+                pendingContext.Meshes.ForEach(callmesh1);*/
+                //---Body Mesh own
+                SkinnedMeshRenderer mat_b_mesh = mat_b.GetComponent<SkinnedMeshRenderer>();
+                SkinnedMeshRenderer mat_f_mesh = mat_f.GetComponent<SkinnedMeshRenderer>();
 
+                //hei = mat_b_mesh.bounds.size.y;
+                hei = mat_f_mesh.bounds.max.y;
+
+                hei = System.Math.Round(hei, 2, System.MidpointRounding.AwayFromZero);
+                string strHeight = (hei * 100).ToString() + " cm";
+                byte[] incolor = pendingVRMmeta.Thumbnail.EncodeToPNG();
+
+                VRMObjectInformation vrmoi = new VRMObjectInformation();
+
+                vrmoi.Title = pendingVRMmeta.Title;
+                vrmoi.Author = pendingVRMmeta.Author;
+                vrmoi.Version = pendingVRMmeta.Version;
+                vrmoi.ContactInformation = pendingVRMmeta.ContactInformation;
+                vrmoi.ExporterVersion = pendingVRMmeta.ExporterVersion;
+                vrmoi.Reference = pendingVRMmeta.Reference;
+                vrmoi.Thumbnail = pendingVRMmeta.Thumbnail;
+                vrmoi.LicenseType = pendingVRMmeta.LicenseType;
+                vrmoi.OtherLicenseUrl = pendingVRMmeta.OtherLicenseUrl;
+                vrmoi.AllowedUser = pendingVRMmeta.AllowedUser;
+                vrmoi.ViolentUssage = (int)pendingVRMmeta.ViolentUssage;
+                vrmoi.SexualUssage = (int)pendingVRMmeta.SexualUssage;
+                vrmoi.CommercialUssage = (int)pendingVRMmeta.CommercialUssage;
+                //---for 1.x
+                if (pendingVRMmeta.LicenseType == LicenseType.Redistribution_Prohibited)
+                {
+                    vrmoi.AllowRedistribution = 0;
                 }
-            }
+                else
+                {
+                    vrmoi.AllowRedistribution = 1;
+                }
+                vrmoi.PoliticalUssage = 0;
+                vrmoi.AntiSocialUssage = 0;
+                vrmoi.useCreditNotation = "undefined";
+                vrmoi.AllowModification = 0;
 
-            //---return VRM Meta information to WebGL
+                vrmoi.id = pendingInstance.gameObject.name;
+                vrmoi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.VRM);
+
+                string json = JsonUtility.ToJson(vrmoi);
+
+                //---get BlendShapes
+                SkinnedMeshRenderer aface = null;
+                string blendShapeList = "";
+
+                if (mat_f != null)
+                {
+                    aface = mat_f.GetComponent<SkinnedMeshRenderer>();
+                    if (aface != null)
+                    {
+                        List<string> ret = new List<string>();
+                        int bscnt = aface.sharedMesh.blendShapeCount;
+                        for (int i = 0; i < bscnt; i++)
+                        {
+                            ret.Add(aface.sharedMesh.GetBlendShapeName(i) + "=" + aface.GetBlendShapeWeight(i));
+
+                        }
+                        blendShapeList = string.Join(",", ret.ToArray());
+
+                    }
+                }
+
+                //---return VRM Meta information to WebGL
 #if !UNITY_EDITOR && UNITY_WEBGL
             //Debug.Log("incolor="+incolor.Length);
             if (isBackHTML) sendVRMInfo(incolor, incolor.Length, "VRM", json, pendingVRMmeta.LicenseType.ToString(), strHeight, blendShapeList);
 #endif
 
-            //ScriptableObject.Destroy(vrmoi);
-            openingNative.baseInfo = vrmoi;
-            //Debug.Log("PreviewBody=" + vrmoi.Title);
+                //ScriptableObject.Destroy(vrmoi);
+                openingNative.baseInfo = vrmoi;
+                //Debug.Log("PreviewBody=" + vrmoi.Title);
+            }
+
         }
 
         public void CheckNormalizedVRM()
@@ -847,12 +894,10 @@ namespace UserVRMSpace
 
                 mat_b = mat.GetBodyMesh();
                 mat_b_mesh = mat_b.GetComponent<SkinnedMeshRenderer>();
-                //GameObject mat_h = mat.GetHairMesh();
-                //if (mat_f != null) mat_f.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
-                //if (mat_b != null) mat_b.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
-                //if (mat_h != null) mat_h.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
 
-                hei = mat_f_mesh.bounds.max.y;
+
+                //hei = mat_f_mesh.bounds.max.y;
+                hei = mat.GetMaximumHeightRenderer(meshcnt);
             }
 
             //context.ShowMeshes();
@@ -902,6 +947,7 @@ namespace UserVRMSpace
             olvrm.ListProxyBlendShape();
 
             bool useFullBodyIK = false; // configLab.GetIntVal("use_fullbody_bipedik") == 1 ? true : false;
+            bool useVVMIK = false;
 
             //---set up IK
 
@@ -936,25 +982,42 @@ namespace UserVRMSpace
             }
             else
             {
-                //---for Biped IK
-                ikparent = ikworld.GetComponent<OperateLoadedObj>().CreateBipedIKHandle(contextRoot);
-                vlook.Target = ikparent.transform.GetChild(0);
-                ikparent.GetComponent<UserGroundOperation>().relatedAvatar = contextRoot;
+                if (useVVMIK)
+                {
+                    //---for VVM IK
+                    ikparent = ikworld.GetComponent<OperateLoadedObj>().CreateVVMIKHandle(contextRoot);
+                    vlook.Target = ikparent.transform.GetChild(0);
+                    ikparent.GetComponent<UserGroundOperation>().relatedAvatar = contextRoot;
 
-                BipedIK bik = contextRoot.AddComponent<BipedIK>();
-                RootMotion.BipedReferences biref = new RootMotion.BipedReferences();
-                RootMotion.BipedReferences.AutoDetectReferences(ref biref, bik.transform, RootMotion.BipedReferences.AutoDetectParams.Default);
+                    RuntimeAnimatorController ruanim = Instantiate<RuntimeAnimatorController>((RuntimeAnimatorController)Resources.Load("vvmik_anicon"));
+                    conanime.runtimeAnimatorController = ruanim;
 
-                //bik.solvers.AssignReferences(biref);
-                bik.references = biref;
-                //bik.SetToDefaults();
-                //bik.references.eyes = new Transform[0];
+                    VvmIk vik = contextRoot.AddComponent<VvmIk>();
+                    SetupVVMIK(ikparent, conanime, vik, null, bodyBounds);
+                }
+                else
+                {
+                    //---for Biped IK
+                    ikparent = ikworld.GetComponent<OperateLoadedObj>().CreateBipedIKHandle(contextRoot);
+                    vlook.Target = ikparent.transform.GetChild(0);
+                    ikparent.GetComponent<UserGroundOperation>().relatedAvatar = contextRoot;
 
-                CCDIK cik = contextRoot.AddComponent<CCDIK>();
+                    BipedIK bik = contextRoot.AddComponent<BipedIK>();
+                    RootMotion.BipedReferences biref = new RootMotion.BipedReferences();
+                    RootMotion.BipedReferences.AutoDetectReferences(ref biref, bik.transform, RootMotion.BipedReferences.AutoDetectParams.Default);
+
+                    //bik.solvers.AssignReferences(biref);
+                    bik.references = biref;
+                    //bik.SetToDefaults();
+                    //bik.references.eyes = new Transform[0];
+
+                    CCDIK cik = contextRoot.AddComponent<CCDIK>();
 
 
-                //---set null for VRM Look At Head (Not use LookAt of BipedIK)
-                SetupBipedIK(ikparent, conanime, bik, cik, bodyBounds);
+                    //---set null for VRM Look At Head (Not use LookAt of BipedIK)
+                    SetupBipedIK(ikparent, conanime, bik, cik, bodyBounds);
+                }
+                
 
             }
             //---material
@@ -964,6 +1027,7 @@ namespace UserVRMSpace
             SetupHand(contextRoot, conanime);
             olvrm.SetRelateHandController();
             //olvrm.SetHandFingerMode("2");
+
 
 
             contextRoot.transform.rotation = Quaternion.Euler(new Vector3(0f, 0f, 0f));
@@ -1001,6 +1065,7 @@ namespace UserVRMSpace
             }
 
             pendingContext = null;
+
 
         }
 

@@ -2157,6 +2157,7 @@ namespace UserHandleSpace
             if (SingleMotionTargetRole != null)
             { //---overwrite an existed cast and frame actor(timeline)
                 NativeAnimationFrameActor naf = GetFrameActorFromRole(SingleMotionTargetRole.roleName, SingleMotionTargetRole.type);
+                NativeAnimationAvatar nav = GetCastInProject(SingleMotionTargetRole.roleName, SingleMotionTargetRole.type);
 
                 if (naf != null)
                 {
@@ -2171,6 +2172,7 @@ namespace UserHandleSpace
                     {
                         naf.blendShapeList.Add(item);
                     });
+                    //---sample avatar height --> frame actor height
                     Array.Copy(asm.bodyHeight, naf.bodyHeight, asm.bodyHeight.Length);
 
                     naf.bodyInfoList.Clear();
@@ -2212,9 +2214,13 @@ namespace UserHandleSpace
                             naf.frames.Add(naframe);
 
                             afa.frames.Add(aframe);
-                        }
-                        
+                        }   
                     }
+
+                    //---apply height difference with absorb to this avatar (VRM only)
+                    CalculateAllFrameForCurrent(nav, naf);
+                    //------update also the height of frame actor (NECCESARY): this avatar height --> frame actor height ( 1:1 )
+                    Array.Copy(nav.bodyHeight, naf.bodyHeight, nav.bodyHeight.Length);
 
                     ret = JsonUtility.ToJson(afa);
                 }

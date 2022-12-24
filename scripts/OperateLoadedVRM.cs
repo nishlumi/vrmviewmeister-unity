@@ -7,7 +7,7 @@ using UserHandleSpace;
 using RootMotion.FinalIK;
 using VRM;
 using DG.Tweening;
-
+using LumisIkApp;
 
 namespace UserHandleSpace
 {
@@ -36,6 +36,7 @@ namespace UserHandleSpace
         private Bounds bodyInfoTPose;
         private List<Vector3> bodyinfoList;
         private SkinnedMeshRenderer BSFace;
+        private List<SkinnedMeshRenderer> BSMeshs;
 
         public List<BasicStringFloatList> blendShapeList;
 
@@ -72,7 +73,8 @@ namespace UserHandleSpace
 
 
             SaveDefaultTransform(true, true);
-            SetActiveFace();
+            BSMeshs = new List<SkinnedMeshRenderer>();
+            //SetActiveFace();
 
             targetType = AF_TARGETTYPE.VRM;
 
@@ -87,6 +89,8 @@ namespace UserHandleSpace
             LeftFingerBkup = new AvatarFingerInHand();
             RightFingerBkup = new AvatarFingerInHand();
 
+            LeftFingerBackupHPC = new AvatarFingerForHPC();
+            RightFingerBackupHPC = new AvatarFingerForHPC();
         }
         void Start() 
         {
@@ -222,9 +226,11 @@ namespace UserHandleSpace
 
             BipedIK bik = transform.GetComponent<BipedIK>();
             CCDIK cik = transform.GetComponent<CCDIK>();
+            VvmIk vik = transform.GetComponent<VvmIk>();
 
             if (bik != null) bik.enabled = flag;
             if (cik != null) cik.enabled = flag;
+            if (vik != null) vik.enabled = flag;
         }
         public override void SetFixMoving(bool flag)
         {
@@ -304,23 +310,15 @@ namespace UserHandleSpace
         {
             BipedIK bik = gameObject.TryGetComponent<BipedIK>(out bik) ? bik : null;
             CCDIK cik = gameObject.TryGetComponent<CCDIK>(out cik) ? cik : null;
+            VvmIk vik = gameObject.TryGetComponent<VvmIk>(out vik) ? vik : null;
             LeftHandPoseController lhand = gameObject.TryGetComponent<LeftHandPoseController>(out lhand) ? lhand : null;
             RightHandPoseController rhand = gameObject.TryGetComponent<RightHandPoseController>(out rhand) ? rhand : null;
 
-            if (flag)
-            {
-                if (rhand != null) rhand.enabled = flag;
-                if (lhand != null) lhand.enabled = flag;
-                if (bik != null) bik.enabled = flag;
-                if (cik != null) cik.enabled = flag;
-            }
-            else
-            {
-                if (cik != null) cik.enabled = flag;
-                if (bik != null) bik.enabled = flag;
-                if (lhand != null) lhand.enabled = flag;
-                if (rhand != null) rhand.enabled = flag;
-            }
+            if (rhand != null) rhand.enabled = flag;
+            if (lhand != null) lhand.enabled = flag;
+            if (bik != null) bik.enabled = flag;
+            if (cik != null) cik.enabled = flag;
+            if (vik != null) vik.enabled = flag;
 
         }
 
@@ -339,13 +337,397 @@ namespace UserHandleSpace
             Transform leftfoot = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
             Transform rightfoot = animator.GetBoneTransform(HumanBodyBones.RightFoot);
 
-            leftlowerarm.GetComponent<RotationLimitHinge>().enabled = flag == 1 ? true : false;
-            rightlowerarm.GetComponent<RotationLimitHinge>().enabled = flag == 1 ? true : false;
-            leftlowerleg.GetComponent<RotationLimitHinge>().enabled = flag == 1 ? true : false;
-            rightlowerleg.GetComponent<RotationLimitHinge>().enabled = flag == 1 ? true : false;
-            leftfoot.GetComponent<RotationLimitHinge>().enabled = flag == 1 ? true : false;
-            rightfoot.GetComponent<RotationLimitHinge>().enabled = flag == 1 ? true : false;
+            if (leftlowerarm.GetComponent<RotationLimitHinge>() != null) leftlowerarm.GetComponent<RotationLimitHinge>().enabled = flag == 1 ? true : false;
+            if (rightlowerarm.GetComponent<RotationLimitHinge>() != null) rightlowerarm.GetComponent<RotationLimitHinge>().enabled = flag == 1 ? true : false;
+            if (leftlowerleg.GetComponent<RotationLimitHinge>() != null) leftlowerleg.GetComponent<RotationLimitHinge>().enabled = flag == 1 ? true : false;
+            if (rightlowerleg.GetComponent<RotationLimitHinge>() != null) rightlowerleg.GetComponent<RotationLimitHinge>().enabled = flag == 1 ? true : false;
+            if (leftfoot.GetComponent<RotationLimitHinge>() != null) leftfoot.GetComponent<RotationLimitHinge>().enabled = flag == 1 ? true : false;
+            if (rightfoot.GetComponent<RotationLimitHinge>() != null) rightfoot.GetComponent<RotationLimitHinge>().enabled = flag == 1 ? true : false;
 
+        }
+
+        /// <summary>
+        /// Change Enable/Disable of IK-system
+        /// </summary>
+        /// <param name="flag"></param>
+        public void EnableIKOperationMode(bool flag)
+        {
+            float weight = 0f;
+            if (flag) weight = 1.0f;
+
+            BipedIK bik = GetComponent<BipedIK>();
+            CCDIK cik = GetComponent<CCDIK>();
+            VvmIk vik = GetComponent<VvmIk>();
+
+            if (bik != null)
+            {
+                //---change IK to disable
+                if (flag == false)
+                {
+                    bik.fixTransforms = flag;
+                    cik.fixTransforms = flag;
+                }
+
+                //---head
+                cik.solver.SetIKPositionWeight(weight);
+
+                //---lookAt
+                bik.solvers.lookAt.headWeight = weight;
+                bik.solvers.lookAt.head.weight = weight;
+                bik.solvers.lookAt.IKPositionWeight = weight;
+
+                //---Aim
+                bik.solvers.aim.IKPositionWeight = weight;
+
+                //---chest
+                bik.solvers.spine.IKPositionWeight = weight;
+
+                //---left lower arm
+                bik.solvers.leftHand.bendModifierWeight = weight;
+
+                //---left hand
+                bik.solvers.leftHand.IKPositionWeight = weight;
+                bik.solvers.leftHand.IKRotationWeight = weight;
+
+                //---right lower arm
+                bik.solvers.rightHand.bendModifierWeight = weight;
+
+                //---right hand
+                bik.solvers.rightHand.IKPositionWeight = weight;
+                bik.solvers.rightHand.IKRotationWeight = weight;
+
+                //---pelvis
+                bik.solvers.pelvis.positionWeight = weight;
+                bik.solvers.pelvis.rotationWeight = weight;
+
+
+                //---left lower leg
+                bik.solvers.leftFoot.bendModifierWeight = weight;
+
+                //---left foot
+                bik.solvers.leftFoot.IKPositionWeight = weight;
+                bik.solvers.leftFoot.IKRotationWeight = weight;
+
+                //---right lower leg
+                bik.solvers.leftFoot.bendModifierWeight = weight;
+
+                //---right foot
+                bik.solvers.leftFoot.IKPositionWeight = weight;
+                bik.solvers.leftFoot.IKRotationWeight = weight;
+
+                //---Change IK to enable
+                if (flag == true)
+                {
+                    bik.fixTransforms = flag;
+                    cik.fixTransforms = flag;
+                }
+            }
+            else if (vik != null)
+            {
+                //---change IK to disable
+                if (flag == false)
+                {
+                    vik.IsApplyIK = false;
+                }
+
+                //---head
+                
+
+                //---lookAt
+                vik.lookAtHeadWeight = weight;
+                vik.lookAtWeight = weight;
+
+                //---Aim
+
+                //---chest
+
+                //---pelvis
+
+                //---left lower arm
+                vik.LeftLowerArmWeight = weight;
+
+                //---left hand
+                vik.LeftHandPositionWeight = weight;
+                vik.LeftHandRotationWeight = weight;
+
+                //---right lower arm
+                vik.RightLowerArmWeight = weight;
+
+                //---right hand
+                vik.RightHandPositionWeight = weight;
+                vik.RightHandRotationWeight = weight;
+
+                //---pelvis
+                bik.solvers.pelvis.positionWeight = weight;
+                bik.solvers.pelvis.rotationWeight = weight;
+
+
+                //---left lower leg
+                vik.LeftLowerLegWeight = weight;
+
+                //---left foot
+                vik.LeftFootPositionWeight = weight;
+                vik.LeftFootRotationWeight = weight;
+
+                //---right lower leg
+                vik.RightLowerLegWeight = weight;
+
+                //---right foot
+                vik.RightFootPositionWeight = weight;
+                vik.RightFootRotationWeight = weight;
+
+                //---Change IK to enable
+                if (flag == true)
+                {
+                    vik.IsApplyIK = flag;
+                }
+            }
+            
+        }
+        public IEnumerator ApplyBoneTransformToIKTransform()
+        {
+            Animator animator = GetComponent<Animator>();
+            BipedIK bik = GetComponent<BipedIK>();
+            CCDIK cik = GetComponent<CCDIK>();
+            VvmIk vik = GetComponent<VvmIk>();
+            int isIK = 0;
+            if (bik != null) isIK = 1;
+            if (vik != null) isIK = 2;
+
+            yield return null;
+
+            Transform bleye = animator.GetBoneTransform(HumanBodyBones.LeftEye);
+            Transform breye = animator.GetBoneTransform(HumanBodyBones.RightEye);
+            Transform bhead = animator.GetBoneTransform(HumanBodyBones.Head);
+            Transform bneck = animator.GetBoneTransform(HumanBodyBones.Neck);
+            Transform bupperchest = animator.GetBoneTransform(HumanBodyBones.UpperChest);
+            Transform bchest = animator.GetBoneTransform(HumanBodyBones.Chest);
+            Transform bspine = animator.GetBoneTransform(HumanBodyBones.Spine);
+            Transform bleftshoulder = animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
+            Transform brightshoulder = animator.GetBoneTransform(HumanBodyBones.RightShoulder);
+            Transform bleftlowerarm = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
+            Transform brightlowerarm = animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
+            Transform blefthand = animator.GetBoneTransform(HumanBodyBones.LeftHand);
+            Transform brighthand = animator.GetBoneTransform(HumanBodyBones.RightHand);
+            Transform bpelvis = animator.GetBoneTransform(HumanBodyBones.Hips);
+            Transform bleftlowerleg = animator.GetBoneTransform(HumanBodyBones.LeftLowerLeg);
+            Transform brightlowerleg = animator.GetBoneTransform(HumanBodyBones.RightLowerLeg);
+            Transform bleftfoot = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
+            Transform brightfoot = animator.GetBoneTransform(HumanBodyBones.RightFoot);
+
+
+            //---spine and hips---------------------------------------------------------------------------
+            Transform pelvis = relatedHandleParent.transform.Find("Pelvis");
+            if (pelvis != null)
+            {
+                if (isIK > 0)
+                {
+                    pelvis.position = bpelvis.position;
+                    yield return null;
+                    pelvis.rotation = bpelvis.rotation;
+                    if (isIK == 2)
+                    {
+                        Vector3 rot = bpelvis.rotation.eulerAngles + new Vector3(0, 180f, 0);
+                        rot.y = Mathf.Repeat(rot.y + 180f, 360f) - 180f;
+                        pelvis.rotation = Quaternion.Euler( rot );
+                        
+                    }
+                    yield return null;
+                }
+                
+            }
+            //---Eye and Head----------------------------------------------------------------------------
+            Transform eye = relatedHandleParent.transform.Find("EyeViewHandle");
+            if (eye != null)
+            {
+                Vector3 pos = (bleye.position + breye.position) / 2f;
+                Vector3 rot = (bleye.rotation.eulerAngles + breye.rotation.eulerAngles) / 2f;
+
+                eye.rotation = Quaternion.Euler(rot);
+                yield return null;
+
+                pos.z--;
+                eye.position = pos;
+                yield return null;
+
+            }
+            Transform head = relatedHandleParent.transform.Find("Head");
+            if (head != null)
+            {
+                head.rotation = Quaternion.Euler(bhead.rotation.eulerAngles);
+                yield return null;
+            }
+
+            Transform lookat = relatedHandleParent.transform.Find("LookAt");
+            if (lookat != null)
+            {
+                Vector3 pos = bhead.position;
+                Vector3 rot = bhead.rotation.eulerAngles;
+
+
+                lookat.rotation = Quaternion.Euler(rot);
+                yield return null;
+
+                pos.z--;
+                lookat.position = pos;
+                yield return null;
+            }
+
+            //---UpperChest, Chest and Aim------------------------------------------------------------------
+            Transform aim = relatedHandleParent.transform.Find("Aim");
+            if (aim != null)
+            {
+                Vector3 pos = Vector3.zero;
+                Vector3 rot = Vector3.zero;
+                /*if (bupperchest != null)
+                {
+                    pos = bupperchest.position;
+                    rot = bupperchest.rotation.eulerAngles;
+                }
+                else */
+                if (isIK == 1)
+                {
+                    if (bchest != null)
+                    {
+                        pos = bchest.position;
+                        rot = bchest.rotation.eulerAngles;
+                    }
+
+
+                    //rot.y = 180;
+                    aim.rotation = Quaternion.Euler(Vector3.zero);
+                    yield return null;
+                    aim.Rotate(rot, Space.World);
+                    yield return null;
+
+                    //pos.x = 1f - pos.x;
+                    //pos.y = 1f - pos.y;
+                    //pos.z = pos.z - 0.5f;
+                    aim.position = pos;
+                    aim.Translate(Vector3.forward, Space.Self);
+                    yield return null;
+
+                    aim.rotation = Quaternion.Euler(new Vector3(0, 180, 0));
+                    yield return null;
+                }
+                else if (isIK == 2)
+                {
+                    if (bspine != null)
+                    {
+                        pos = bspine.position;
+                        rot = bspine.rotation.eulerAngles;
+                    }
+                    aim.rotation = Quaternion.Euler(rot);
+                    yield return null;
+                    aim.position = pos;
+                    yield return null;
+
+                }
+                
+            }
+            Transform chest = relatedHandleParent.transform.Find("Chest");
+            if (chest != null)
+            {
+                chest.rotation = bneck.rotation;
+                yield return null;
+            }
+
+            //---arm and hand------------------------------------------------------------------------------
+            Transform lhand = relatedHandleParent.transform.Find("LeftHand");
+            if (lhand != null)
+            {
+                lhand.position = new Vector3(blefthand.position.x, blefthand.position.y, blefthand.position.z*-1);
+                yield return null;
+
+                Vector3 rot = blefthand.rotation.eulerAngles;
+                //rot.y = 180;
+                lhand.rotation = Quaternion.Euler(rot);
+                yield return null;
+            }
+            Transform lla = relatedHandleParent.transform.Find("LeftLowerArm");
+            if (lla != null)
+            {
+                lla.position = bleftlowerarm.position;
+                yield return null;
+            }
+            Transform lsho = relatedHandleParent.transform.Find("LeftShoulder");
+            if (lsho != null)
+            {
+                lsho.position = bleftshoulder.position;
+                yield return null;
+                lsho.rotation = bleftshoulder.rotation;
+                yield return null;
+            }
+            Transform rhand = relatedHandleParent.transform.Find("RightHand");
+            if (rhand != null)
+            {
+                rhand.position = new Vector3(brighthand.position.x, brighthand.position.y, brighthand.position.z*-1);
+                yield return null;
+
+                Vector3 rot = brighthand.rotation.eulerAngles;
+                //rot.y = 180;
+                rhand.rotation = Quaternion.Euler(rot);
+                yield return null;
+            }
+            Transform rla = relatedHandleParent.transform.Find("RightLowerArm");
+            if (rla != null)
+            {
+                rla.position = brightlowerarm.position;
+                yield return null;
+            }
+            Transform rsho = relatedHandleParent.transform.Find("RightShoulder");
+            if (rsho != null)
+            {
+                rsho.position = brightshoulder.position;
+                yield return null;
+                rsho.rotation = brightshoulder.rotation;
+                yield return null;
+            }
+
+
+            //---leg and foot------------------------------------------------------------------------------
+            Transform lfoot = relatedHandleParent.transform.Find("LeftLeg");
+            if (lfoot != null)
+            {
+                lfoot.position = bleftfoot.position;
+                yield return null;
+
+                Vector3 rot = bleftfoot.rotation.eulerAngles;
+                rot.y = 180;
+                lfoot.rotation = Quaternion.Euler(rot);
+                
+                yield return null;
+            }
+            Transform lllg = relatedHandleParent.transform.Find("LeftLowerLeg");
+            if (lllg != null)
+            {
+                lllg.position = bleftlowerleg.position;
+                yield return null;
+            }
+
+            Transform rfoot = relatedHandleParent.transform.Find("RightLeg");
+            if (rfoot != null)
+            {
+                rfoot.position = brightfoot.position;
+                yield return null;
+
+                Vector3 rot = brightfoot.rotation.eulerAngles;
+                rot.y = 180;
+                rfoot.rotation = Quaternion.Euler(rot);
+                yield return null;
+            }
+            Transform rllg = relatedHandleParent.transform.Find("RightLowerLeg");
+            if (rllg != null)
+            {
+                rllg.position = brightlowerleg.position;
+                yield return null;
+            }
+
+            yield return null;
+
+            //---finally, already recover IK weight and FixTransform
+            EnableIK(true);
+            EnableIKOperationMode(true);
         }
 
         //===============================================================================================================================
@@ -665,7 +1047,6 @@ namespace UserHandleSpace
         {
             LeftHandCtrl = GetComponent<LeftHandPoseController>();
             RightHandCtrl = GetComponent<RightHandPoseController>();
-
         }
         public void SetHandFingerMode(string param)
         {
@@ -1005,19 +1386,25 @@ namespace UserHandleSpace
         {
             return BSFace;
         }
+        public List<SkinnedMeshRenderer> GetBlendShapeTargets()
+        {
+            return BSMeshs;
+        }
         public SkinnedMeshRenderer SetActiveFace()
         {
-            int cnt = transform.childCount;
+            SkinnedMeshRenderer[] skns = transform.GetComponentsInChildren<SkinnedMeshRenderer>();
+            int cnt = skns.Length;
             SkinnedMeshRenderer mesh = null;
             for (int i = 0; i < cnt; i++)
             {
-                mesh = transform.GetChild(i).GetComponent<SkinnedMeshRenderer>();
+                mesh = skns[i];
                 if (mesh != null)
                 {
                     if (mesh.sharedMesh.blendShapeCount > 0)
                     {
-                        BSFace = mesh;
-                        break;
+                        //BSFace = mesh;
+                        BSMeshs.Add(mesh);
+                        //break;
                     }
                 }
 
@@ -1031,16 +1418,41 @@ namespace UserHandleSpace
         public List<string> ListAvatarBlendShape()
         {
             List<string> ret = new List<string>();
-            if (BSFace)
+            /*if (BSFace)
             {
                 int bscnt = BSFace.sharedMesh.blendShapeCount;
                 for (int i = 0; i < bscnt; i++)
                 {
                     ret.Add(BSFace.sharedMesh.GetBlendShapeName(i) + "=" + BSFace.GetBlendShapeWeight(i).ToString());
                 }
-            }
+            }*/
+            //---1.x
+            BSMeshs.ForEach(mesh =>
+            {
+                for (int i = 0; i < mesh.sharedMesh.blendShapeCount; i++)
+                {
+                    ret.Add(mesh.gameObject.name + ":" + mesh.sharedMesh.GetBlendShapeName(i) + "=" + mesh.GetBlendShapeWeight(i).ToString());
+                }
+            });
+
 
             return ret;
+        }
+        public List<BasicStringFloatList> ListAvatarBlendShapeList()
+        {
+            List<BasicStringFloatList> ret = new List<BasicStringFloatList>();
+            BSMeshs.ForEach(mesh =>
+            {
+                for (int i = 0; i < mesh.sharedMesh.blendShapeCount; i++)
+                {
+                    BasicStringFloatList bsf = new BasicStringFloatList(mesh.gameObject.name + ":" + mesh.sharedMesh.GetBlendShapeName(i),mesh.GetBlendShapeWeight(i));
+                    ret.Add(bsf);
+                }
+            });
+
+
+            return ret;
+
         }
         /// <summary>
         /// Get all blend shapes, the avatar has. When user call from HTML
@@ -1063,6 +1475,7 @@ namespace UserHandleSpace
         public List<BasicStringFloatList> ListProxyBlendShape()
         {
             List<BasicStringFloatList> ret = new List<BasicStringFloatList>();
+            
             VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
 
             IEnumerable<KeyValuePair<BlendShapeKey, float>> bsk = prox.GetValues();
@@ -1072,7 +1485,9 @@ namespace UserHandleSpace
                 KeyValuePair<BlendShapeKey, float> bs = bslist.Current;
                 BasicStringFloatList bsf = new BasicStringFloatList(PREFIX_PROXY + bs.Key.Name, bs.Value);
                 ret.Add(bsf);
-            }
+            }            
+            
+
             return ret;
         }
         public void ListProxyBlendShapeFromOuter()
@@ -1105,13 +1520,19 @@ namespace UserHandleSpace
         public void InitializeBlendShapeList()
         {
             blendShapeList.Clear();
-            List<string> lst = ListAvatarBlendShape();
+            /*List<string> lst = ListAvatarBlendShape();
             lst.ForEach(item =>
             {
                 string[] arr = item.Split('=');
                 float value = -1f; // float.TryParse(arr[1], out value) ? value : -1f;
                 BasicStringFloatList lsf = new BasicStringFloatList(arr[0], value);
                 blendShapeList.Add(lsf);
+            });*/
+            //---1.x
+            List<BasicStringFloatList> lst_skn = ListAvatarBlendShapeList();
+            lst_skn.ForEach(item =>
+            {
+                blendShapeList.Add(item);
             });
 
             List<BasicStringFloatList> lst_px = ListProxyBlendShape();
@@ -1134,7 +1555,7 @@ namespace UserHandleSpace
             }
         }
         //------ getting blendshape ----------------------==========================
-        public float getAvatarBlendShape(string param)
+/*        public float getAvatarBlendShape(string param)
         {
             float ret = 0f;
             List<string> lst = ListAvatarBlendShape();
@@ -1150,8 +1571,8 @@ namespace UserHandleSpace
             ReceiveFloatVal(ret);
 #endif
             return ret;
-        }
-        public float getAvatarBlendShapeValue(string param)
+        }*/
+/*        public float getAvatarBlendShapeValue(string param)
         {
             float ret = 0f;
             List<string> lst = ListAvatarBlendShape();
@@ -1164,10 +1585,18 @@ namespace UserHandleSpace
                 }
             }
             return ret;
-        }
-        public int getAvatarBlendShapeIndex(string name)
+        }*/
+        public int getAvatarBlendShapeIndex(SkinnedMeshRenderer mesh, string name)
         {
-            return BSFace.sharedMesh.GetBlendShapeIndex(name);
+            //return BSFace.sharedMesh.GetBlendShapeIndex(name);
+            //---1.x
+            int result = -1;
+            string[] names = name.Split(':');
+            if (mesh.gameObject.name == names[0])
+            {
+                result = mesh.sharedMesh.GetBlendShapeIndex(names[1]);
+            }
+            return result;
         }
         public float getProxyBlendShape(string param)
         {
@@ -1244,18 +1673,37 @@ namespace UserHandleSpace
             string[] prm = param.Split(',');
             string shapename = prm[0];
             float value = float.TryParse(prm[1], out value) ? value : 0f;
-            int index = getAvatarBlendShapeIndex(shapename);
+
+            /*int index = getAvatarBlendShapeIndex(shapename);
             if (index > -1)
             {
                 BSFace.SetBlendShapeWeight(index, value);
+            }*/
+            //---1.x
+            foreach (SkinnedMeshRenderer mesh in BSMeshs)
+            {
+                int index = getAvatarBlendShapeIndex(mesh, shapename);
+                if (index > -1)
+                {
+                    mesh.SetBlendShapeWeight(index, value);
+                }
             }
         }
         public void changeAvatarBlendShapeByName(string shapename, float value)
         {
-            int index = getAvatarBlendShapeIndex(shapename);
+            /*int index = getAvatarBlendShapeIndex(shapename);
             if (index > -1)
             {
                 BSFace.SetBlendShapeWeight(index, value);
+            }*/
+            //---1.x
+            foreach (SkinnedMeshRenderer mesh in BSMeshs)
+            {
+                int index = getAvatarBlendShapeIndex(mesh, shapename);
+                if (index > -1)
+                {
+                    mesh.SetBlendShapeWeight(index, value);
+                }
             }
         }
 
@@ -1284,6 +1732,22 @@ namespace UserHandleSpace
 
             prox.AccumulateValue(shape, value);
             prox.Apply();
+
+        }
+        //---For animation
+        public Sequence AnimationBlendShape(Sequence seq, string shapename, float value, float duration)
+        {
+            foreach (SkinnedMeshRenderer mesh in BSMeshs)
+            {
+                int index = getAvatarBlendShapeIndex(mesh, shapename);
+                if (index > -1)
+                {
+                    seq.Join(DOTween.To(() => mesh.GetBlendShapeWeight(index), x => mesh.SetBlendShapeWeight(index, x), value, duration));
+                }
+            }
+
+
+            return seq;
         }
         //----- blink ----------------------------------------==================
         public void GetBlinkEye()
@@ -1654,6 +2118,11 @@ namespace UserHandleSpace
             string js = "";
 
             BipedIK bik = gameObject.GetComponent<BipedIK>();
+            VvmIk vik = gameObject.GetComponent<VvmIk>();
+            int isIK = 0;
+            if (bik != null) isIK = 1;
+            if (vik != null) isIK = 2;
+
             if (parts == IKBoneType.EyeViewHandle)
             {
                 VRMLookAtHead vlook = gameObject.GetComponent<VRMLookAtHead>();
@@ -1661,53 +2130,65 @@ namespace UserHandleSpace
             }
             else if (parts == IKBoneType.LookAt)
             {
-                js = bik.solvers.lookAt.target.gameObject.name;
+                if (isIK == 1) js = bik.solvers.lookAt.target.gameObject.name;
+                else if (isIK == 2) js = vik.lookAtObject.gameObject.name;
             }
             else if (parts == IKBoneType.Aim)
             {
-                js = bik.solvers.aim.target.gameObject.name;
+                if (isIK == 1) js = bik.solvers.aim.target.gameObject.name;
+                else if (isIK == 2) js = vik.Spine.gameObject.name;
             }
             else if (parts == IKBoneType.Chest)
             {
-                js = bik.solvers.spine.target.gameObject.name;
+                if (isIK == 1) js = bik.solvers.spine.target.gameObject.name;
+                else if (isIK == 2) js = vik.UpperChest.gameObject.name;
             }
             else if (parts == IKBoneType.Pelvis)
             {
-                js = bik.solvers.pelvis.target.gameObject.name;
+                if (isIK == 1) js = bik.solvers.pelvis.target.gameObject.name;
+                else if (isIK == 2) js = vik.waist.gameObject.name;
             }
             //-------------
             else if (parts == IKBoneType.LeftLowerArm)
             {
-                js = bik.solvers.leftHand.bendGoal.gameObject.name;
+                if (isIK == 1) js = bik.solvers.leftHand.bendGoal.gameObject.name;
+                else if (isIK == 2) js = vik.LeftLowerArm.gameObject.name;
             }
             else if (parts == IKBoneType.LeftHand)
             {
-                js = bik.solvers.leftHand.target.gameObject.name;
+                if (isIK == 1) js = bik.solvers.leftHand.target.gameObject.name;
+                else if (isIK == 2) js = vik.LeftHand.gameObject.name;
             }
             else if (parts == IKBoneType.RightLowerArm)
             {
-                js = bik.solvers.rightHand.bendGoal.gameObject.name;
+                if (isIK == 1) js = bik.solvers.rightHand.bendGoal.gameObject.name;
+                else if (isIK == 2) js = vik.RightLowerArm.gameObject.name;
             }
             else if (parts == IKBoneType.RightHand)
             {
-                js = bik.solvers.rightHand.target.gameObject.name;
+                if (isIK == 1) js = bik.solvers.rightHand.target.gameObject.name;
+                else if (isIK == 2) js = vik.RightHand.gameObject.name;
             }
             //---------------
             else if (parts == IKBoneType.LeftLowerLeg)
             {
-                js = bik.solvers.leftFoot.bendGoal.gameObject.name;
+                if (isIK == 1) js = bik.solvers.leftFoot.bendGoal.gameObject.name;
+                else if (isIK == 2) js = vik.LeftLowerLeg.gameObject.name;
             }
             else if (parts == IKBoneType.LeftLeg)
             {
-                js = bik.solvers.leftFoot.target.gameObject.name;
+                if (isIK == 1) js = bik.solvers.leftFoot.target.gameObject.name;
+                else if (isIK == 2) js = vik.LeftFoot.gameObject.name;
             }
             else if (parts == IKBoneType.RightLowerLeg)
             {
-                js = bik.solvers.rightFoot.bendGoal.gameObject.name;
+                if (isIK == 1) js = bik.solvers.rightFoot.bendGoal.gameObject.name;
+                else if (isIK == 2) js = vik.RightLowerLeg.gameObject.name;
             }
             else if (parts == IKBoneType.RightLeg)
             {
-                js = bik.solvers.rightFoot.target.gameObject.name;
+                if (isIK == 1) js = bik.solvers.rightFoot.target.gameObject.name;
+                else if (isIK == 2) js = vik.RightFoot.gameObject.name;
             }
 
             //---if js exists in IKBoneType, set "self"
@@ -1752,6 +2233,11 @@ namespace UserHandleSpace
         public void SetIKTarget(IKBoneType parts, string name, bool isPlayMode = false)
         {
             BipedIK bik = gameObject.GetComponent<BipedIK>();
+            VvmIk vik = gameObject.GetComponent<VvmIk>();
+            int isIK = 0;
+            if (bik != null) isIK = 1;
+            if (vik != null) isIK = 2;
+
             Transform target = null;
             if (name.ToLower() == "self")
             {
@@ -1779,53 +2265,65 @@ namespace UserHandleSpace
             }
             else if (parts == IKBoneType.LookAt)
             {
-                bik.solvers.lookAt.target = target;
+                if (isIK == 1) bik.solvers.lookAt.target = target;
+                else if (isIK == 2) vik.lookAtObject = target.transform;
             }
             else if (parts == IKBoneType.Aim)
             {
-                bik.solvers.aim.target = target;
+                if (isIK == 1) bik.solvers.aim.target = target;
+                else if (isIK == 2) vik.Spine = target.transform;
             }
             else if (parts == IKBoneType.Chest)
             {
-                bik.solvers.spine.target = target;
+                if (isIK == 1) bik.solvers.spine.target = target;
+                else if (isIK == 2) vik.UpperChest = target.transform;
             }
             else if (parts == IKBoneType.Pelvis)
             {
-                bik.solvers.pelvis.target = target;
+                if (isIK == 1) bik.solvers.pelvis.target = target;
+                else if (isIK == 2) vik.waist = target.transform;
             }
             //-------------------
             else if (parts == IKBoneType.LeftLowerArm)
             {
-                bik.solvers.leftHand.bendGoal = target;
+                if (isIK == 1) bik.solvers.leftHand.bendGoal = target;
+                else if (isIK == 2) vik.LeftLowerArm = target.transform;
             }
             else if (parts == IKBoneType.LeftHand)
             {
-                bik.solvers.leftHand.target = target;
+                if (isIK == 1) bik.solvers.leftHand.target = target;
+                else if (isIK == 2) vik.LeftHand = target.transform;
             }
             else if (parts == IKBoneType.RightLowerArm)
             {
-                bik.solvers.rightHand.bendGoal = target;
+                if (isIK == 1) bik.solvers.rightHand.bendGoal = target;
+                else if (isIK == 2) vik.RightLowerArm = target.transform;
             }
             else if (parts == IKBoneType.RightHand)
             {
-                bik.solvers.rightHand.target = target;
+                if (isIK == 1) bik.solvers.rightHand.target = target;
+                else if (isIK == 2) vik.RightHand = target.transform;
             }
             //------------------
             else if (parts == IKBoneType.LeftLowerLeg)
             {
-                bik.solvers.leftFoot.bendGoal = target;
+                if (isIK == 1) bik.solvers.leftFoot.bendGoal = target;
+                else if (isIK == 2) vik.LeftLowerLeg = target.transform;
             }
             else if (parts == IKBoneType.LeftLeg)
             {
-                bik.solvers.leftFoot.target = target;
+                if (isIK == 1) bik.solvers.leftFoot.target = target;
+                else if (isIK == 2) vik.LeftFoot = target.transform;
             }
             else if (parts == IKBoneType.RightLowerLeg)
             {
-                bik.solvers.rightFoot.bendGoal = target;
+                if (isIK == 1) bik.solvers.rightFoot.bendGoal = target;
+                else if (isIK == 2) vik.RightLowerLeg = target.transform;
             }
             else if (parts == IKBoneType.RightLeg)
             {
-                bik.solvers.rightFoot.target = target;
+                if (isIK == 1) bik.solvers.rightFoot.target = target;
+                else if (isIK == 2) vik.RightFoot = target.transform;
             }
 
             if (!isPlayMode)
@@ -1893,12 +2391,24 @@ namespace UserHandleSpace
         public void SetHeadLock(int flag)
         {
             CCDIK cik = GetComponent<CCDIK>();
-            cik.solver.maxIterations = flag;
+            if (cik != null)
+            {
+                cik.solver.maxIterations = flag;
+            }
+            
         }
         public int GetHeadLock()
         {
             CCDIK cik = GetComponent<CCDIK>();
-            return cik.solver.maxIterations;
+            if (cik != null)
+            {
+                return cik.solver.maxIterations;
+            }
+            else
+            {
+                return -1;
+            }
+            
         }
 
 

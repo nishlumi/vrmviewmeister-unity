@@ -53,6 +53,10 @@ public class ScreenShot : MonoBehaviour
         RenderTexture prev = Cam3DBottom.targetTexture;
         RenderTexture prev2d = Cam2DTop.targetTexture;
 
+        Canvas msgarea = GameObject.Find("MsgArea").GetComponent<Canvas>();
+        msgarea.renderMode = RenderMode.ScreenSpaceCamera;
+
+        
         Cam3DBottom.targetTexture = rt;
         Cam3DBottom.Render();
         Cam3DBottom.targetTexture = prev;
@@ -83,6 +87,8 @@ public class ScreenShot : MonoBehaviour
             //stageman.GetComponent<OperateStage>().ActiveStage.SetActive(true);
             LayerCullingShow(Cam3DBottom, "Stage");
         }
+        msgarea.renderMode = RenderMode.ScreenSpaceOverlay;
+
     }
     public byte[] CaptureThumbnail(int isTransparent, GameObject targetAvatar)
     {

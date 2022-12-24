@@ -58,6 +58,7 @@ public class CameraOperation1 : MonoBehaviour
     private ManageAnimation manim;
 
     public TMPro.TextMeshProUGUI KeyOperationModeView;
+    public TMPro.TextMeshProUGUI KeyObjGlobalLocal;
 
     // Start is called before the first frame update
     void Start()
@@ -230,11 +231,13 @@ public class CameraOperation1 : MonoBehaviour
             {
                 manim.keyOperationMode = KeyOperationMode.MoveAvatar;
                 KeyOperationModeView.text = "O";
+                KeyObjGlobalLocal.gameObject.SetActive(true);
             }
             else if (manim.keyOperationMode == KeyOperationMode.MoveAvatar)
             {
                 manim.keyOperationMode = KeyOperationMode.MoveCamera;
                 KeyOperationModeView.text = "C";
+                KeyObjGlobalLocal.gameObject.SetActive(false);
             }
         }
         if (Input.GetKey(KeyCode.I))
@@ -516,10 +519,10 @@ public class CameraOperation1 : MonoBehaviour
                 if (ovrm.targetType == AF_TARGETTYPE.VRM)
                 {
                     ManageAvatarTransform mat = nav.avatar.GetComponent<ManageAvatarTransform>();
-                    GameObject bodyobj = mat.GetBodyMesh();
-                    Bounds bnd = bodyobj.GetComponent<SkinnedMeshRenderer>().bounds;
+                    //GameObject bodyobj = mat.GetBodyMesh();
+                    //Bounds bnd = bodyobj.GetComponent<SkinnedMeshRenderer>().bounds;
 
-                    newpos.y += (bnd.size.y / 2f);
+                    newpos.y += mat.GetMaximumHeightRenderer(mat.CheckSkinnedMeshAvailable()); // (bnd.size.y / 2f);
                 }
                 Camera.main.transform.position = newpos;
 
@@ -616,14 +619,14 @@ public class CameraOperation1 : MonoBehaviour
         if (param == 1)
         {
             canvas.transform.Find("GizmoRenderer").gameObject.SetActive(true);
-            KeyOperationModeView.gameObject.SetActive(true);
+            GameObject.Find("ObjectInfoView").SetActive(true);
             //RectTransform rt = GameObject.Find("GizmoRenderer").GetComponent<RectTransform>();
             //rt.anchoredPosition = new Vector2(40, rt.anchoredPosition.y);
         }
         else
         {
             canvas.transform.Find("GizmoRenderer").gameObject.SetActive(false);
-            KeyOperationModeView.gameObject.SetActive(false);
+            GameObject.Find("ObjectInfoView").SetActive(false);
             //RectTransform rt = GameObject.Find("GizmoRenderer").GetComponent<RectTransform>();
             //rt.anchoredPosition = new Vector2(-40, rt.anchoredPosition.y);
         }
@@ -780,19 +783,30 @@ public class CameraOperation1 : MonoBehaviour
     {
         Front3DCam.backgroundColor = param;
         //Front3DCam.transform.GetChild(0).gameObject.GetComponent<Camera>().backgroundColor = param;
+
+        List<NativeAnimationAvatar> list = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
+        list.ForEach(item =>
+        {
+            item.avatar.GetComponent<Camera>().backgroundColor = param;
+        });
+
     }
     public void SetSkyColorFromOuter(string param)
     {
         Color col;
         if (ColorUtility.TryParseHtmlString(param, out col))
         {
-            Front3DCam.backgroundColor = col;
-            //Front3DCam.transform.GetChild(0).gameObject.GetComponent<Camera>().backgroundColor = col;
+            SetSkyColor(col);
         }
     }
     public Sequence SetSkyColorTween(Sequence seq, Color param, float duration)
     {
         seq.Join(Front3DCam.DOColor(param, duration));
+        List<NativeAnimationAvatar> list = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
+        for (int i = 0; i < list.Count; i++) 
+        { 
+            list[i].avatar.GetComponent<Camera>().backgroundColor = param;
+        }
 
         return seq;
     }

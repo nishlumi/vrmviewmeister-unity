@@ -186,10 +186,107 @@ namespace UserHandleSpace
 
             return ret;
         }
+
+        /// <summary>
+        /// Calculate an encapsulated bound information
+        /// </summary>
+        /// <param name="glist"></param>
+        /// <returns></returns>
+        public Bounds CalculateAllBounds(List<GameObject> glist)
+        {
+            Bounds maxbounds = new Bounds(Vector3.zero, Vector3.zero);
+            foreach (GameObject gobj in glist)
+            {
+                SkinnedMeshRenderer smr = null;
+
+                if (gobj.TryGetComponent<SkinnedMeshRenderer>(out smr))
+                {
+                    
+                    maxbounds.Encapsulate(smr.bounds);
+                }
+            }
+            return maxbounds;
+        }
+        public float GetMaximumHeightRenderer(List<GameObject> glist)
+        {
+            List<float> yarr = new List<float>();
+
+            foreach (GameObject gobj in glist)
+            {
+                SkinnedMeshRenderer smr = null;
+
+                if (gobj.TryGetComponent<SkinnedMeshRenderer>(out smr))
+                {
+                    yarr.Add(smr.bounds.max.y);
+                }
+            }
+            
+            float ishit = Mathf.Max(yarr.ToArray());
+
+            return ishit;
+        }
+        public float GetMaximumWidthRenderer(List<GameObject> glist)
+        {
+            List<float> yarr = new List<float>();
+
+            foreach (GameObject gobj in glist)
+            {
+                SkinnedMeshRenderer smr = null;
+
+                if (gobj.TryGetComponent<SkinnedMeshRenderer>(out smr))
+                {
+                    yarr.Add(smr.bounds.max.x);
+                }
+            }
+
+            float ishit = Mathf.Max(yarr.ToArray());
+
+            return ishit;
+        }
+        public float GetMaximumDepthRenderer(List<GameObject> glist)
+        {
+            List<float> yarr = new List<float>();
+
+            foreach (GameObject gobj in glist)
+            {
+                SkinnedMeshRenderer smr = null;
+
+                if (gobj.TryGetComponent<SkinnedMeshRenderer>(out smr))
+                {
+                    yarr.Add(smr.bounds.max.z);
+                }
+            }
+
+            float ishit = Mathf.Max(yarr.ToArray());
+
+            return ishit;
+        }
+        /// <summary>
+        /// Get SkinnedMeshRenderere with BlendShape as Face mainly.
+        /// </summary>
+        /// <param name="partsname"></param>
+        /// <returns></returns>
         public GameObject GetFaceMesh(string partsname = "Face")
         {
             //return _GetMesh(partsname, transform);
             GameObject ret = null;
+
+
+            List<GameObject> glist = CheckSkinnedMeshAvailable();
+            foreach (GameObject gobj in glist)
+            {
+                SkinnedMeshRenderer smr = null;
+
+                if (gobj.TryGetComponent<SkinnedMeshRenderer>(out smr))
+                {
+                    if (smr.sharedMesh.blendShapeCount > 0)
+                    {
+                        ret = gobj;
+                        break;
+                    }
+                }
+            }
+            /*
             for (int i = 0; i < transform.childCount; i++)
             {
                 GameObject cld = transform.GetChild(i).gameObject;
@@ -209,6 +306,7 @@ namespace UserHandleSpace
                 }
                 
             }
+            */
             return ret;
         }
         public GameObject GetBodyMesh(string partsname = "Body")
@@ -217,6 +315,21 @@ namespace UserHandleSpace
 
             if (ret == null)
             {
+                List<GameObject> glist = CheckSkinnedMeshAvailable();
+                foreach (GameObject gobj in glist)
+                {
+                    SkinnedMeshRenderer smr = null;
+
+                    if (gobj.TryGetComponent<SkinnedMeshRenderer>(out smr))
+                    {
+                        if (smr.sharedMesh.blendShapeCount == 0)
+                        {
+                            ret = gobj;
+                            break;
+                        }
+                    }
+                }
+                /*
                 for (int i = 0; i < transform.childCount; i++)
                 {
                     GameObject cld = transform.GetChild(i).gameObject;
@@ -230,6 +343,7 @@ namespace UserHandleSpace
                         }
                     }
                 }
+                */
             }
 
             return ret;
@@ -279,6 +393,31 @@ namespace UserHandleSpace
             OperateLoadedVRM olvrm = transform.gameObject.GetComponent<OperateLoadedVRM>();
             GameObject ikparent = olvrm.relatedHandleParent;
 
+            List<GameObject> glist = CheckSkinnedMeshAvailable();
+
+            //---repair code---
+            Bounds maxbounds = CalculateAllBounds(glist);
+
+            ret[0] = maxbounds.size.x; // GetMaximumWidthRenderer(glist) * 2f;
+            ret[1] = maxbounds.size.y; //GetMaximumHeightRenderer(glist);
+            ret[2] = maxbounds.size.z; //GetMaximumDepthRenderer(glist);
+
+            Debug.Log("max ren=" + ret[0].ToString() + "," +  ret[1].ToString() + "," +  ret[2].ToString());
+
+            /*
+            Animator anim = transform.GetComponent<Animator>();
+            Vector3 lefthandpos = anim.GetBoneTransform(HumanBodyBones.LeftHand).position;
+            Vector3 righthandpos = anim.GetBoneTransform(HumanBodyBones.RightHand).position;
+            Vector3 headpos = anim.GetBoneTransform(HumanBodyBones.Head).position;
+            Vector3 footpos = anim.GetBoneTransform(HumanBodyBones.LeftFoot).position;
+            Debug.Log(lefthandpos);
+            Debug.Log(righthandpos);
+            Debug.Log(headpos);
+            Debug.Log(footpos);
+            */
+
+            /*
+            //---original code---
             GameObject part = GetBodyMesh();
             if (part != null)
             {
@@ -286,13 +425,12 @@ namespace UserHandleSpace
                 ret[0] = bounds.x * 2f;
                 ret[1] = bounds.y * 2f;
                 ret[2] = bounds.z;
-                /*ret[3] = ikparent.transform.Find("Chest").GetComponent<UserHandleOperation>().defaultPosition.x;
-                ret[4] = ikparent.transform.Find("Chest").GetComponent<UserHandleOperation>().defaultPosition.y;
-                ret[5] = ikparent.transform.Find("Chest").GetComponent<UserHandleOperation>().defaultPosition.z;
-                ret[6] = ikparent.transform.Find("Pelvis").GetComponent<UserHandleOperation>().defaultPosition.x;
-                ret[7] = ikparent.transform.Find("Pelvis").GetComponent<UserHandleOperation>().defaultPosition.y;
-                ret[8] = ikparent.transform.Find("Pelvis").GetComponent<UserHandleOperation>().defaultPosition.z;*/
+
+                Debug.Log("body mesh=" + ret[0].ToString() + "," + ret[1].ToString() + "," + ret[2].ToString());
+
             }
+            */
+
 
             return ret;
         }
@@ -362,9 +500,12 @@ namespace UserHandleSpace
                     }
                     else
                     {
-                        UserHandleOperation uho = child.GetComponent<UserHandleOperation>();
-
-                        ret.Add(new Vector3( uho.defaultPosition.x, uho.defaultPosition.y, uho.defaultPosition.z ));
+                        UserHandleOperation uho = null; // child.GetComponent<UserHandleOperation>();
+                        if (child.TryGetComponent<UserHandleOperation>(out uho))
+                        {
+                            ret.Add(new Vector3(uho.defaultPosition.x, uho.defaultPosition.y, uho.defaultPosition.z));
+                        }
+                        
                     }
                 }
                 

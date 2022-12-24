@@ -794,6 +794,7 @@ namespace UserHandleSpace
                     matp.shadingshift = mat.GetFloat("_ShadeShift");
                     matp.receiveshadow = mat.GetFloat("_ReceiveShadowRate");
                     matp.shadinggrade = mat.GetFloat("_ShadingGradeRate");
+                    matp.lightcolorattenuation = mat.GetFloat("_LightColorAttenuation");
 
                     matp.texturePath = userSharedTextureFiles[kvp.Key].texturePath;
                     matp.textureRole = userSharedTextureFiles[kvp.Key].textureRole;
@@ -1195,7 +1196,7 @@ namespace UserHandleSpace
                     {
                         if (mat.shader.name.ToLower() == "vrm/mtoon")
                         {
-                            mat.SetFloat("_LightColorAttenuation", vmat.shadinggrade);
+                            mat.SetFloat("_LightColorAttenuation", vmat.lightcolorattenuation);
                         }
                     }
                     else if (propname.ToLower() == "rimcolor")

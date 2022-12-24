@@ -5,9 +5,10 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Networking;
 using VRM;
 using UserVRMSpace;
-
+using System.Linq;
 
 namespace UserHandleSpace
 {
@@ -40,10 +41,15 @@ namespace UserHandleSpace
         private static extern void ReceiveFloatVal(float val);
 
 
-        string[] IKBoneNames = {  "IKParent", "EyeViewHandle", "Head", "LookAt", "Aim", "Chest", "Pelvis", "LeftLowerArm", "LeftHand",
-            "RightLowerArm","RightHand","LeftLowerLeg","LeftLeg","RightLowerLeg","RightLeg"
+        static string[] IKBoneNames = {  
+            "IKParent", "EyeViewHandle", 
+            "Head", "LookAt", "Aim", "Chest", "Pelvis", 
+            "LeftShoulder","LeftLowerArm", "LeftHand",
+            "RightShoulder","RightLowerArm","RightHand",
+            "LeftLowerLeg","LeftLeg",
+            "RightLowerLeg","RightLeg"
         };
-        const int IKbonesCount = 15;
+        const int IKbonesCount = 17;
 
         const int HEIGHT_X = 0;
         const int HEIGHT_Y = 1;
@@ -61,18 +67,40 @@ namespace UserHandleSpace
         const int CSV_VALCNT = 3;
         const int CSV_BEGINVAL = 4;
 
+        const int PROJECT_VERSION = 2;
+
+        //-------------------------------------------------------------------------
+        // Important objects
+
+        public NativeAnimationProjectMaterialPackage materialManager;
         public NativeAnimationProject currentProject;
+        private int initialFrameCount = 60;
         public bool IsExternalProject;
         public bool IsPlaying;
         public bool IsPause;
         public bool IsPreview;
         public bool IsBoneLimited;
+        public bool IsLimitedPelvis;
+        public bool IsLimitedArms;
+        public bool IsLimitedLegs;
+        public bool OldIsLimitedPelvis;
+        public bool OldIsLimitedArms;
+        public bool OldIsLimitedLegs;
         private int isOldLoop = 0;
+        private int oldPreviewMarker;
         private int currentMarker;
         private AnimationParsingOptions currentPlayingOptions;
         private Sequence currentSeq;
         private int seqInIndex;
         private FrameClipboard clipboard;
+        private int bkupScreenWidth;
+        private int bkupScreenHeight;
+
+        public KeyOperationMode keyOperationMode;
+        public float cfg_dist_cam2view;
+        public float cfg_keymove_speed_rot;
+        public float cfg_keymove_speed_trans;
+
 
         protected NativeAnimationAvatar SingleMotionTargetRole = null;
 
@@ -91,6 +119,7 @@ namespace UserHandleSpace
         public GameObject ikArea;
         public GameObject AudioArea;
         public FileMenuCommands fcom;
+        private ConfigSettingLabs configLab;
 
 
         private void Awake()
@@ -99,14 +128,34 @@ namespace UserHandleSpace
             IsPlaying = false;
             IsPreview = false;
             IsBoneLimited = true;
+            IsLimitedPelvis = true;
+            IsLimitedArms = true;
+            IsLimitedLegs = true;
+            OldIsLimitedPelvis = true;
+            OldIsLimitedArms = true;
+            OldIsLimitedLegs = true;
             currentMarker = 1;
             seqInIndex = 1;
             currentSeq = null;
+            oldPreviewMarker = 1;
+            keyOperationMode = KeyOperationMode.MoveCamera;
+
+            bkupScreenWidth = Screen.width;
+            bkupScreenHeight = Screen.height;
+
+            cfg_dist_cam2view = 2.5f;
+            cfg_keymove_speed_rot = 0.1f;
+            cfg_keymove_speed_trans = cfg_keymove_speed_rot / 10f;
+
+            ChangeFullIKType(false);
         }
         // Start is called before the first frame update
         void Start()
         {
-            currentProject = new NativeAnimationProject();
+            configLab = GameObject.Find("Canvas").GetComponent<ConfigSettingLabs>();
+
+            currentProject = new NativeAnimationProject(initialFrameCount);
+            materialManager = new NativeAnimationProjectMaterialPackage();
             NewProject();
             /*
             AvatarArea = GameObject.Find("View Body");
@@ -161,7 +210,16 @@ namespace UserHandleSpace
 
                 }
             }
-            
+            if ((bkupScreenWidth != Screen.width) || (bkupScreenHeight != Screen.height))
+            {
+                if (currentSeq != null)
+                {
+                    currentSeq.Kill();
+                    currentSeq = null;
+                }
+            }
+            bkupScreenWidth = Screen.width;
+            bkupScreenHeight = Screen.height;
         }
         private void OnDestroy()
         {
@@ -170,11 +228,74 @@ namespace UserHandleSpace
                 av.avatar = null;
                 av.ikparent = null;
             }
+            materialManager.Dispose();
         }
+        public void ChangeFullIKType(bool useFullIK)
+        {
+            if (useFullIK)
+            {
+                IKBoneNames = new string[] {
+                    "IKParent", "EyeViewHandle", "Head", "LookAt", "Chest",
+                    "LeftShoulder", "LeftLowerArm", "LeftHand",
+                    "RightShoulder","RightLowerArm","RightHand",
+                    "LeftUpperLeg","LeftLowerLeg","LeftLeg",
+                    "RightUpperLeg","RightLowerLeg","RightLeg"
+                };
+            }
+            else
+            {
+                IKBoneNames = new string []{
+                    "IKParent", "EyeViewHandle",
+                    "Head", "LookAt", "Aim", "Chest", "Pelvis",
+                    "LeftShoulder","LeftLowerArm", "LeftHand",
+                    "RightShoulder","RightLowerArm","RightHand",
+                    "LeftLowerLeg","LeftLeg",
+                    "RightLowerLeg","RightLeg"
+                };
+            }
+        }
+        public static string GetVRMIKBoneName(IKBoneType parts)
+        {
+            return IKBoneNames[(int)parts];
+        }
+        public static IKBoneType GetVRMIKBoneEnum(string name)
+        {
+            IKBoneType ret = IKBoneType.IKParent;
 
+            for (int i = 0; i < IKBoneNames.Length; i++)
+            {
+                if (IKBoneNames[i] == name)
+                {
+                    ret = (IKBoneType)i;
+                    break;
+                }
+            }
+            return ret;
+        }
+        public void SetValFromOuter(string param)
+        {
+            string[] prm = param.Split(',');
+            configLab.SetValFromOuter(param);
+            if (prm[1] == "distance_camera_viewpoint")
+            {
+                cfg_dist_cam2view = configLab.GetFloatVal("distance_camera_viewpoint", 2.5f);
+            }
+            else if (prm[1] == "camera_keymove_speed")
+            {
+                cfg_keymove_speed_trans = configLab.GetFloatVal("camera_keymove_speed", 0.01f);  //cfg_keymove_speed_rot / 10;
+            }
+            else if (prm[1] == "camera_keyrotate_speed")
+            {
+                cfg_keymove_speed_rot = configLab.GetFloatVal("camera_keyrotate_speed", 0.1f);
+            }
+        }
         //===========================================================================================================================
         //  Utility functions
         //===========================================================================================================================
+        public void SetInitialTimelineLength(int count)
+        {
+            initialFrameCount = count;
+        }
         public void SetTimelineFrameLength(int count)
         {
             if ((currentProject != null) && (currentProject.isSharing || currentProject.isReadOnly)) return;
@@ -206,6 +327,12 @@ namespace UserHandleSpace
             {
                 AdjustAllFrameDuration(actor, currentProject.baseDuration);
             }
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
         }
         public void SetBoneLimited(int flag)
         {
@@ -217,11 +344,68 @@ namespace UserHandleSpace
             {
                 IsBoneLimited = false;
             }
+            
+        }
+        
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="param">[0] - p = pelvis, a = arms, l = legs, [1] - 1 = true, 0 = false</param>
+        public void SetLimitedBones(string param)
+        {
+            string[] js = param.Split(',');
+            if (js[0] == "p")
+            {
+                IsLimitedPelvis = js[1] == "1" ? true : false;
+            }
+            else if (js[0] == "a")
+            {
+                IsLimitedArms = js[1] == "1" ? true : false;
+            }
+            else if (js[0] == "l")
+            {
+                IsLimitedLegs = js[1] == "1" ? true : false;
+            }
+        }
+        public void SetHingeLimited(int flag)
+        {
+            //---Change enable state for RotationLimitedHinge also.
+            if (currentProject != null)
+            {
+                currentProject.casts.ForEach(cast =>
+                {
+                    if (cast.type == AF_TARGETTYPE.VRM)
+                    {
+                        cast.avatar.GetComponent<OperateLoadedVRM>().EnableRotationLimit(flag);
+                    }
+
+                });
+            }
+            
         }
         public void GetBoneLimited()
         {
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveIntVal(IsBoneLimited ? 1 : 0);
+#endif
+        }
+        public void GetLimitedBones(string param)
+        {
+            int flag = 0;
+            if (param == "p")
+            {
+                flag = IsLimitedPelvis ? 1 : 0;
+            }
+            else if (param == "a")
+            {
+                flag = IsLimitedArms ? 1 : 0;
+            }
+            else if (param == "l")
+            {
+                flag = IsLimitedLegs ? 1 : 0;
+            }
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveIntVal(flag);
 #endif
         }
         private string TrimBlendShapeName(string bsname)
@@ -348,19 +532,35 @@ namespace UserHandleSpace
             ReceiveStringVal(ret);
 #endif
         }
-
+        public NativeAnimationAvatar GetCastByAvatar(string avatarId)
+        {
+            NativeAnimationAvatar ret = currentProject.casts.Find(match =>
+            {
+                if (match.avatarId == avatarId) return true;
+                return false;
+            });
+            return ret;
+        }
         /// <summary>
         /// Get target cast(AnimationAvatar) from role name
         /// </summary>
-        /// <param name="role"></param>
-        /// <param name="type"></param>
+        /// <param name="role">role name</param>
+        /// <param name="type">if not specify, target all</param>
         /// <returns></returns>
-        public NativeAnimationAvatar GetCastInProject(string role, AF_TARGETTYPE type)
+        public NativeAnimationAvatar GetCastInProject(string role, AF_TARGETTYPE type = AF_TARGETTYPE.Unknown)
         {
             NativeAnimationAvatar naa = null;
             naa = currentProject.casts.Find(match =>
             {
-                if ((match.roleName == role) && (match.type == type)) return true;
+                if (type == AF_TARGETTYPE.Unknown)
+                {
+                    if ((match.roleName == role)) return true;
+                }
+                else
+                {
+                    if ((match.roleName == role) && (match.type == type)) return true;
+                }
+                
                 return false;
             });
             return naa;
@@ -396,6 +596,16 @@ namespace UserHandleSpace
                 return false;
             });
             return naa;
+        }
+        public List<NativeAnimationAvatar> GetCastsByRoleType(AF_TARGETTYPE casttype)
+        {
+            List<NativeAnimationAvatar> ret = new List<NativeAnimationAvatar>();
+            ret = currentProject.casts.FindAll(match =>
+            {
+                if ((match.type == casttype) && (match.avatar != null)) return true;
+                return false;
+            });
+            return ret;
         }
         /// <summary>
         /// Get target timeline actor object(with avatar) from object ID.
@@ -511,7 +721,7 @@ namespace UserHandleSpace
         /// </summary>
         /// <param name="actor">Actor, get a frame</param>
         /// <param name="index">List's index</param>
-        /// <returns></returns>
+        /// <returns>Index as the Array</returns>
         private int GetFrameIndex(NativeAnimationFrameActor actor, int index)
         {
             int ret = -1;
@@ -532,7 +742,7 @@ namespace UserHandleSpace
         /// </summary>
         /// <param name="actor"></param>
         /// <param name="index"></param>
-        /// <returns></returns>
+        /// <returns>Index as the Array</returns>
         private int GetNearMinFrameIndex(NativeAnimationFrameActor actor, int index)
         {
             int ret = -1;
@@ -553,7 +763,7 @@ namespace UserHandleSpace
         /// </summary>
         /// <param name="actor"></param>
         /// <param name="index"></param>
-        /// <returns></returns>
+        /// <returns>Index as the Array</returns>
         private int GetNearMaxFrameIndex(NativeAnimationFrameActor actor, int index)
         {
             int ret = -1;
@@ -574,19 +784,32 @@ namespace UserHandleSpace
         public void GetAllActorsFromOuter()
         {
             List<string> ret = new List<string>();
-            foreach (NativeAnimationAvatar avatar in currentProject.casts)
+            if (currentProject != null)
             {
-                AnimationAvatar aa = new AnimationAvatar();
-                aa.avatarId = avatar.avatarId;
-                Array.Copy(avatar.bodyHeight, aa.bodyHeight, avatar.bodyHeight.Length);
-                aa.roleName = avatar.roleName;
-                aa.roleTitle = avatar.roleTitle;
-                aa.type = avatar.type;
-                ret.Add(JsonUtility.ToJson(aa));
+                if (currentProject.casts != null)
+                {
+                    foreach (NativeAnimationAvatar avatar in currentProject.casts)
+                    {
+                        AnimationAvatar aa = new AnimationAvatar();
+                        if (avatar != null)
+                        {
+                            aa.avatarId = avatar.avatarId;
+                            //Array.Copy(avatar.bodyHeight, aa.bodyHeight, avatar.bodyHeight.Length); Not neccessary...
+                            aa.roleName = avatar.roleName;
+                            aa.roleTitle = avatar.roleTitle;
+                            aa.type = avatar.type;
+                            string js = JsonUtility.ToJson(aa);
+                            ret.Add(js);
+                        }
+
+                    }
+                }
+                
             }
 
+            string jsret = string.Join("%", ret);
 #if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveStringVal(string.Join("%", ret));
+            ReceiveStringVal(jsret);
 #endif
         }
 
@@ -652,22 +875,28 @@ namespace UserHandleSpace
                     ret.avatar = ImgArea.transform.Find(id).gameObject;
                     ret.ikparent = null;
                 }
-                else if (type == AF_TARGETTYPE.Audio)
-                {
-                    ret.avatar = null;
-                    ret.ikparent = null;
-                }
                 else if (type == AF_TARGETTYPE.Effect)
                 {
                     ret.avatar = AvatarArea.transform.Find(id).gameObject;
+                    ret.ikparent = ret.avatar.GetComponent<OperateLoadedEffect>().relatedHandleParent;
                 }
                 else if (type == AF_TARGETTYPE.SystemEffect)
                 {
                     ret.avatar = GameObject.Find("AnimateArea");
+                    ret.ikparent = ret.avatar;
+                }
+                else if (type == AF_TARGETTYPE.Audio)
+                {
+                    if ((id == "BGM") || (id == "SE"))
+                    {
+                        ret.avatar = GameObject.Find(id);
+                        ret.ikparent = ret.avatar;
+                    }
                 }
                 else if (type == AF_TARGETTYPE.Stage)
                 {
                     ret.avatar = GameObject.FindGameObjectWithTag("GroundWorld");
+                    ret.ikparent = ret.avatar;
                 }
             }
             catch (Exception)
@@ -764,7 +993,71 @@ namespace UserHandleSpace
             }
             return ret;
         }
+        
+        /// <summary>
+        /// Get frame index nearly previous position
+        /// </summary>
+        /// <param name="param"></param>
+        public void GetPreviousExistKeyframeFromOuter(string param)
+        {
+            AnimationParsingOptions apo = JsonUtility.FromJson<AnimationParsingOptions>(param);
+            
+            int ret = GetPreviousExistKeyframe(apo);
 
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveIntVal(ret);
+#endif
+        }
+        public int GetPreviousExistKeyframe(AnimationParsingOptions apo)
+        {
+            NativeAnimationFrameActor naf = GetFrameActorFromRole(apo.targetRole, apo.targetType);
+            int ret = -1;
+            if (naf != null)
+            {
+                int index = GetNearMinFrameIndex(naf, apo.index);
+
+                if (index > -1)
+                {
+                    ret = naf.frames[index].index;
+                }
+            }
+            return ret;
+        }
+
+        /// <summary>
+        /// Get frame index nearly previous position
+        /// </summary>
+        /// <param name="param"></param>
+        public void GetNextExistKeyframeFromOuter(string param)
+        {
+            AnimationParsingOptions apo = JsonUtility.FromJson<AnimationParsingOptions>(param);
+
+            int ret = GetNextExistKeyframe(apo);
+
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveIntVal(ret);
+#endif
+        }
+        public int GetNextExistKeyframe(AnimationParsingOptions apo)
+        {
+            NativeAnimationFrameActor naf = GetFrameActorFromRole(apo.targetRole, apo.targetType);
+            //Debug.Log(apo.targetRole);
+            //Debug.Log(apo.targetType);
+            int ret = -1;
+            if (naf != null)
+            {
+                //Debug.Log("naf.targetId="+naf.targetId);
+                int index = GetNearMaxFrameIndex(naf, apo.index);
+                //Debug.Log(index);
+                if (index > -1)
+                {
+                    ret = naf.frames[index].index;
+                }
+            }
+
+            return ret;
+        }
 
 
         //=== Functions to setup Cast ===================================================================================
@@ -780,6 +1073,101 @@ namespace UserHandleSpace
                 avt.avatar = null;
                 avt.ikparent = null;
             });
+
+        }
+        public string CheckAndSetAvatarId(string prefix, int instanceID)
+        {
+            string ret = "";
+
+            bool isLoop = true;
+
+            while (isLoop)
+            {
+                DateTime curdt = DateTime.Now;
+                string tmpname = prefix + curdt.AddMilliseconds(instanceID).ToString("yyyyMMddHHmmssFFFFFFF") ; //DateTime.Now.ToFileTime().ToString();
+                NativeAnimationAvatar chknav = GetCastByAvatar(tmpname);
+                if (chknav == null)
+                {
+                    ret = tmpname;
+                    isLoop = false;
+                }                
+            }
+            
+
+            return ret;
+        }
+        public int CheckAvatarTitleExist(string title, AF_TARGETTYPE type)
+        {
+            List<NativeAnimationAvatar> existCnt = currentProject.casts.FindAll(tmpnav =>
+            {
+                if (type == tmpnav.type)
+                {
+                    OperateLoadedBase olb = tmpnav.avatar.GetComponent<OperateLoadedBase>();
+                    if (olb != null)
+                    {
+                        if (olb.Title.IndexOf(title) > -1)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            });
+            int ret = 0;
+            if (existCnt.Count > 0)
+            {
+                string lasttitle = existCnt.Last<NativeAnimationAvatar>().avatar.GetComponent<OperateLoadedBase>().Title;
+                string[] tarr = lasttitle.Split("_");
+
+                int lastintstr = 0;
+                if (int.TryParse(tarr[tarr.Length - 1], out lastintstr))
+                {
+                    ret = lastintstr + 1;
+                }
+                else
+                {
+                    ret = existCnt.Count + 1;
+                }
+            }
+            return ret;
+        }
+
+        /// <summary>
+        /// Check wheather title is exist in casts. if exised, return next counter.
+        /// </summary>
+        /// <param name="title"></param>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public int CheckRoleTitleExist(string title, AF_TARGETTYPE type)
+        {
+            List<NativeAnimationAvatar> existCnt = currentProject.casts.FindAll(tmpnav =>
+            {
+                if (type == tmpnav.type)
+                {
+                    if (tmpnav.roleTitle.IndexOf(title) > -1)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            int ret = 0;
+            if (existCnt.Count > 0)
+            {
+                string lasttitle = existCnt.Last<NativeAnimationAvatar>().roleTitle;
+                string[] tarr = lasttitle.Split("_");
+
+                int lastintstr = 0;
+                if (int.TryParse(tarr[tarr.Length-1],out lastintstr))
+                {
+                    ret = lastintstr + 1;
+                }
+                else
+                {
+                    ret = existCnt.Count + 1;
+                }
+            }
+            return ret;
 
         }
 
@@ -876,7 +1264,20 @@ namespace UserHandleSpace
             nav.ikparent = ikparent;
             nav.type = type;
             nav.roleName = RoleName + "_" + DateTime.Now.ToFileTime().ToString();  //"(" + GetCountTypeOf(type) + ")";
-            nav.roleTitle = nav.roleName;
+
+            
+            int existCnt = CheckRoleTitleExist(RoleName, type);
+
+
+            if (existCnt == 0)
+            {
+                nav.roleTitle = RoleName;
+            }
+            else
+            {
+                nav.roleTitle = RoleName + "_" + existCnt.ToString();
+            }
+            
 
             //---for timeline.characters
             NativeAnimationFrameActor naf = new NativeAnimationFrameActor();
@@ -910,7 +1311,7 @@ namespace UserHandleSpace
         /// <param name="type"></param>
         /// <param name="bodyheight"></param>
         /// <param name="bodyinfo"></param>
-        public NativeAnimationAvatar FirstAddAvatar2(out bool isOverWrite, string id, GameObject avatar, GameObject ikparent, string RoleName, AF_TARGETTYPE type, float[] bodyheight = null,  List < Vector3> bodyinfo = null)
+        public NativeAnimationAvatar FirstAddAvatarForVRM(out bool isOverWrite, string id, GameObject avatar, GameObject ikparent, string RoleName, AF_TARGETTYPE type, float[] bodyheight = null,  List < Vector3> bodyinfo = null)
         {
             isOverWrite = false;
             if ((currentProject != null) && (currentProject.isSharing || currentProject.isReadOnly)) return (NativeAnimationAvatar)null;
@@ -919,7 +1320,7 @@ namespace UserHandleSpace
             string rtitle = "";
             if (vmeta != null)
             {
-                rtitle = vmeta.Meta.Title;
+                rtitle = vmeta.Meta.Title != null ? vmeta.Meta.Title : "";
             }
 
             bool isExists = false;
@@ -939,13 +1340,38 @@ namespace UserHandleSpace
             }
             else
             {
+                string convertTitle = rtitle;
+                /*if (nav != null)
+                { //---role is exist, and not allocate cast
+                    string characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+                    char[] Charsarr = new char[3];
+                    System.Random random = new System.Random();
+
+                    for (int i = 0; i < Charsarr.Length; i++)
+                    {
+                        Charsarr[i] = characters[random.Next(characters.Length)];
+                    }
+
+                    convertTitle += "_" + new String(Charsarr);
+                }*/
+                
+                int existCnt = CheckRoleTitleExist(rtitle, type);
+
                 nav = new NativeAnimationAvatar();
                 nav.avatarId = id;
                 nav.avatar = avatar;
                 nav.ikparent = ikparent;
                 nav.type = type;
                 nav.roleName = RoleName + "_" + DateTime.Now.ToFileTime().ToString();  //"(" + GetCountTypeOf(type) + ")";
-                nav.roleTitle = rtitle; // nav.roleName;
+                if (existCnt == 0)
+                {
+                    nav.roleTitle = convertTitle; // nav.roleName;
+                }
+                else
+                {
+                    nav.roleTitle = convertTitle + "_" + existCnt.ToString();
+                }
+                
             }
 
 
@@ -986,7 +1412,12 @@ namespace UserHandleSpace
                 {
                     naf.blendShapeList.Add(TrimBlendShapeName(item.text));
                 });
-                
+
+                naf.gravityBoneList.Clear();
+                olvrm.gravityList.list.ForEach(item =>
+                {
+                    naf.gravityBoneList.Add(item.comment + "/" + item.rootBoneName);
+                });
                 
             }
             
@@ -998,6 +1429,82 @@ namespace UserHandleSpace
                 currentProject.timeline.characters.Add(naf);
             }
             
+
+            return nav;
+        }
+        /// <summary>
+        /// Set up each avatar object to connect animation project (necessary automatically attach)
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="avatar"></param>
+        /// <param name="ikparent"></param>
+        /// <param name="RoleName"></param>
+        /// <param name="type"></param>
+        /// <param name="path"></param>
+        public NativeAnimationAvatar FirstAddAvatarForFileObject(out bool isOverWrite, string id, GameObject avatar, GameObject ikparent, string RoleName, AF_TARGETTYPE type, string path)
+        {
+            isOverWrite = false;
+            bool isExists = false;
+
+            if ((currentProject != null) && (currentProject.isSharing || currentProject.isReadOnly)) return (NativeAnimationAvatar)null;
+
+            NativeAnimationAvatar nav = currentProject.casts.Find(match =>
+            {
+                if ((match.path == path) && (match.type == type) && (match.avatar == null)) return true;
+                return false;
+            });
+            if ((nav != null))
+            { //---already this time the each object exists in the project (And unallocated)
+                nav.avatarId = id;
+                nav.avatar = avatar;
+                nav.ikparent = ikparent;
+                // (*) roleName inherits the previous name.
+                //nav.roleName = RoleName + "_" + DateTime.Now.ToFileTime().ToString();  //"(" + GetCountTypeOf(type) + ")";
+
+                isExists = true;
+                isOverWrite = true;
+            }
+            else
+            {
+                nav = new NativeAnimationAvatar();
+                nav.avatarId = id;
+                nav.avatar = avatar;
+                nav.ikparent = ikparent;
+                nav.type = type;
+                nav.roleName = RoleName + "_" + DateTime.Now.ToFileTime().ToString();  //"(" + GetCountTypeOf(type) + ")";
+
+                
+                int existCnt = CheckRoleTitleExist(path, type);
+                if (existCnt == 0)
+                {
+                    nav.roleTitle = path;
+                }
+                else
+                {
+                    nav.roleTitle = path + "_" + existCnt.ToString();
+                }
+                nav.path = path;
+            }
+
+            //---for timeline.characters
+            NativeAnimationFrameActor naf = null;
+            naf = GetFrameActorFromRole(nav.roleName, nav.type);
+            if (naf == null)
+            {
+                naf = new NativeAnimationFrameActor();
+                naf.targetId = id;
+                naf.targetRole = nav.roleName;
+                naf.targetType = type;
+                naf.avatar = nav;
+
+            }
+            if (!isExists)
+            {
+                currentProject.casts.Add(nav);
+
+                //---for timeline.characters
+                currentProject.timeline.characters.Add(naf);
+            }            
 
             return nav;
         }
@@ -1017,8 +1524,18 @@ namespace UserHandleSpace
             {
                 if (avatar.avatarId == prm[0])
                 {
+                    //---repair for influence of renaming role title
+                    currentProject.casts.ForEach(vrm =>
+                    {
+                        if (vrm.type == AF_TARGETTYPE.VRM)
+                        {
+                            vrm.avatar.GetComponent<OperateLoadedVRM>().ApplyRenameIKTargetRoleTitle(avatar.roleTitle + "\t" + prm[1]);
+                        }
+                    });
+
+                    //---apply changes!
                     avatar.roleTitle = prm[1];
-                    Debug.Log(JsonUtility.ToJson(avatar));
+                    //Debug.Log(JsonUtility.ToJson(avatar));
                 }
             }
         }
@@ -1043,6 +1560,8 @@ namespace UserHandleSpace
                     //---change reference to avatar object.
                     avatar.avatar = tmpav.avatar;
                     avatar.ikparent = tmpav.ikparent;
+                    avatar.path = tmpav.path;
+                    avatar.ext = tmpav.ext;
 
                     //---update bodyInfoList current avatar body info.
                     /*
@@ -1067,6 +1586,12 @@ namespace UserHandleSpace
    
                 }
             }
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
         }
 
         /// <summary>
@@ -1085,6 +1610,8 @@ namespace UserHandleSpace
                         avatar.avatarId = "";
                         avatar.avatar = null;
                         avatar.ikparent = null;
+                        avatar.path = "";
+                        avatar.ext = "";
                     }
                 }
                 else if(prm[1] == "avatar")
@@ -1094,9 +1621,16 @@ namespace UserHandleSpace
                         avatar.avatarId = "";
                         avatar.avatar = null;
                         avatar.ikparent = null;
+                        avatar.path = "";
+                        avatar.ext = "";
                     }
                 }
-                
+            }
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
             }
         }
 
@@ -1144,11 +1678,17 @@ namespace UserHandleSpace
                 }
 
             }
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
         }
         public void DestroyEffectiveAvatar(GameObject avatar, GameObject ikparent, AF_TARGETTYPE type)
         {
-            if ((type == AF_TARGETTYPE.VRM) ||
-                (type == AF_TARGETTYPE.OtherObject) || (type == AF_TARGETTYPE.Light) || (type == AF_TARGETTYPE.Camera) || (type == AF_TARGETTYPE.Effect)
+            if ((type == AF_TARGETTYPE.VRM) || (type == AF_TARGETTYPE.OtherObject) || (type == AF_TARGETTYPE.Image) ||
+                 (type == AF_TARGETTYPE.Light) || (type == AF_TARGETTYPE.Camera) || (type == AF_TARGETTYPE.Effect)
             )
             {
                 //fcom.DestroyVRM(cast.avatar.name);
@@ -1164,7 +1704,53 @@ namespace UserHandleSpace
                 Destroy(avatar);
             }
         }
+        public void DeleteAllEmptyTimeline()
+        {
+            List<string> ret = new List<string>();
+            for (int tl_i = currentProject.timeline.characters.Count-1; tl_i >= 0; tl_i--)
+            {
+                if (currentProject.timeline.characters[tl_i].frames.Count == 0)
+                {
+                    int cast_i = currentProject.casts.FindIndex(item =>
+                    {
+                        if (item.roleName == currentProject.timeline.characters[tl_i].targetRole)
+                        {
+                            if (item.avatarId == "") return true;
+                            return false;
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    });
+                    if (cast_i > -1)
+                    {
+                        ret.Add(currentProject.casts[cast_i].roleName + "," + ((int)currentProject.casts[cast_i].type).ToString());
+                        DeleteAvatarFromCast(currentProject.casts[cast_i].roleName + "," + ((int)currentProject.casts[cast_i].type).ToString());
+                        
+                    }
+                }
+            }
+            string js = string.Join(",", ret);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(js);
+#endif
+        }
 
+        /// <summary>
+        /// To reset specified IK-target of all VRM
+        /// </summary>
+        /// <param name="param"></param>
+        public void ApplyAllVRM_ResetIKTargetBySearchObject(string param)
+        {
+            currentProject.casts.ForEach(item =>
+            {
+                if (item.type == AF_TARGETTYPE.VRM)
+                {
+                    item.avatar.GetComponent<OperateLoadedVRM>().ResetIKMappingBySearchObject(param);
+                }
+            });
+        }
 
         //=== Functions to check, utility ===================================================================================
         public string NullCheckAllActorsForRole()
@@ -1303,8 +1889,9 @@ namespace UserHandleSpace
         /// <param name="vrmBone">Body parts to calculate</param>
         /// <param name="pelvisCondition">current loaded avatar's pelvis position</param>
         /// <returns>Calculated value</returns>
-        public Vector3 CalculateReposition(GameObject avatar, GameObject ikparent, AF_TARGETTYPE type, float[] bounds, Vector3 lst, ParseIKBoneType vrmBone, Vector3 pelvisCondition)
+        /*public Vector3 CalculateReposition(GameObject avatar, GameObject ikparent, AF_TARGETTYPE type, float[] bounds, Vector3 position, ParseIKBoneType vrmBone, Vector3 pelvisCondition)
         { //---no use. futurely delete.
+            
             //---current avatar body information
             //GameObject body = avatar.GetComponent<ManageAvatarTransform>().GetBodyMesh();
             Bounds bnd = avatar.GetComponent<OperateLoadedVRM>().GetTPoseBodyInfo(); //body.GetComponent<SkinnedMeshRenderer>().bounds;
@@ -1317,7 +1904,7 @@ namespace UserHandleSpace
             if (type == AF_TARGETTYPE.VRM) 
             {
                 //---base is pelvis.
-                loadTargetPelvis.y = bounds[PELVIS_Y] - pelvisCondition.y; //lst.y;
+                loadTargetPelvis.y = bounds[PELVIS_Y] - pelvisCondition.y; //position.y;
                 loadTargetExtents.x = bounds[HEIGHT_X];
                 loadTargetExtents.y = bounds[HEIGHT_Y];
                 loadTargetExtents.z = bounds[HEIGHT_Z];
@@ -1327,39 +1914,39 @@ namespace UserHandleSpace
                 currentTargetExtents.z = bnd.extents.z * 2f;
 
             }
-
+            Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
             Transform boneTran = ikparent.transform.Find(IKBoneNames[(int)vrmBone]);
 
             Vector3 fnl;
 
 
             //---Absorb the difference in height.
-            fnl.x = currentTargetExtents.x * (lst.x / loadTargetExtents.x);
+            fnl.x = currentTargetExtents.x * (position.x / loadTargetExtents.x);
             if (vrmBone == ParseIKBoneType.Pelvis) 
             {
                 //---Pelvis only: add sample result of "rest pelvis - pose pelvis"
-                fnl.y = currentTargetExtents.y * (lst.y / loadTargetExtents.y) + loadTargetPelvis.y;
+                fnl.y = currentTargetExtents.y * (position.y / loadTargetExtents.y) + loadTargetPelvis.y;
             }
             else
             {
-                fnl.y = currentTargetExtents.y * (lst.y / loadTargetExtents.y);
+                fnl.y = currentTargetExtents.y * (position.y / loadTargetExtents.y);
             }
 
-            fnl.z = currentTargetExtents.z * (lst.z / loadTargetExtents.z);
+            fnl.z = currentTargetExtents.z * (position.z / loadTargetExtents.z);
 
-            return new Vector3(fnl.x, fnl.y, lst.z);
+            return new Vector3(fnl.x, fnl.y, position.z);
             
-        }
+        }*/
 
         /// <summary>
         /// To calculate difference of height of VRM.
         /// </summary>
         /// <param name="currentActor">T-pose data of current target avatar</param>
         /// <param name="roller">T-pose data of the timeline actor</param>
-        /// <param name="lst">target pose data</param>
+        /// <param name="position">target pose data</param>
         /// <param name="vrmBone">target body part</param>
         /// <returns></returns>
-        public Vector3 CalculateDifferenceInHeight(Vector3 currentActor, Vector3 roller, Vector3 lst, ParseIKBoneType vrmBone)
+        public Vector3 CalculateDifferenceInHeight(Vector3 currentActor, Vector3 roller, Vector3 position, ParseIKBoneType vrmBone)
         {
             Vector3 ret = Vector3.zero;
             Vector3 qv = Vector3.zero;
@@ -1379,271 +1966,73 @@ namespace UserHandleSpace
             if (qv.z == 0f) qv.z = 1f;
             */
 
-            ret = lst + qv;
+            ret = position + qv;
             /*
-            ret.x = lst.x * qv.x;
-            ret.y = lst.y * qv.y;
-            ret.z = lst.z * qv.z;
+            ret.x = position.x * qv.x;
+            ret.y = position.y * qv.y;
+            ret.z = position.z * qv.z;
             */
 
             return ret;
         }
-        
 
-
-//===========================================================================================================================
-//  Play functions
-//===========================================================================================================================
-        
         /// <summary>
-        /// Parse body of Animation Process. (apply ease at end)
+        /// To calculate difference of height of VRM. (multiply percentage)
         /// </summary>
-        /// <param name="animateFlow"></param>
-        /// <param name="targetObject"></param>
-        /// <param name="frame"></param>
-        /// <param name="aro"></param>
+        /// <param name="currentActor"></param>
+        /// <param name="roller"></param>
+        /// <param name="position"></param>
+        /// <param name="vrmBone"></param>
         /// <returns></returns>
-        private Sequence ProcessBody_forFrame(Sequence animateFlow, NativeAnimationFrameActor targetObject, NativeAnimationFrame frame, AnimationParsingOptions aro)
+        public Vector3 CalculateDifferenceByHeight(float[] currentActor, float[] roller, Vector3 position, ParseIKBoneType vrmBone)
         {
-            AnimationTargetParts pelvisatp = frame.movingData.Find(item =>
+            Vector3 ret = position;
+            if ((roller[0] != 0) && (roller[1] != 0) && (roller[2] != 0))
             {
-                if (item.vrmBone == ParseIKBoneType.Pelvis)
-                {
-                    return true;
-                }
-                return false;
-            });
+                float hx = currentActor[0] / roller[0];
+                float hy = currentActor[1] / roller[1];
+                float hz = currentActor[2] / roller[2];
 
-            //---moving data loop for 1 avatar
-            for (int i = frame.movingData.Count-1; i >= 0; i--) 
-            {
-                AnimationTargetParts movedata = frame.movingData[i];
-
-                if (targetObject.targetType == AF_TARGETTYPE.SystemEffect)
-                {
-                    animateFlow = ParseForSystemEffect(animateFlow, frame, movedata, targetObject, aro);
-                }
-                else
-                {
-
-                    animateFlow = ParseForCommon(animateFlow, frame, movedata, targetObject, pelvisatp, aro);
-
-
-                    if (targetObject.targetType == AF_TARGETTYPE.VRM)
-                    {
-                        animateFlow = ParseForVRM(animateFlow, frame, movedata, targetObject, aro);
-                    }
-                    else if (targetObject.targetType == AF_TARGETTYPE.OtherObject)
-                    {
-                        animateFlow = ParseForOtherObject(animateFlow, frame, movedata, targetObject, aro);
-                    }
-                    else if (targetObject.targetType == AF_TARGETTYPE.Light)
-                    {
-                        animateFlow = ParseForLight(animateFlow, frame, movedata, targetObject, aro);
-                    }
-                    else if (targetObject.targetType == AF_TARGETTYPE.Camera)
-                    {
-                        animateFlow = ParseForCamera(animateFlow, frame, movedata, targetObject, aro);
-                    }
-                    else if (targetObject.targetType == AF_TARGETTYPE.Text)
-                    {
-                        animateFlow = ParseForText(animateFlow, frame, movedata, targetObject, aro);
-                    }
-                    else if (targetObject.targetType == AF_TARGETTYPE.Image)
-                    {
-                        animateFlow = ParseForImage(animateFlow, frame, movedata, targetObject, aro);
-                    }
-                    else if (targetObject.targetType == AF_TARGETTYPE.UImage)
-                    {
-                        animateFlow = ParseForUImage(animateFlow, frame, movedata, targetObject, aro);
-                    }
-                    else if (targetObject.targetType == AF_TARGETTYPE.Audio)
-                    {
-                        animateFlow = ParseForAudio(animateFlow, frame, movedata, targetObject, aro);
-                    }
-                    else if (targetObject.targetType == AF_TARGETTYPE.Effect)
-                    {
-                        animateFlow = ParseForEffect(animateFlow, frame, movedata, targetObject, aro);
-                    }
-                    else if (targetObject.targetType == AF_TARGETTYPE.Stage)
-                    {
-                        animateFlow = ParseForStage(animateFlow, frame, movedata, targetObject, aro);
-                    }
-                }
+                ret.x = position.x * hx;
+                ret.y = position.y * hy;
+                ret.z = position.z * hz;
 
             }
-            return animateFlow.SetEase(frame.ease);
+
+            return ret;
         }
-        /// <summary>
-        /// Load and Play the single timeline frames (all avatar, if no specify)
-        /// (Neccesary: NativeAnimationAvatar[])
-        /// </summary>
-        /// <param name="param">parsing option(JSON-format)</param>
-        public void PreviewSingleFrame(string param)
+        public void GetEaseFromOuter(string param)
         {
-            AnimationParsingOptions aro = JsonUtility.FromJson<AnimationParsingOptions>(param);
-            PreviewSingleFrame(aro);
-        }
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
+            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
 
-        /// <summary>
-        /// Body of the core for PreviewSingleFrame
-        /// </summary>
-        /// <param name="animateFlow"></param>
-        /// <param name="actor"></param>
-        /// <param name="aro"></param>
-        /// <param name="isFinalize"></param>
-        /// <returns></returns>
-        protected Sequence PreviewProcessBody(Sequence animateFlow, NativeAnimationFrameActor actor, AnimationParsingOptions aro, bool isFinalize)
-        {
-            if (actor.avatar.avatar != null)
-            {
-                //---if compiled animation, disable IK marker.
-                actor.compiled = currentPlayingOptions.isCompileAnimation;
-                if (currentPlayingOptions.isCompileAnimation == 1)
-                {
-                    OperateLoadedBase ovrm = actor.avatar.avatar.GetComponent<OperateLoadedBase>();
-                    if (ovrm != null)
-                    {
-                        ovrm.EnableIK(false);
-                    }
-
-                }
-
-                NativeAnimationFrame frame = GetFrame(actor, aro.index, isFinalize);
-                if (frame != null)
-                {
-                    animateFlow = ProcessBody_forFrame(animateFlow, actor, frame, aro);
-                }
-            }
-
-            return animateFlow;
-        } 
-        /// <summary>
-        /// Load and Play the single timeline frames (all avatar, if no specify)
-        /// (Neccesary: NativeAnimationAvatar[])
-        /// </summary>
-        /// <param name="aro">parsing option</param>
-        public void PreviewSingleFrame(AnimationParsingOptions aro)
-        {
-            //AnimationParsingOptions aro = JsonUtility.FromJson<AnimationParsingOptions>(param);
-            bool isFinalize = false;
-            if (aro.finalizeIndex > 0)
-            {
-                isFinalize = true;
-            }
-            Debug.Log("aro.index="+aro.index);
-            currentPlayingOptions = aro;
-
-            IsPreview = true;
-            IsBoneLimited = false;
-            Sequence animateFlow = DOTween.Sequence();
-            
-            animateFlow.OnKill(() =>
-            {
-
-                if (currentPlayingOptions.isCompileAnimation == 1)
-                {
-                    foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
-                    {
-                        if ((actor.avatar != null) && (actor.avatar.avatar != null))
-                        {
-                            OperateLoadedBase ovrm = actor.avatar.avatar.GetComponent<OperateLoadedBase>();
-                            if (ovrm != null)
-                            {
-                                ovrm.EnableIK(true);
-                            }
-                        }
-                        
-                    }
-                }
-                IsPreview = false;
-                DOVirtual.DelayedCall(0.5f,() =>
-                {
-                    IsBoneLimited = true;
-                });
-                
-
+            int js = (int)curframe.ease;
 #if !UNITY_EDITOR && UNITY_WEBGL
-                SendPlayingPreviewAnimationInfoOnComplete(currentPlayingOptions.finalizeIndex < 0 ? currentPlayingOptions.index : currentPlayingOptions.finalizeIndex);
+            ReceiveIntVal(js);
 #endif
-            });
 
-            NativeAnimationFrameActor naf = GetFrameActorFromRole(aro.targetRole, aro.targetType);
-            if (naf != null)
-            {
-                animateFlow = PreviewProcessBody(animateFlow, naf, aro, isFinalize);   
-            }
-            else
-            {
-                foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
-                {
-                    animateFlow = PreviewProcessBody(animateFlow, actor, aro, isFinalize);
-                }
-            }
-
-            animateFlow.PlayForward();
         }
-
-        /// <summary>
-        /// To animate previewly ONE actor
-        /// </summary>
-        /// <param name="actor">target frame actor</param>
-        /// <param name="aro">options</param>
-        public void PreviewSingleFrame(NativeAnimationFrameActor actor, AnimationParsingOptions aro)
-        {
-            Sequence animateFlow = DOTween.Sequence();
-            IsPreview = true;
-            IsBoneLimited = false;
-            currentPlayingOptions = aro;
-
-            /*animateFlow.OnComplete(() =>
-            {
-                IsPreview = false;
-                IsBoneLimited = true;
-            });*/
-            animateFlow.OnKill(() =>
-            {
-
-                if (currentPlayingOptions.isCompileAnimation == 1)
-                {
-                    foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
-                    {
-                        if ((actor.avatar != null) && (actor.avatar.avatar != null))
-                        {
-                            OperateLoadedBase ovrm = actor.avatar.avatar.GetComponent<OperateLoadedBase>();
-                            if (ovrm != null)
-                            {
-                                ovrm.EnableIK(true);
-                            }
-                        }
-                        
-                    }
-                }
-                IsPreview = false;
-                DOVirtual.DelayedCall(0.5f, () =>
-                {
-                    IsBoneLimited = true;
-                });
-#if !UNITY_EDITOR && UNITY_WEBGL
-                SendPlayingPreviewAnimationInfoOnComplete(currentPlayingOptions.index);
-#endif
-            });
-
-            animateFlow = PreviewProcessBody(animateFlow, actor, aro, false);
-        }
-
         /// <summary>
         /// Set Easing
         /// </summary>
         /// <param name="param">JSON-string for AnimationRegisterOptions</param>
         public void SetEase(string param)
         {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
             AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
 
-            NativeAnimationFrameActor actor = GetFrameActorFromObjectID(aro.targetId, aro.targetType);
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
 
             int nearmin = GetNearMinFrameIndex(actor, aro.index);
-            //NativeAnimationFrame minframe = GetFrame(actor, nearmin);
+            NativeAnimationFrame minframe = actor.frames[nearmin]; // GetFrame(actor, nearmin);
             NativeAnimationFrame curframe = GetFrame(actor, aro.index);
             //---update "ease" only
             curframe.ease = aro.ease;
@@ -1666,13 +2055,26 @@ namespace UserHandleSpace
             */
             string js = "{ " +
                 "\"roleName\": \"" + actor.targetRole + "\"," +
-                "\"avatarId\" : \"" + actor.targetId + "\"," + 
+                "\"avatarId\" : \"" + actor.targetId + "\"," +
                 "\"type\": " + (int)aro.targetType + "," +
-                "\"nearMinIndex\": " + nearmin + "," + 
-                "\"index\":" + aro.index + 
+                "\"nearMinIndex\": " + minframe.index + "," +
+                "\"index\":" + aro.index +
             "}";
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(js);
+#endif
+        }
+        public void GetDurationFromOuter(string param)
+        {
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
+
+            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
+            float js = curframe.duration;
+            //Debug.Log("duration="+js.ToString());
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(js);
 #endif
         }
         /// <summary>
@@ -1681,11 +2083,32 @@ namespace UserHandleSpace
         /// <param name="param">JSON-string for AnimationRegisterOptions</param>
         public void SetDuration(string param)
         {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
             AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
 
-            NativeAnimationFrameActor actor = GetFrameActorFromObjectID(aro.targetId, aro.targetType);
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
             NativeAnimationFrame curframe = GetFrame(actor, aro.index);
             curframe.duration = aro.duration;
+        }
+        public void SetBaseDuration(float param)
+        {
+            if (param != 0f)
+            {
+                currentProject.baseDuration = param;
+            }
+        }
+        public void GetBaseDurationFromOuter()
+        {
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(currentProject.baseDuration);
+#endif
         }
         /// <summary>
         /// Reset frame duration.(all frame)
@@ -1693,14 +2116,578 @@ namespace UserHandleSpace
         /// <param name="param">JSON-string for AnimationRegisterOptions</param>
         public void ResetAutoDuration(string param)
         {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
             AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
 
-            NativeAnimationFrameActor actor = GetFrameActorFromObjectID(aro.targetId, aro.targetType);
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
             AdjustAllFrameDuration(actor, currentProject.baseDuration);
+        }
+
+        /// <summary>
+        /// Get specified range of duration of specified avatar(timeline, role)
+        /// </summary>
+        /// <param name="param">[0] - role name, [1] - start frame number, [2] - end frame number</param>
+        public void GetAvatarDurationBetween(string param)
+        {
+            string[] prms = param.Split(",");
+            int st = int.TryParse(prms[1], out st) ? st : 0;
+            int ed = int.TryParse(prms[2], out ed) ? ed : currentProject.timelineFrameLength;
+            NativeAnimationAvatar nav = GetCastInProject(prms[0]);
+            float ret = 0f;
+
+            if (nav != null)
+            {
+                NativeAnimationFrameActor naf =  GetFrameActorFromRole(nav.roleName, nav.type);
+                if (naf != null)
+                {
+                    for (int i = 0; i < naf.frames.Count; i++)
+                    {
+                        if ((st <= naf.frames[i].index) && (naf.frames[i].index <= ed))
+                        {
+                            ret += naf.frames[i].duration;
+                        }
+                    }
+                }
+            }
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(ret);
+#endif
+        }
+
+
+        //===========================================================================================================================
+        //  Play functions
+        //===========================================================================================================================
+
+        /// <summary>
+        /// Parse body of Animation Process. (apply ease at end)
+        /// </summary>
+        /// <param name="animateFlow"></param>
+        /// <param name="targetObject"></param>
+        /// <param name="frame"></param>
+        /// <param name="aro"></param>
+        /// <returns></returns>
+        private Sequence ProcessBody_forFrame(Sequence animateFlow, NativeAnimationFrameActor targetObject, NativeAnimationFrame frame, AnimationParsingOptions aro)
+        {
+            bool IsExecTargetCheck = ((targetObject.avatar.avatar != null) && (targetObject.avatar.ikparent != null));
+            if ((targetObject.targetType == AF_TARGETTYPE.Text) || (targetObject.targetType == AF_TARGETTYPE.UImage))
+            { //---re-check role and avatar connection if avatar is text and Uimage ? (2D)
+                IsExecTargetCheck = (targetObject.avatar.avatar != null);
+            }
+            if (IsExecTargetCheck)
+            {
+                /*AnimationTargetParts pelvisatp = frame.movingData.Find(item =>
+                {
+                    if (item.vrmBone == ParseIKBoneType.Pelvis)
+                    {
+                        return true;
+                    }
+                    return false;
+                });*/
+                animateFlow.SetEase(frame.ease);
+
+                //---moving data loop for 1 avatar
+                //for (int i = frame.movingData.Count - 1; i >= 0; i--)
+                for (int i = 0; i < frame.movingData.Count; i++)
+                {
+                    AnimationTargetParts movedata = frame.movingData[i];
+
+                    if (targetObject.targetType == AF_TARGETTYPE.SystemEffect)
+                    {
+                        animateFlow = ParseForSystemEffect(animateFlow, frame, movedata, targetObject, aro);
+                    }
+                    else
+                    {
+
+                        animateFlow = ParseForCommon(animateFlow, frame, movedata, targetObject, null, aro);
+
+
+                        if (targetObject.targetType == AF_TARGETTYPE.VRM)
+                        {
+                            animateFlow = ParseForVRM(animateFlow, frame, movedata, targetObject, aro);
+                        }
+                        else if (targetObject.targetType == AF_TARGETTYPE.OtherObject)
+                        {
+                            animateFlow = ParseForOtherObject(animateFlow, frame, movedata, targetObject, aro);
+                        }
+                        else if (targetObject.targetType == AF_TARGETTYPE.Light)
+                        {
+                            animateFlow = ParseForLight(animateFlow, frame, movedata, targetObject, aro);
+                        }
+                        else if (targetObject.targetType == AF_TARGETTYPE.Camera)
+                        {
+                            animateFlow = ParseForCamera(animateFlow, frame, movedata, targetObject, aro);
+                        }
+                        else if (targetObject.targetType == AF_TARGETTYPE.Text)
+                        {
+                            animateFlow = ParseForText(animateFlow, frame, movedata, targetObject, aro);
+                        }
+                        else if (targetObject.targetType == AF_TARGETTYPE.Image)
+                        {
+                            animateFlow = ParseForImage(animateFlow, frame, movedata, targetObject, aro);
+                        }
+                        else if (targetObject.targetType == AF_TARGETTYPE.UImage)
+                        {
+                            animateFlow = ParseForUImage(animateFlow, frame, movedata, targetObject, aro);
+                        }
+                        else if (targetObject.targetType == AF_TARGETTYPE.Audio)
+                        {
+                            animateFlow = ParseForAudio(animateFlow, frame, movedata, targetObject, aro);
+                        }
+                        else if (targetObject.targetType == AF_TARGETTYPE.Effect)
+                        {
+                            animateFlow = ParseForEffect(animateFlow, frame, movedata, targetObject, aro);
+                        }
+                        else if (targetObject.targetType == AF_TARGETTYPE.Stage)
+                        {
+                            animateFlow = ParseForStage(animateFlow, frame, movedata, targetObject, aro);
+                        }
+                    }
+
+                }
+
+            }
+            return animateFlow;
+        }
+        /// <summary>
+        /// Calculate indicated frame duration between 2 keyframes.
+        /// </summary>
+        /// <param name="actor"></param>
+        /// <param name="aro"></param>
+        /// <param name="maxdex"></param>
+        /// <returns></returns>
+        public float GetVirtualFrameBetweenKeyFrames(NativeAnimationFrameActor actor, AnimationParsingOptions aro, int mindex, int maxdex, int direction)
+        {
+            //int mindex = GetNearMinFrameIndex(actor, aro.index);
+            //int maxdex = GetNearMaxFrameIndex(actor, aro.index);
+            //if (mindex == -1) mindex = 0;
+
+            NativeAnimationFrame minframe = actor.frames[mindex]; // GetFrame(actor, mindex);
+            NativeAnimationFrame maxframe = actor.frames[maxdex]; // GetFrame(actor, maxdex);
+
+            float totaldistance = (float)maxframe.index - (float)minframe.index;
+            float cur2totaldist = 0f;
+            if (totaldistance != 0f)
+            {
+                if (direction == -1)
+                { //--- back 
+                    cur2totaldist = ((float)(maxframe.index - aro.index) / totaldistance);
+                }
+                else if (direction == 1)
+                { //---progress
+                    cur2totaldist = 1f - ((float)(maxframe.index - aro.index) / totaldistance);
+                }
+                else
+                {
+                    cur2totaldist = 0f;
+                }
+
+            }
+
+            float ret = maxframe.duration * cur2totaldist;
+
+            return ret;
+        }
+
+        /// <summary>
+        /// Load and Play the single timeline frames (all avatar, if no specify)
+        /// (Neccesary: NativeAnimationAvatar[])
+        /// </summary>
+        /// <param name="param">parsing option(JSON-format)</param>
+        public void PreviewSingleFrame(string param)
+        {
+            AnimationParsingOptions aro = JsonUtility.FromJson<AnimationParsingOptions>(param);
+            PreviewSingleFrame(aro);
+        }
+
+        /// <summary>
+        /// Body of the core for PreviewSingleFrame 
+        /// </summary>
+        /// <param name="animateFlow"></param>
+        /// <param name="actor"></param>
+        /// <param name="aro"></param>
+        /// <param name="isFinalize"></param>
+        /// <returns></returns>
+        protected PreviewFrameReturner PreviewProcessBody(Sequence animateFlow, NativeAnimationFrameActor actor, AnimationParsingOptions aro, bool isFinalize)
+        {
+            PreviewFrameReturner pref = new PreviewFrameReturner();
+            pref.seq = DOTween.Sequence();
+
+            if (actor.avatar.avatar != null)
+            {
+                //---if compiled animation, disable IK marker.
+                actor.compiled = currentPlayingOptions.isCompileAnimation;
+                if (currentPlayingOptions.isCompileAnimation == 1)
+                {
+                    OperateLoadedBase ovrm = actor.avatar.avatar.GetComponent<OperateLoadedBase>();
+                    if (ovrm != null)
+                    {
+                        ovrm.EnableIK(false);
+                    }
+
+                }
+
+                NativeAnimationFrame frame = GetFrame(actor, aro.index, isFinalize);
+
+                bool isVirtualFrame = false;
+                float curdist = -1f;
+                int targetFrameIndex = aro.index;
+                int backupFrameIndex = aro.index;
+                float backupDuration = 0f;
+                int mindex = -1;
+                int maxdex = -1;
+                int bkup_isBuildDoTween = aro.isBuildDoTween;
+
+                if (frame == null)
+                { //---Search a frame between 2 key-frames.
+
+                    //---back to preview frame
+                    mindex = GetNearMinFrameIndex(actor, aro.index);
+                    if (mindex == -1) mindex = 0;
+
+                    //---progress to future frame
+                    maxdex = GetNearMaxFrameIndex(actor, aro.index);
+                    if (configLab.GetIntVal("recover_tomax_overframe",1) == 1)
+                    {
+                        if (maxdex == -1) maxdex = actor.frames.Count - 1;
+                    }
+                    
+
+                    if (mindex == maxdex)
+                    { //---if over last position, set to last position
+                        frame = actor.frames[mindex];
+                        targetFrameIndex = frame.index;
+                    }
+                    else if (maxdex == -1)
+                    { //---if max index is over actor.frames, do not preview motion
+
+                    }
+                    else if (maxdex > -1)
+                    {
+                        //---necessarily use nearly maximum frame
+                        NativeAnimationFrame maxframe = actor.frames[maxdex];
+
+                        int calcFlag = 0;
+                        if (aro.index < oldPreviewMarker)
+                        { //---to refer a frame BEFORE previous frame
+                            frame = actor.frames[mindex];
+                            calcFlag = -1;
+
+                            //---start frame
+                            float bkupdur = actor.frames[maxdex].duration;
+                            actor.frames[maxdex].duration = 0f;
+                            Sequence nseq = DOTween.Sequence();
+                            ProcessBody_forFrame(nseq, actor, actor.frames[maxdex], aro);
+                            animateFlow.Append(nseq);
+                            actor.frames[maxdex].duration = bkupdur;
+                        }
+                        else if (aro.index > oldPreviewMarker)
+                        { //---to refer a frame AFTER previous frame
+                            frame = maxframe;
+                            calcFlag = 1;
+
+                            //---start frame
+                            float bkupdur = actor.frames[mindex].duration;
+                            actor.frames[mindex].duration = 0f;
+                            Sequence nseq = DOTween.Sequence();
+                            ProcessBody_forFrame(nseq, actor, actor.frames[mindex], aro);
+                            animateFlow.Append(nseq);
+                            actor.frames[mindex].duration = bkupdur;
+                        }
+                        else
+                        {
+                            frame = GetFrame(actor, aro.index);
+                        }
+
+                        if (frame != null)
+                        {
+                            backupDuration = frame.duration;
+
+                            // mindex - aro.index - maxdex : calculate duration of aro.index
+                            
+                            curdist = GetVirtualFrameBetweenKeyFrames(actor, aro, mindex, maxdex, calcFlag);
+
+                            //---executing frame is near max frame.
+                            targetFrameIndex = frame.index;
+                            isVirtualFrame = true;
+
+                            //---When back to previous frame also, use the duration of future frame.
+                            frame.duration = maxframe.duration;
+                            aro.isBuildDoTween = 1;
+                        }
+                    }
+                }
+
+                if (frame != null)
+                {
+                    aro.index = targetFrameIndex;
+                    Sequence nseq = DOTween.Sequence();
+                    ProcessBody_forFrame(nseq, actor, frame, aro);
+                    animateFlow.Append(nseq);
+
+                    aro.isBuildDoTween = bkup_isBuildDoTween;
+                }
+                pref.currentDuration = curdist;
+                pref.backupDuration = backupDuration;
+                if (isVirtualFrame)
+                { //---frame is virtual frame
+                    pref.index = frame.index;
+                    //Debug.Log(frame.index + ": " + curdist.ToString() + " / " + frame.duration);
+                    animateFlow.Goto(curdist);
+                    //---recover duration of previous frame
+                    frame.duration = backupDuration;
+                }
+                /*else
+                { //---not virtual frame (normal performing)
+                    if (frame != null)
+                    {
+                        animateFlow.Goto(frame.duration);
+                    }
+                    
+                }*/
+
+                //---recover option's index
+                aro.index = backupFrameIndex;
+
+                //animateFlow.Append(seq);
+            }
+
+            return pref;
+        }
+
+        /// <summary>
+        /// Load and Play the single timeline frames (all avatar, if no specify)
+        /// (Neccesary: NativeAnimationAvatar[])
+        /// </summary>
+        /// <param name="aro">parsing option</param>
+        public void PreviewSingleFrame(AnimationParsingOptions aro)
+        {
+            try
+            {
+                bool isFinalize = false;
+                if (aro.finalizeIndex > 0)
+                {
+                    isFinalize = true;
+                }
+                //Debug.Log("aro.index="+aro.index);
+                currentPlayingOptions = aro;
+
+                Sequence animateFlow = DOTween.Sequence();
+                //animateFlow.SetAutoKill(false);
+
+                //IsBoneLimited = false;
+                TweenCallback cb_start = () =>
+                {
+                    IsPreview = true;
+                    /*
+                    IsBoneLimited = false;
+                    OldIsLimitedPelvis = IsLimitedPelvis;
+                    OldIsLimitedArms = IsLimitedArms;
+                    OldIsLimitedLegs = IsLimitedLegs;
+                    IsLimitedPelvis = false;
+                    IsLimitedArms = false;
+                    IsLimitedLegs = false;
+                    */
+                };
+                animateFlow.OnPlay(cb_start);
+                animateFlow.OnRewind(cb_start);
+
+
+                NativeAnimationFrameActor naf = GetFrameActorFromRole(aro.targetRole, aro.targetType);
+                if ((naf != null) && (naf.avatar.avatar != null) && (LayerMask.LayerToName(naf.avatar.avatar.layer) != "HiddenPlayer"))
+                {
+                    //Sequence seq = DOTween.Sequence();
+                    PreviewFrameReturner pref = PreviewProcessBody(animateFlow, naf, aro, isFinalize);
+                    //animateFlow.Join(seq); 
+                }
+
+                else
+                {
+                    foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
+                    {
+                        if ((actor.avatar.avatar != null) && (LayerMask.LayerToName(actor.avatar.avatar.layer) != "HiddenPlayer"))
+                        {
+                            //Sequence seq = DOTween.Sequence();
+                            PreviewFrameReturner pref = PreviewProcessBody(animateFlow, actor, aro, isFinalize);
+                            //animateFlow.Join(seq);
+                        }
+
+                    }
+                }
+
+
+                //---Entrust execution to Goto of PreviewProcessBody.
+                /*
+                if (aro.index >= oldPreviewMarker)
+                {
+                    animateFlow.PlayForward();
+                }
+                else
+                {
+                    animateFlow.PlayBackwards();
+                }
+                */
+                //animateFlow.Play();
+                //animateFlow.Kill();
+            }
+            catch (Exception err) 
+            {
+                Debug.Log("PreviewSingleFrame: " + err.Message);
+                Debug.LogError(err.StackTrace);
+            }
+            
+
+        }
+        public void PreparePreviewMarker()
+        {
+            IsBoneLimited = false;
+            OldIsLimitedPelvis = IsLimitedPelvis;
+            OldIsLimitedArms = IsLimitedArms;
+            OldIsLimitedLegs = IsLimitedLegs;
+            IsLimitedPelvis = false;
+            IsLimitedArms = false;
+            IsLimitedLegs = false;
+        }
+        public void FinishPreviewMarker()
+        {
+            DOVirtual.DelayedCall(0.15f, () =>
+            {
+                if (currentPlayingOptions.isCompileAnimation == 1)
+                {
+                    foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
+                    {
+                        if ((actor.avatar != null) && (actor.avatar.avatar != null))
+                        {
+                            OperateLoadedBase ovrm = actor.avatar.avatar.GetComponent<OperateLoadedBase>();
+
+                            if (actor.targetType == AF_TARGETTYPE.VRM)
+                            {
+                                OperateLoadedVRM olvrm = actor.avatar.avatar.GetComponent<OperateLoadedVRM>();
+                                olvrm.ListGravityInfo();
+                            }
+                        }
+
+                    }
+                }
+                IsPreview = false;
+                //IsBoneLimited = true;
+                
+                //IsLimitedPelvis = OldIsLimitedPelvis;
+                //IsLimitedArms = OldIsLimitedArms;
+                //IsLimitedLegs = OldIsLimitedLegs;
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+            SendPlayingPreviewAnimationInfoOnComplete(currentPlayingOptions.finalizeIndex < 0 ? currentPlayingOptions.index : currentPlayingOptions.finalizeIndex);
+#endif
+            });
+        }
+        public void FinishPreviewMarker2()
+        {
+
+            IsLimitedPelvis = OldIsLimitedPelvis;
+            IsLimitedArms = OldIsLimitedArms;
+            IsLimitedLegs = OldIsLimitedLegs;
+        }
+        public void BackupPreviewMarker()
+        {
+            oldPreviewMarker = currentPlayingOptions.index;
+        }
+        public void RecoverBoneLimitatonMarker(string param)
+        {
+            string [] js = param.Split("\t");
+            int hingeflag = int.TryParse(js[0], out hingeflag) ? hingeflag : 0;
+            SetHingeLimited(hingeflag);
+
+            //limitation Pelvis
+            if (js.Length >= 2) SetLimitedBones(js[1]);
+            if (js.Length >= 3) SetLimitedBones(js[2]);
+            if (js.Length >= 4) SetLimitedBones(js[3]);
+        }
+        /// <summary>
+        /// To animate previewly ONE actor (Pose load only)
+        /// </summary>
+        /// <param name="actor">target frame actor</param>
+        /// <param name="aro">options</param>
+        public void PreviewSingleFrame(NativeAnimationFrameActor actor, AnimationParsingOptions aro)
+        {
+            Sequence animateFlow = DOTween.Sequence();
+            //IsPreview = true;
+            //IsBoneLimited = false;
+            currentPlayingOptions = aro;
+
+            animateFlow.OnPlay(() =>
+            {
+                IsPreview = true;
+                /*
+                IsBoneLimited = false;
+
+                OldIsLimitedPelvis = IsLimitedPelvis;
+                OldIsLimitedArms = IsLimitedArms;
+                OldIsLimitedLegs = IsLimitedLegs;
+                IsLimitedPelvis = false;
+                IsLimitedArms = false;
+                IsLimitedLegs = false;
+                */
+            });
+            /*animateFlow.OnComplete(() =>
+            {
+                IsPreview = false;
+                IsBoneLimited = true;
+            });*/
+            animateFlow.OnKill(() =>
+            {
+
+                if (currentPlayingOptions.isCompileAnimation == 1)
+                {
+                    foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
+                    {
+                        if ((actor.avatar != null) && (actor.avatar.avatar != null))
+                        {
+                            OperateLoadedBase ovrm = actor.avatar.avatar.GetComponent<OperateLoadedBase>();
+                            if (ovrm != null)
+                            {
+                                ovrm.EnableIK(true);
+                            }
+                            if (actor.targetType == AF_TARGETTYPE.VRM)
+                            {
+                                OperateLoadedVRM olvrm = actor.avatar.avatar.GetComponent<OperateLoadedVRM>();
+                                olvrm.ListGravityInfo();
+                            }
+                            
+
+                        }
+                        
+                    }
+                }
+                IsPreview = false;
+                /*
+                IsBoneLimited = true;
+                IsLimitedPelvis = OldIsLimitedPelvis;
+                IsLimitedArms = OldIsLimitedArms;
+                IsLimitedLegs = OldIsLimitedLegs;
+                */
+                
+#if !UNITY_EDITOR && UNITY_WEBGL
+                SendPlayingPreviewAnimationInfoOnComplete(currentPlayingOptions.index);
+#endif
+            });
+
+            PreviewProcessBody(animateFlow, actor, aro, false);
         }
         public void StartAllTimeline(string param)
         {
-            currentPlayingOptions = JsonUtility.FromJson<AnimationParsingOptions>(param);
+            StartAllTimeline(JsonUtility.FromJson<AnimationParsingOptions>(param));
+        }
+        public void StartAllTimeline(AnimationParsingOptions apo)
+        {
+            currentPlayingOptions = apo; // JsonUtility.FromJson<AnimationParsingOptions>(param);
 
             if ((currentSeq != null) && 
                 (currentPlayingOptions.isRebuildAnimation == 0) && 
@@ -1708,7 +2695,15 @@ namespace UserHandleSpace
                 (currentSeq.IsActive())
             )
             {//---To play only-------------------------------
+                /*
                 IsBoneLimited = false;
+                OldIsLimitedPelvis = IsLimitedPelvis;
+                OldIsLimitedArms = IsLimitedArms;
+                OldIsLimitedLegs = IsLimitedLegs;
+                IsLimitedPelvis = false;
+                IsLimitedArms = false;
+                IsLimitedLegs = false;
+                */
                 currentSeq.Restart();
             }
             else
@@ -1716,6 +2711,8 @@ namespace UserHandleSpace
                 isOldLoop = currentPlayingOptions.isLoop;
 
                 currentSeq.Kill();
+                //=======================================
+                // Most parent sequence for timeline
                 currentSeq = DOTween.Sequence();
                 currentSeq.SetAutoKill(false);
                 currentSeq.SetLink(gameObject);
@@ -1723,24 +2720,31 @@ namespace UserHandleSpace
                 {
                     currentSeq.SetLoops(-1, LoopType.Restart);
                 }
-                currentSeq.OnRewind(() =>
+                TweenCallback cb_start = () =>
                 {
                     //Debug.Log("Re-start an animation!");
                     IsPause = false;
                     IsPlaying = true;
+                    /*
                     IsBoneLimited = false;
-                });
-                currentSeq.OnStart(() =>
-                {
-                    //Debug.Log("Start an animation!");
-                    IsPause = false;
-                    IsPlaying = true;
-                    IsBoneLimited = false;
+                    OldIsLimitedPelvis = IsLimitedPelvis;
+                    OldIsLimitedArms = IsLimitedArms;
+                    OldIsLimitedLegs = IsLimitedLegs;
+                    IsLimitedPelvis = false;
+                    IsLimitedArms = false;
+                    IsLimitedLegs = false;
+                    */
 
-                });
+                    foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
+                    {
+                        actor.frameIndexMarker = 0;
+                    }
+                };
+                currentSeq.OnPlay(cb_start);
+                currentSeq.OnRewind(cb_start);
                 currentSeq.OnPause(() =>
                 {
-                    Debug.Log("An animation paused.");
+                    //Debug.Log("An animation paused.");
                     IsPause = true;
 #if !UNITY_EDITOR && UNITY_WEBGL
                     SendPlayingAnimationInfoOnPause(seqInIndex);
@@ -1758,18 +2762,41 @@ namespace UserHandleSpace
                         aro.isExecuteForDOTween = 0;
                         PreviewSingleFrame(aro);
                         */
-                        if (currentPlayingOptions.isShowIK == 0)
+                        /*if (currentPlayingOptions.isShowIK == 0)
                         {
                             CameraOperation1 co1 = Camera.main.gameObject.GetComponent<CameraOperation1>();
                             co1.EnableHandleShowCamera(1);
-                        }
+                        }*/
                         
                     });
+                    foreach (NativeAnimationAvatar actor in currentProject.casts)
+                    {
+                        if (actor.type == AF_TARGETTYPE.VRM)
+                        {
+                            if (actor.avatar != null)
+                            {
+                                OperateLoadedVRM olvrm = actor.avatar.GetComponent<OperateLoadedVRM>();
+                                olvrm.ListGravityInfo();
+                            }
+                            
+                        }
+                    }
+                    foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
+                    {
+                        actor.frameIndexMarker = 0;
+                    }
                     //StopAllTimeline();
                     IsPause = false;
                     IsPlaying = false;
+                    /*
+                    IsBoneLimited = true;
+                    
+                    IsLimitedPelvis = OldIsLimitedPelvis;
+                    IsLimitedArms = OldIsLimitedArms;
+                    IsLimitedLegs = OldIsLimitedLegs;
+                    */
 
-                    Debug.Log("An animation finished.");
+                    //Debug.Log("An animation finished.");
 #if !UNITY_EDITOR && UNITY_WEBGL
                     SendPlayingAnimationInfoOnComplete(seqInIndex);
 #endif
@@ -1828,15 +2855,30 @@ namespace UserHandleSpace
 
         public void PauseAllTimeline()
         {
-            IsPause = !IsPause;
-            if (currentSeq.IsComplete())
-            {
-                currentSeq.Restart();
+            if (!currentSeq.IsActive())
+            { //---first play
+                AnimationParsingOptions apo = new AnimationParsingOptions();
+                apo.index = 1;
+                apo.finalizeIndex = 1;
+                apo.isExecuteForDOTween = 1;
+                apo.isBuildDoTween = 1;
+                apo.isLoop = 0;
+                StartAllTimeline(apo);
+
             }
             else
-            {
-                currentSeq.TogglePause();
+            { //---second play and more...
+                IsPause = !IsPause;
+                if (currentSeq.IsComplete())
+                {
+                    currentSeq.Restart();
+                }
+                else
+                {
+                    currentSeq.TogglePause();
+                }
             }
+            
             
         }
         public void StopAllTimeline()
@@ -1852,6 +2894,10 @@ namespace UserHandleSpace
             {
                 currentSeq.Kill();
                 IsBoneLimited = true;
+
+                IsLimitedPelvis = OldIsLimitedPelvis;
+                IsLimitedArms = OldIsLimitedArms;
+                IsLimitedLegs = OldIsLimitedLegs;
             }
             else
             {
@@ -1859,6 +2905,10 @@ namespace UserHandleSpace
                 {
                     currentSeq.Complete();
                     IsBoneLimited = true;
+
+                    IsLimitedPelvis = OldIsLimitedPelvis;
+                    IsLimitedArms = OldIsLimitedArms;
+                    IsLimitedLegs = OldIsLimitedLegs;
                 }
             }
             
@@ -1890,23 +2940,27 @@ namespace UserHandleSpace
         { //---loop is character -> frame   TEST!!
             foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
             {
+                //==================================================
+                //  Tween sequence for 1-role = 1-timeline
                 Sequence actorSeq = DOTween.Sequence();
                 actorSeq.SetAutoKill(false);
-                actorSeq.OnStart(() =>
+                actorSeq.SetLink(gameObject);
+                actorSeq.OnRewind(() =>
                 {
 
                     //---For non-DOTween method and properties
                     ///SpecialUpdateFor_no_DOTween(currentProject.timeline, frameIndex);
 
                     //seqInIndex++;
+                    //Debug.Log("(" + actor.avatar.roleTitle + " begin");
                 });
-                actorSeq.OnComplete(() =>
+                actorSeq.OnStepComplete(() =>
                 {
-                    
+                    //Debug.Log(")" + actor.avatar.roleTitle + " EOF");
                 });
                 actorSeq.OnUpdate(() =>
                 {
-
+                    
                 });
                 currentSeq.Join(PlayEachTimeline(actorSeq, actor));
             }
@@ -1923,15 +2977,15 @@ namespace UserHandleSpace
             //bool ret = false;
             Sequence animateFlow = DOTween.Sequence();
             animateFlow.SetAutoKill(false);
-            animateFlow.OnStart(() =>
+            /*animateFlow.OnStart(() =>
             {
-                Debug.Log(frameIndex + " - Started");
+                //Debug.Log(frameIndex + " - Started");
 
                 //---For non-DOTween method and properties
                 SpecialUpdateFor_no_DOTween(currentProject.timeline, frameIndex);
 
                 seqInIndex++;
-            });
+            });*/
             animateFlow.OnComplete(() =>
             {
                 //Debug.Log("  & Finished");
@@ -1947,11 +3001,12 @@ namespace UserHandleSpace
 
             List<float> durationList = new List<float>();
 
+
             foreach (NativeAnimationFrameActor actor in timeline.characters)
             {
                 if (actor.targetRole != "")
                 {
-                    if ((actor.avatar != null) && (actor.avatar.avatar != null))
+                    if ((actor.avatar != null) && (actor.avatar.avatar != null) && (LayerMask.LayerToName(actor.avatar.avatar.layer) != "HiddenPlayer"))
                     {
                         //---if compiled animation, disable IK marker.
                         actor.compiled = currentPlayingOptions.isCompileAnimation;
@@ -2018,49 +3073,70 @@ namespace UserHandleSpace
         {
             List<float> durationList = new List<float>();
 
-            //---this loop is internal key-frame  in the character.
-            while (actor.frameIndexMarker < actor.frames.Count)
+            TweenCallback cb_start = () =>
             {
-                if (actor.targetRole != "")
-                {
-                    if ((actor.avatar != null) && (actor.avatar.avatar != null))
-                    {
-                        //---non-DOTween functions of each frame
-                        Sequence seq = DOTween.Sequence();
-                        seq.OnStart(() =>
-                        {
-                            //---For non-DOTween method and properties
-                            SpecialUpdate_body(actor, actor.frameIndexMarker);
-                        });
+                //---For non-DOTween method and properties
+                //SpecialUpdate_body(actor, actor.frameIndexMarker);
+                //actor.frameIndexMarker++;
+                //Debug.Log(actor.avatar.roleTitle + " keyframe " + actor.frameIndexMarker + "start");
+            };
+            TweenCallback cb_end = () =>
+            {
+                //Debug.Log(actor.avatar.roleTitle + " keyframe " + actor.frameIndexMarker + "finish");
+            };
 
-                        //---if compiled animation, disable IK marker.
-                        actor.compiled = currentPlayingOptions.isCompileAnimation;
-                        if (currentPlayingOptions.isCompileAnimation == 1)
+            //---this loop is internal key-frame  in the character.
+            if (actor.frames.Count > 0)
+            {
+                while (actor.frameIndexMarker < actor.frames.Count)
+                {
+                    if (actor.targetRole != "")
+                    {
+                        if ((actor.avatar != null) && (actor.avatar.avatar != null))
                         {
-                            OperateLoadedBase ovrm = actor.avatar.avatar.GetComponent<OperateLoadedBase>();
-                            if (ovrm != null)
+                            //=======================================
+                            //  Tween sequence for Key-frame
+                            //---non-DOTween functions of each frame
+                            Sequence seq = DOTween.Sequence();
+                            seq.SetAutoKill(false);
+                            seq.SetLink(gameObject);
+
+                            //seq.OnPlay(cb_start);
+                            //seq.OnRewind(cb_start);
+                            seq.OnStepComplete(cb_end);
+                            seq.AppendCallback(cb_start);
+
+                            //---if compiled animation, disable IK marker.
+                            actor.compiled = currentPlayingOptions.isCompileAnimation;
+                            if (currentPlayingOptions.isCompileAnimation == 1)
                             {
-                                ovrm.EnableIK(false);
+                                OperateLoadedBase ovrm = actor.avatar.avatar.GetComponent<OperateLoadedBase>();
+                                if (ovrm != null)
+                                {
+                                    ovrm.EnableIK(false);
+                                }
+
                             }
 
+                            NativeAnimationFrame avatarFrame = actor.frames[actor.frameIndexMarker];
+                            durationList.Add(avatarFrame.duration);
+
+                            actorSeq.Append(ProcessBody_forFrame(seq, actor, avatarFrame, currentPlayingOptions));
                         }
 
-                        NativeAnimationFrame avatarFrame = actor.frames[actor.frameIndexMarker];
-                        durationList.Add(avatarFrame.duration);
 
-                        actorSeq.Append(ProcessBody_forFrame(seq, actor, avatarFrame, currentPlayingOptions));
                     }
-
-                    
+                    actor.frameIndexMarker++;
                 }
-                actor.frameIndexMarker++;
-            }
-            if (durationList.Count > 0)
-            {
-                durationList.Sort();
+                actorSeq.AppendCallback(cb_end);
+                if (durationList.Count > 0)
+                {
+                    durationList.Sort();
 
-                //---set maximum duration as sequence interval
+                    //---set maximum duration as sequence interval
+                }
             }
+            
             return actorSeq;
         }
 
@@ -2073,14 +3149,14 @@ namespace UserHandleSpace
         {
             foreach (NativeAnimationFrameActor actor in timeline.characters)
             {
-                SpecialUpdate_body(actor, frameIndex);
+                //SpecialUpdate_body(actor, frameIndex);
 
             }
         }
 
-        //===========================================================================================================================
-        //  Clipboard functions
-        //===========================================================================================================================
+//===========================================================================================================================
+//  Clipboard functions
+//===========================================================================================================================
 
         /// <summary>
         /// 
@@ -2161,7 +3237,7 @@ namespace UserHandleSpace
             }
 
             //---To adjust all frame duration and finalIndex of the actor
-            AdjustAllFrame(nactor, currentProject.baseDuration, true, true);
+            AdjustAllFrame(nactor, currentProject.baseDuration, false, true);
 
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(param);
@@ -2169,6 +3245,289 @@ namespace UserHandleSpace
 
         }
 
+        public void EditProjectMeta(string param)
+        {
+            currentProject.meta = JsonUtility.FromJson<AnimationProjectMetaInformation>(param);
+        }
+        //===========================================================================================================================
+        //  Material management functions
+        //===========================================================================================================================
+
+        /// <summary>
+        /// Add and load texture file
+        /// </summary>
+        /// <param name="param">[0] - name, [1] - group, [2] - url, [3] - load flag(1 - load, 0 - no load), [4] - save destination a(app) or p(project)</param>
+        public void LoadMaterialTexture(string param)
+        {
+            string[] prm = param.Split("\t");
+
+            string name = prm[0];
+            string group = prm[1];
+            string url = prm[2];
+            bool isEffectiveLoad = false;
+            if (prm.Length >= 4) isEffectiveLoad = (prm[3] == "1" ? true : false);
+            OneMaterialFrom fromtype = OneMaterialFrom.app;
+            if (prm[4] == "a") fromtype = OneMaterialFrom.app;
+            else if (prm[4] == "p") fromtype = OneMaterialFrom.project;
+
+            NativeAP_OneMaterial nap = new NativeAP_OneMaterial(name, url, OneMaterialType.Texture);
+            nap.group = group;
+
+            string ret = "";
+
+            //===1st: material in project=======
+            if (fromtype == OneMaterialFrom.project)
+            {
+                NativeAP_OneMaterial ishit = materialManager.FindTexture(name, group);
+
+                if (ishit == null)
+                {
+                    ishit = currentProject.materialManager.FindTexture(name, group);
+
+                    if (ishit == null)
+                    {
+                        if (isEffectiveLoad)
+                        {
+                            StartCoroutine(nap.Open(url));
+                        }
+
+
+                        currentProject.materialManager.materials.Add(nap);
+                        ret = nap.name;
+                    }
+                }
+                
+            }            
+            else if (fromtype == OneMaterialFrom.app) 
+            {
+                NativeAP_OneMaterial ishit = currentProject.materialManager.FindTexture(name, group);
+                if (ishit == null)
+                {
+                    //===2nd: material in app============
+                    ishit = materialManager.FindTexture(name, group);
+                    if (ishit == null)
+                    {
+                        if (isEffectiveLoad)
+                        {
+                            StartCoroutine(nap.Open(url));
+                        }
+
+
+                        materialManager.materials.Add(nap);
+                        ret = nap.name;
+                    }
+                }
+                
+            }
+
+            
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+
+        }
+
+        /// <summary>
+        /// Only to load existed texture file 
+        /// </summary>
+        /// <param name="param">[0] - name, [1] - group, [2] - url, [3] - save destination a(app) or p(project)</param>
+        public void LoadOneMaterialTexture(string param)
+        {
+            string[] prm = param.Split("\t");
+            string name = prm[0];
+            string group = prm[1];
+            string url = prm[2];
+
+            OneMaterialFrom fromtype = OneMaterialFrom.app;
+            if (prm[3] == "a") fromtype = OneMaterialFrom.app;
+            if (prm[3] == "p") fromtype = OneMaterialFrom.project;
+
+            string ret = "";
+            //===1st: material in project=======
+            if (fromtype == OneMaterialFrom.project)
+            {
+                NativeAP_OneMaterial ishit = currentProject.materialManager.FindTexture(name, group);
+                if (ishit != null)
+                {
+                    StartCoroutine(ishit.Open(url));
+                    ret = ishit.name;
+                }
+            }
+            else if (fromtype == OneMaterialFrom.app)
+            {
+                //===2nd: material in app============
+                NativeAP_OneMaterial ishit = materialManager.FindTexture(name, group);
+                if (ishit != null)
+                {
+                    StartCoroutine(ishit.Open(url));
+                    ret = ishit.name;
+                }
+            }
+            
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+        /*
+        public void LoadMaterialBundle(string param)
+        {
+            string[] prm = param.Split(",");
+            materialManager.OpenBundle(prm[0], prm[1]);
+        }
+        */
+
+        /// <summary>
+        /// Find material from materialManager (project, app)
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="group"></param>
+        /// <returns></returns>
+        public NativeAP_OneMaterial FindTexture(string name, string group = "")
+        {
+            //===1st: material in project
+            NativeAP_OneMaterial ishit = currentProject.materialManager.FindTexture(name, group);
+            //Debug.Log("1st search==>"+name);
+            //Debug.Log(ishit);
+
+            if (ishit == null)
+            {
+                //===2nd: material in app============
+                ishit = materialManager.FindTexture(name, group);
+                //Debug.Log("2nd search==>" + name);
+                //Debug.Log(ishit);
+            }
+            return ishit;
+        }
+        /// <summary>
+        /// Rename material
+        /// </summary>
+        /// <param name="param">[0] - oldname, [1] - newname</param>
+        public void RenameMaterialName(string param)
+        {
+            string[] prm = param.Split("\t");
+            //===1st: material in project=======
+            int ishit = currentProject.materialManager.materials.FindIndex(item =>
+            {
+                if (item.name == prm[0]) return true;
+                return false;
+            });
+            string ret = "";
+            if (ishit > -1)
+            {
+                int isnewhit = currentProject.materialManager.materials.FindIndex(item =>
+                {
+                    if (item.name == prm[1]) return true;
+                    return false;
+                });
+                if (isnewhit < 0)
+                {
+                    currentProject.materialManager.materials[ishit].name = prm[1];
+                    ret = prm[1];
+                }
+            }
+            else
+            {
+                //===2nd: material in app============
+                ishit = materialManager.materials.FindIndex(item =>
+                {
+                    if (item.name == prm[0]) return true;
+                    return false;
+                });
+                if (ishit > -1)
+                {
+                    int isnewhit = materialManager.materials.FindIndex(item =>
+                    {
+                        if (item.name == prm[1]) return true;
+                        return false;
+                    });
+                    if (isnewhit < 0)
+                    {
+                        materialManager.materials[ishit].name = prm[1];
+                        ret = prm[1];
+                    }
+                }
+            }
+
+            
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+
+        }
+
+        /// <summary>
+        /// Remove material from materialManager(project, app)
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public int RemoveMaterial(string name)
+        {
+            //Debug.Log("project search==>");
+            int ret = currentProject.materialManager.RemoveTexture(name);
+            if (ret == -1)
+            {
+                //Debug.Log("app search==>");
+                ret = materialManager.RemoveTexture(name);
+            }
+            return ret;
+        }
+        public void RemoveMaterialFromOuter(string name)
+        {
+            int ret = RemoveMaterial(name);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveIntVal(ret);
+#endif
+        }
+        /*
+        public void RemoveMaterialBundle(string name)
+        {
+            materialManager.CloseBundle(name);
+        }
+        */
+
+        /// <summary>
+        /// Unreference material from target object(project, app)
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="group"></param>
+        /// <returns></returns>
+        public int UnReferMaterial(OneMaterialType type, string name, string group = "")
+        {
+            int ret = currentProject.materialManager.UnRefer(type, name, group);
+            //Debug.Log("unref project[" + name + "]=" + ret.ToString());
+            if (ret == -1)
+            {
+                ret = materialManager.UnRefer(type, name, group);
+                //Debug.Log("unref project[" + name + "]=" + ret.ToString());
+            }
+            return ret;
+        }
+        public void EnumMaterialTexture(int param)
+        {
+            OneMaterialFrom fromtype = (OneMaterialFrom)param;
+
+            List<string> arr = new List<string>();
+            if (fromtype == OneMaterialFrom.app)
+            {
+                materialManager.materials.ForEach(item =>
+                {
+                    arr.Add(item.name + "," + ((int)item.materialType).ToString() + "," + item.size.x.ToString() + "," + item.size.y.ToString());
+                });
+            }
+            else if (fromtype == OneMaterialFrom.project)
+            {
+                currentProject.materialManager.materials.ForEach(item =>
+                {
+                    arr.Add(item.name + "," + ((int)item.materialType).ToString() + "," + item.size.x.ToString() + "," + item.size.y.ToString());
+                });
+            }
+            string ret = string.Join('\t', arr);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+
     }
+
 
 }

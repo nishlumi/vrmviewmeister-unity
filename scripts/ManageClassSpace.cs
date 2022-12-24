@@ -882,7 +882,24 @@ namespace UserHandleSpace
                 }
                 return false;
             });
-
+        }
+        public void SetMovingData(AF_MOVETYPE movetype, ParseIKBoneType bone, AnimationTargetParts atp)
+        {
+            int index = movingData.FindIndex(match =>
+            {
+                if (match.vrmBone == bone)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            });
+            if (index > -1)
+            {
+                movingData[index] = atp;
+            }
         }
     }
     //==============================================================
@@ -1825,6 +1842,22 @@ namespace UserHandleSpace
         public Ease ease = Ease.Linear;
     }
     [Serializable]
+    public class AnimationTransformRegisterOptions
+    {
+        public int index = -1;
+        public string targetId = "";
+        public string targetRole = "";
+        public AF_TARGETTYPE targetType = AF_TARGETTYPE.Unknown;
+        public float posx = 0f;
+        public float posy = 0f;
+        public float posz = 0f;
+        public float rotx = 0f;
+        public float roty = 0f;
+        public float rotz = 0f;
+        public int isAbsolutePosition = 0;
+        public int isAbsoluteRotation = 0;
+    }
+    [Serializable]
     public class AnimationParsingOptions
     {
         public int index = -1;
@@ -1906,7 +1939,7 @@ namespace UserHandleSpace
             movespeed = speed;
             transspeed = trans_speed;
         }
-        public void CallKeyOperation(GameObject ik)
+        public void CallKeyOperation(GameObject ik, TMPro.TextMeshProUGUI textgui)
         {
             if (Input.GetKey(KeyCode.W))
             { //to front
@@ -1940,7 +1973,8 @@ namespace UserHandleSpace
             { //to left
                 if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
                 {
-                    ik.transform.Rotate(Vector3.forward * movespeed, IsGlobalLocal);
+                    
+                    ik.transform.Rotate(Vector3.down * movespeed, IsGlobalLocal);
                 }
                 else
                 {
@@ -1953,7 +1987,8 @@ namespace UserHandleSpace
             { //to right
                 if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
                 {
-                    ik.transform.Rotate(Vector3.back * movespeed, IsGlobalLocal);
+                    
+                    ik.transform.Rotate(Vector3.up * movespeed, IsGlobalLocal);
                 }
                 else
                 {
@@ -1966,7 +2001,8 @@ namespace UserHandleSpace
             { //to up
                 if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
                 {
-                    ik.transform.Rotate(Vector3.up * movespeed, IsGlobalLocal);
+                    ik.transform.Rotate(Vector3.forward * movespeed, IsGlobalLocal);
+                    
                 }
                 else
                 {
@@ -1979,7 +2015,7 @@ namespace UserHandleSpace
             { //to down
                 if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
                 {
-                    ik.transform.Rotate(Vector3.down * movespeed, IsGlobalLocal);
+                    ik.transform.Rotate(Vector3.back * movespeed, IsGlobalLocal);
                 }
                 else
                 {
@@ -2003,8 +2039,16 @@ namespace UserHandleSpace
             }
             if (Input.GetKeyDown(KeyCode.G))
             {
-                if (IsGlobalLocal == Space.Self) IsGlobalLocal = Space.World;
-                else if (IsGlobalLocal == Space.World) IsGlobalLocal = Space.Self;
+                if (IsGlobalLocal == Space.Self)
+                {
+                    IsGlobalLocal = Space.World;
+                    textgui.text = "G";
+                }
+                else if (IsGlobalLocal == Space.World)
+                {
+                    IsGlobalLocal = Space.Self;
+                    textgui.text = "L";
+                }
             }
         }
     }

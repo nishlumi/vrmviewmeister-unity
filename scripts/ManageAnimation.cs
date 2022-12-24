@@ -376,7 +376,12 @@ namespace UserHandleSpace
                 {
                     if (cast.type == AF_TARGETTYPE.VRM)
                     {
-                        cast.avatar.GetComponent<OperateLoadedVRM>().EnableRotationLimit(flag);
+                        OperateLoadedVRM olvrm = null;
+                        if ((cast.avatar != null) && (cast.avatar.TryGetComponent<OperateLoadedVRM>(out olvrm)))
+                        {
+                            olvrm.EnableRotationLimit(flag);
+                        }
+                        
                     }
 
                 });
@@ -619,11 +624,22 @@ namespace UserHandleSpace
 
             ret = currentProject.timeline.characters.Find(av =>
             {
-                if ((av.avatar.avatarId == id) && (av.avatar.type == type))
+                if (av.avatar == null)
                 {
-                    return true;
+                    return false;
                 }
-                return false;
+                else
+                {
+                    if ((av.avatar.avatarId == id) && (av.avatar.type == type))
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+                
             });
 
             return ret;
@@ -641,11 +657,23 @@ namespace UserHandleSpace
 
             ret = currentProject.timeline.characters.Find(av =>
             {
-                if ((av.avatar.roleName == role) && (av.avatar.type == type))
+                if (av.avatar == null)
                 {
-                    return true;
+                    return false;
                 }
-                return false;
+                else
+                {
+                    if ((av.avatar.roleName == role) && (av.avatar.type == type))
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+                
+                
             });
             return ret;
         }
@@ -1154,7 +1182,13 @@ namespace UserHandleSpace
             int ret = 0;
             if (existCnt.Count > 0)
             {
-                string lasttitle = existCnt.Last<NativeAnimationAvatar>().roleTitle;
+                NativeAnimationAvatar lastav = existCnt.Last<NativeAnimationAvatar>();
+                string lasttitle = "";
+                if (lastav != null)
+                {
+                    lasttitle = lastav.roleTitle;
+                }
+                
                 string[] tarr = lasttitle.Split("_");
 
                 int lastintstr = 0;
@@ -1554,6 +1588,7 @@ namespace UserHandleSpace
             {
                 if (avatar.roleName == prm[0])
                 {
+                    //---overwrite target cast info to the called role 
                     avatar.avatarId = prm[1];
                     NativeAnimationAvatar tmpav = GetEffectiveAvatarObjects(prm[1], avatar.type);
 
@@ -1562,6 +1597,8 @@ namespace UserHandleSpace
                     avatar.ikparent = tmpav.ikparent;
                     avatar.path = tmpav.path;
                     avatar.ext = tmpav.ext;
+
+
 
                     //---update bodyInfoList current avatar body info.
                     /*
@@ -1583,7 +1620,15 @@ namespace UserHandleSpace
                         }
                         
                     }*/
-   
+
+                    //---apply height difference with absorb to this role(frame actor) (VRM only)
+                    //------height: old:avatar --> new:tmpav
+                    Array.Copy(tmpav.bodyHeight, avatar.bodyHeight, tmpav.bodyHeight.Length);
+                    NativeAnimationFrameActor naf = GetFrameActorFromRole(avatar.roleName, avatar.type);
+                    CalculateAllFrameForCurrent(avatar, naf);
+                    //------update also the height of frame actor (NECCESARY): this avatar height --> frame actor height ( 1:1 )
+                    Array.Copy(tmpav.bodyHeight, naf.bodyHeight, tmpav.bodyHeight.Length);
+
                 }
             }
 
@@ -1984,7 +2029,7 @@ namespace UserHandleSpace
         /// <param name="position"></param>
         /// <param name="vrmBone"></param>
         /// <returns></returns>
-        public Vector3 CalculateDifferenceByHeight(float[] currentActor, float[] roller, Vector3 position, ParseIKBoneType vrmBone)
+        public Vector3 CalculateDifferenceByHeight(float[] currentActor, float[] roller, Vector3 position, ParseIKBoneType vrmBone, float is_x, float is_y, float is_z)
         {
             Vector3 ret = position;
             if ((roller[0] != 0) && (roller[1] != 0) && (roller[2] != 0))
@@ -1993,14 +2038,59 @@ namespace UserHandleSpace
                 float hy = currentActor[1] / roller[1];
                 float hz = currentActor[2] / roller[2];
 
-                ret.x = position.x * hx;
-                ret.y = position.y * hy;
-                ret.z = position.z * hz;
+                if (is_x == 0) ret.x = position.x;
+                else ret.x = position.x * (hx * is_x);
+
+                if (is_y == 0) ret.y = position.y;
+                else ret.y = position.y * (hy * is_y);
+
+                if (is_z == 0) ret.z = position.z; 
+                else ret.z = position.z * (hz * is_z);
 
             }
 
             return ret;
         }
+
+        /// <summary>
+        /// Calculate move data of all key-frame for specified avatar, apply absorb difference as this transform.
+        /// </summary>
+        /// <param name="nav">This time animation avatar</param>
+        /// <param name="destination">Frame actor data to change</param>
+        public void CalculateAllFrameForCurrent(NativeAnimationAvatar nav, NativeAnimationFrameActor destination)
+        {
+            //---This function is VRM only.
+            if (destination.targetType != AF_TARGETTYPE.VRM)
+            {
+                return;
+            }
+
+
+            for (int i = 0; i < destination.frames.Count; i++)
+            {
+                NativeAnimationFrame naframe = destination.frames[i];
+
+                for (int m = 0; m < naframe.movingData.Count; m++)
+                {
+                    AnimationTargetParts movedata = naframe.movingData[m];
+                    
+                    if (
+                        (movedata.animationType == AF_MOVETYPE.Translate) && 
+                        ((movedata.vrmBone >= ParseIKBoneType.EyeViewHandle) && (movedata.vrmBone <= ParseIKBoneType.RightLeg))
+                    )
+                    {
+                        // change motion difference: new:nav --> old:destination 
+                        Vector3 newpos = CalculateDifferenceByHeight(nav.bodyHeight, destination.bodyHeight, movedata.position, movedata.vrmBone, 1, 1, 0);
+
+                        destination.frames[i].movingData[m].position = newpos;
+                    }
+                }
+            }
+            //===USER OPERATION: update also the height of frame actor
+        }
+
+
+        //===Each properties edit function====================================================================================================
         public void GetEaseFromOuter(string param)
         {
             AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
@@ -2026,40 +2116,36 @@ namespace UserHandleSpace
                 currentSeq.Kill();
                 currentSeq = null;
             }
+            string js = "{ }";
 
             AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
 
             NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
 
             int nearmin = GetNearMinFrameIndex(actor, aro.index);
-            NativeAnimationFrame minframe = actor.frames[nearmin]; // GetFrame(actor, nearmin);
+            NativeAnimationFrame minframe = null;
+            int minframeIndex = -1;
+            if (minframe != null)
+            {
+                minframe = actor.frames[nearmin]; // GetFrame(actor, nearmin);
+                minframeIndex = minframe.index;
+            }
+            
             NativeAnimationFrame curframe = GetFrame(actor, aro.index);
-            //---update "ease" only
-            curframe.ease = aro.ease;
+            if (curframe != null)
+            {
+                //---update "ease" only
+                curframe.ease = aro.ease;
 
-            /* NOT USE
-            //---start Preview
-            AnimationParsingOptions apo = new AnimationParsingOptions();
-            apo.index = nearmin;
-            apo.finalizeIndex = nearmin;
-            apo.targetId = aro.targetId;
-            apo.targetType = aro.targetType;
-            string[] roles = GetRoleSpecifiedAvatar(aro.targetId);
-            apo.targetRole = roles[0];
-
-
-            PreviewSingleFrame(apo);
-            apo.index = aro.index;
-            apo.finalizeIndex = aro.index;
-            PreviewSingleFrame(apo);
-            */
-            string js = "{ " +
-                "\"roleName\": \"" + actor.targetRole + "\"," +
-                "\"avatarId\" : \"" + actor.targetId + "\"," +
-                "\"type\": " + (int)aro.targetType + "," +
-                "\"nearMinIndex\": " + minframe.index + "," +
-                "\"index\":" + aro.index +
-            "}";
+                js = "{ " +
+                    "\"roleName\": \"" + actor.targetRole + "\"," +
+                    "\"avatarId\" : \"" + actor.targetId + "\"," +
+                    "\"type\": " + (int)aro.targetType + "," +
+                    "\"nearMinIndex\": " + minframeIndex + "," +
+                    "\"index\":" + aro.index +
+                "}";
+            }        
+            
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(js);
 #endif
@@ -2095,7 +2181,10 @@ namespace UserHandleSpace
 
             NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
             NativeAnimationFrame curframe = GetFrame(actor, aro.index);
-            curframe.duration = aro.duration;
+            if (curframe != null)
+            {
+                curframe.duration = aro.duration;
+            }
         }
         public void SetBaseDuration(float param)
         {
@@ -2159,6 +2248,135 @@ namespace UserHandleSpace
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveFloatVal(ret);
 #endif
+        }
+
+        /// <summary>
+        /// To check wheather specified int value exist in the actor frames.
+        /// </summary>
+        /// <param name="param">0 - role, 1 - role type, 2 - begin frame, 3 - end frame</param>
+        public void CheckTargetFrameIndexList(string param)
+        {
+            string[] prms = param.Split("\t");
+            string targetRole = prms[0];
+            int itype = int.TryParse(prms[1], out itype) ? itype : 0;
+            AF_TARGETTYPE targetType = (AF_TARGETTYPE)itype;
+            int beginIndex = int.TryParse(prms[2], out beginIndex) ? beginIndex : 0;
+            int endIndex = int.TryParse(prms[3], out endIndex) ? endIndex : 0;
+
+            string js = "";
+
+            NativeAnimationFrameActor naf = GetFrameActorFromRole(targetRole, targetType);
+            if (naf != null)
+            {
+                List<string> intlist = new List<string>();
+                for (int i = beginIndex; i <= endIndex; i++)
+                {
+                    NativeAnimationFrame nafr = GetFrame(naf, i);
+                    if (nafr != null)
+                    {
+                        intlist.Add(i.ToString());
+                    }
+                }
+                js = string.Join(",",intlist);
+            }
+            else
+            {
+                js = "-1";
+            }
+            
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(js);
+#endif
+        }
+
+        /// <summary>
+        /// Set global transform only to specified frame
+        /// </summary>
+        /// <param name="param">AnimationTransformRegisterOptions</param>
+        public void SetGlobalTransform(string param)
+        {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+
+            AnimationTransformRegisterOptions atro = JsonUtility.FromJson<AnimationTransformRegisterOptions>(param);
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(atro.targetRole, atro.targetType);
+            NativeAnimationFrame curframe = GetFrame(actor, atro.index);
+
+            
+            //Debug.Log(param);
+            //Debug.Log("isAbsolutePosition=" + atro.isAbsolutePosition.ToString());
+            //Debug.Log("posx=" + atro.posx.ToString());
+            //Debug.Log("posy=" + atro.posy.ToString());
+            //Debug.Log("posz=" + atro.posz.ToString());
+
+            if (curframe != null)
+            {
+                Debug.Log(curframe.index);
+
+                foreach (AnimationTargetParts atp in curframe.movingData)
+                {
+                    if (atp.vrmBone == ParseIKBoneType.IKParent)
+                    {
+                        if (atp.animationType == AF_MOVETYPE.Translate)
+                        {
+                            //Debug.Log("atp_translate.position before=>" + atp.position.x.ToString() + "," + atp.position.y.ToString() + "," + atp.position.z.ToString());
+
+                            if (atro.isAbsolutePosition == 1)
+                            {
+                                atp.position.x = atro.posx;
+                                atp.position.y = atro.posy;
+                                atp.position.z = atro.posz;
+                            }
+                            else
+                            {
+                                atp.position.x += atro.posx;
+                                atp.position.y += atro.posy;
+                                atp.position.z += atro.posz;
+                            }
+                            //Debug.Log("atp_translate.position after=>" + atp.position.x.ToString() + "," + atp.position.y.ToString() + "," + atp.position.z.ToString());
+
+
+                            //curframe.SetMovingData(AF_MOVETYPE.Translate, ParseIKBoneType.IKParent, atp_translate);
+                        }
+                        else if (atp.animationType == AF_MOVETYPE.Rotate)
+                        {
+                            if (atro.isAbsoluteRotation == 1)
+                            {
+                                atp.rotation.x = atro.rotx;
+                                atp.rotation.y = atro.roty;
+                                atp.rotation.z = atro.rotz;
+                            }
+                            else
+                            {
+                                atp.rotation.x += atro.rotx;
+                                atp.rotation.y += atro.roty;
+                                atp.rotation.z += atro.rotz;
+                            }
+
+
+                            //curframe.SetMovingData(AF_MOVETYPE.Rotate, ParseIKBoneType.IKParent, atp);
+                        }
+                    }
+                }
+                /*AnimationTargetParts atp_translate = curframe.FindMovingData(AF_MOVETYPE.Translate, ParseIKBoneType.IKParent);
+                if (atp_translate != null)
+                {
+                    
+                }
+
+                AnimationTargetParts atp_rotation = curframe.FindMovingData(AF_MOVETYPE.Rotate, ParseIKBoneType.IKParent);
+                if (atp_rotation != null)
+                {
+                    
+                }*/
+            }
+
         }
 
 
@@ -2738,6 +2956,16 @@ namespace UserHandleSpace
                     foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
                     {
                         actor.frameIndexMarker = 0;
+                        //---other, setting for each avatar type
+                        if (actor.avatar.type == AF_TARGETTYPE.VRM)
+                        {
+                            if (currentPlayingOptions.isCompileAnimation == 1)
+                            {
+                                OperateLoadedVRM olvrm = actor.avatar.avatar.GetComponent<OperateLoadedVRM>();
+                                olvrm.EnableIKOperationMode(false);
+                            }
+
+                        }
                     }
                 };
                 currentSeq.OnPlay(cb_start);
@@ -2777,6 +3005,8 @@ namespace UserHandleSpace
                             {
                                 OperateLoadedVRM olvrm = actor.avatar.GetComponent<OperateLoadedVRM>();
                                 olvrm.ListGravityInfo();
+
+                                
                             }
                             
                         }
@@ -2835,6 +3065,7 @@ namespace UserHandleSpace
                 foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
                 {
                     actor.frameIndexMarker = 0;
+                    
                 }
 
 
@@ -2941,7 +3172,7 @@ namespace UserHandleSpace
             foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
             {
                 //==================================================
-                //  Tween sequence for 1-role = 1-timeline
+                //  Tween sequence for 1-role = 1-timeline              
                 Sequence actorSeq = DOTween.Sequence();
                 actorSeq.SetAutoKill(false);
                 actorSeq.SetLink(gameObject);
@@ -2962,6 +3193,30 @@ namespace UserHandleSpace
                 {
                     
                 });
+
+                TweenCallback cb_endfunc = () =>
+                {
+                    //---other, setting for each avatar type
+                    if (actor.avatar.type == AF_TARGETTYPE.VRM)
+                    {
+                        if (currentPlayingOptions.isCompileAnimation == 1)
+                        {
+                            OperateLoadedVRM olvrm = actor.avatar.avatar.GetComponent<OperateLoadedVRM>();
+                            //---recover a bone rotation to IKPosition and IKRotation 
+                            StartCoroutine(olvrm.ApplyBoneTransformToIKTransform());
+                        }
+
+                    }
+                };
+                if (currentPlayingOptions.isLoop == 1)
+                {
+                    actorSeq.OnKill(cb_endfunc);
+                }
+                else
+                {
+                    actorSeq.OnComplete(cb_endfunc);
+                }
+                
                 currentSeq.Join(PlayEachTimeline(actorSeq, actor));
             }
         }

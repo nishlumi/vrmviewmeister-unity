@@ -419,7 +419,7 @@ namespace UserUISpace
             AnimationParsingOptions apo = new AnimationParsingOptions();
             apo.isExecuteForDOTween = 1;
             apo.isBuildDoTween = 1;
-            apo.isCompileAnimation = 0;
+            apo.isCompileAnimation = 1;
             apo.isLoop = 0;
             apo.endDelay = 1.5f;
 
@@ -441,9 +441,10 @@ namespace UserUISpace
         async void selectwater_OnClick()
         {
             OperateStage os = GameObject.Find("Stage").GetComponent<OperateStage>();
-            //os.SelectStage((int)StageKind.BasicSeaLevel);
-            os.SelectStage((int)StageKind.SeaNight);
-            //os.ListGetOneUserMaterial("");
+            os.SelectStage((int)StageKind.BasicSeaLevel);
+            //os.SelectStage((int)StageKind.SeaNight);
+            os.ListGetOneUserMaterial("");
+
         }
         void wateropt1_OnClick()
         {
@@ -452,10 +453,15 @@ namespace UserUISpace
             OperateStage os = GameObject.Find("Stage").GetComponent<OperateStage>();
 
             ManageAvatarTransform mat = oav.ActiveAvatar.GetComponent<ManageAvatarTransform>();
+            /*
             Label datatext = rootElement.Q<Label>("dataText");
             string data = datatext.text;
             mat.SetIKTransformAll2(data);
             return;
+            */
+
+            
+
             //os.SetUserMaterial("wavefrequency,1\t1\t1\t1");
             /*
             AnimationRegisterOptions aro = new AnimationRegisterOptions();

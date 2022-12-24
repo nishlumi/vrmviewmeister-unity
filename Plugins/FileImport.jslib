@@ -19,6 +19,23 @@ var FileImportPlugin = {
 		};
 		document.getElementById('unity-canvas').addEventListener('click', OpenFileDialog, false);
 	},
+	sendObjectError : function (type, info) {
+		var js = {type:"", info:"", errcd : -1};
+		try {
+			var jsinfo  = UTF8ToString(info).split("\t");
+			
+			js.type = type;
+			js.info = jsinfo;
+		}catch(e) {
+		}finally {
+			var cur = AppQueue.current();
+			if (cur) {
+				AppDB.temp.setItem(cur.key,js).then(function(value){
+					AppQueue.execute(cur.key,cur,value);
+				});
+			}
+		}
+	},
 	sendVRMInfo : function (thumbnail, size, type, info, licenseType, height, blendShape) {
 		var binary = "";
 		var js = {};

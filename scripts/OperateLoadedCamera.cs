@@ -59,14 +59,21 @@ namespace UserHandleSpace
         /// <param name="type">1 - normal light, 0 - directional light</param>
         public void GetIndicatedPropertyFromOuter(int type)
         {
+            const string SEPSTR = "\t";
             string ret = "";
             Camera lt = gameObject.GetComponent<Camera>();
 
             int pflag = (int)GetCameraPlaying(0);
             string js = lt.rect.x.ToString() + "," + lt.rect.y.ToString() + "," + lt.rect.width.ToString() + "," + lt.rect.height.ToString();
 
-            ret = pflag.ToString() + "\t" + lt.fieldOfView.ToString() + "\t" + lt.depth.ToString() + "\t" + js + "\t" + ((int)lt.clearFlags).ToString() + 
-                "\t" + cameraRenderFlag.ToString() + "\t" + RenderSize.x.ToString() + "/" + RenderSize.y.ToString()
+            ret = pflag.ToString() + SEPSTR + 
+                lt.fieldOfView.ToString() + SEPSTR + 
+                lt.depth.ToString() + SEPSTR + 
+                js + SEPSTR + 
+                ((int)lt.clearFlags).ToString() + SEPSTR + 
+                cameraRenderFlag.ToString() + SEPSTR + 
+                RenderSize.x.ToString() + "/" + RenderSize.y.ToString() + SEPSTR + 
+                (lt.enabled == true ? "1" : "0")
             ;
 
 #if !UNITY_EDITOR && UNITY_WEBGL
@@ -82,7 +89,7 @@ namespace UserHandleSpace
 
         }
 
-        public void PreviewCamera()
+        public bool PreviewCamera()
         {
             /*
             manim.currentProject.casts.ForEach(action =>
@@ -101,8 +108,18 @@ namespace UserHandleSpace
             {
                 ss.SetCameraForScreenshot(gameObject.name);
             }
+            return cam.enabled;
         }
-        public void EndPreview()
+        public void PreviewCameraFromOuter()
+        {
+            bool ret = PreviewCamera();
+#if !UNITY_EDITOR && UNITY_WEBGL
+        
+        ReceiveIntVal(ret == true ? 1 : 0);
+        
+#endif
+        }
+        public bool EndPreview()
         {
             Camera cam = gameObject.GetComponent<Camera>();
             cam.enabled = false;
@@ -112,6 +129,16 @@ namespace UserHandleSpace
             {
                 ss.SetCameraForScreenshot("FrontMainCamera");
             }
+            return cam.enabled;
+        }
+        public void EndPreviewFromOuter()
+        {
+            bool ret = EndPreview();
+#if !UNITY_EDITOR && UNITY_WEBGL
+        
+        ReceiveIntVal(ret == true ? 1 : 0);
+        
+#endif
         }
         public UserAnimationState GetCameraPlaying(int is_contacthtml = 1)
         {
