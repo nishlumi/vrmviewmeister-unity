@@ -44,29 +44,39 @@ namespace UserHandleSpace
             const string CST_SEPSTR_PROP = "=";
 
             string ln = "";
+            List<string> catmats = new List<string>();
 
-            ln = mat.name + CST_SEPSTR_PROP;
+            catmats.Add(mat.name);
+            //ln = mat.name + CST_SEPSTR_PROP;
             //if (currentProject.version >= 2)
             {
-                ln += mat.matName + CST_SEPSTR_PROP;
+                //ln += mat.matName + CST_SEPSTR_PROP;
+                catmats.Add(mat.matName);
             }
-            ln += mat.shaderName + CST_SEPSTR_PROP;
+            //ln += mat.shaderName + CST_SEPSTR_PROP;
+            catmats.Add(mat.shaderName);
 
             //---standard
-            if (mat.shaderName.ToLower() == "standard")
+            if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_STD)
             {
-                ln += "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
+                /*ln += "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
                     mat.blendmode.ToString() + CST_SEPSTR_PROP +
                     mat.texturePath + CST_SEPSTR_PROP +
                     mat.metallic.ToString() + CST_SEPSTR_PROP +
                     mat.glossiness + CST_SEPSTR_PROP +
                     "#" + ColorUtility.ToHtmlStringRGBA(mat.emissioncolor)
-                ;
+                ;*/
+                catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.color));
+                catmats.Add(mat.blendmode.ToString());
+                catmats.Add(mat.texturePath);
+                catmats.Add(mat.metallic.ToString());
+                catmats.Add(mat.glossiness.ToString());
+                catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.emissioncolor));
             }
             //---VRM/MToon
-            else if (mat.shaderName.ToLower() == "vrm/mtoon")
+            else if ((mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM10))
             {
-                ln += "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
+                /*ln += "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
                     mat.cullmode.ToString() + CST_SEPSTR_PROP +
                     mat.blendmode.ToString() + CST_SEPSTR_PROP +
                     mat.texturePath + CST_SEPSTR_PROP +
@@ -84,12 +94,31 @@ namespace UserHandleSpace
                     mat.receiveshadow.ToString() + CST_SEPSTR_PROP +
                     mat.shadinggrade.ToString() + CST_SEPSTR_PROP +
                     mat.lightcolorattenuation.ToString()
-                ;
+                ;*/
+                catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.color));
+                catmats.Add(mat.cullmode.ToString());
+                catmats.Add(mat.blendmode.ToString());
+                catmats.Add(mat.texturePath);
+                //---v1 = 6, v2 = 7
+                catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.emissioncolor));
+                catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.shadetexcolor));
+                catmats.Add(mat.shadingtoony.ToString());
+                catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.rimcolor));
+                catmats.Add(mat.rimfresnel.ToString());
+                catmats.Add(mat.srcblend.ToString());
+                catmats.Add(mat.dstblend.ToString());
+                //---v2 = 14
+                catmats.Add(mat.cutoff.ToString());
+                catmats.Add(mat.shadingshift.ToString());
+                catmats.Add(mat.receiveshadow.ToString());
+                catmats.Add(mat.shadinggrade.ToString());
+                catmats.Add(mat.lightcolorattenuation.ToString());
+
             }
             //---FX/Water4
-            else if ( (mat.shaderName.ToLower() == "fx/water4") || (mat.shaderName.ToLower() == "fx/simplewater4") )
+            else if ( (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_WT) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_SWT) )
             {
-                ln += "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
+                /*ln += "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
                     mat.fresnelScale.ToString() + CST_SEPSTR_PROP +
                     "#" + ColorUtility.ToHtmlStringRGBA(mat.reflectionColor) + CST_SEPSTR_PROP +
                     "#" + ColorUtility.ToHtmlStringRGBA(mat.specularColor) + CST_SEPSTR_PROP +
@@ -101,19 +130,78 @@ namespace UserHandleSpace
                     mat.waveDirectionAB.x + CST_SEPSTR_PROP + mat.waveDirectionAB.y + CST_SEPSTR_PROP + mat.waveDirectionAB.z + CST_SEPSTR_PROP + mat.waveDirectionAB.w + CST_SEPSTR_PROP +
                     mat.waveDirectionCD.x + CST_SEPSTR_PROP + mat.waveDirectionCD.y + CST_SEPSTR_PROP + mat.waveDirectionCD.z + CST_SEPSTR_PROP + mat.waveDirectionCD.w + CST_SEPSTR_PROP +
                     mat.waveScale.ToString()
-                ;
+                ;*/
+                catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.color));
+                catmats.Add(mat.fresnelScale.ToString());
+                catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.reflectionColor));
+                catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.specularColor));
+                //---6
+                catmats.Add(mat.waveAmplitude.x.ToString()); catmats.Add(mat.waveAmplitude.y.ToString()); catmats.Add(mat.waveAmplitude.z.ToString()); catmats.Add(mat.waveAmplitude.w.ToString());
+                catmats.Add(mat.waveFrequency.x.ToString()); catmats.Add(mat.waveFrequency.y.ToString()); catmats.Add(mat.waveFrequency.z.ToString()); catmats.Add(mat.waveFrequency.w.ToString());
+                catmats.Add(mat.waveSteepness.x.ToString()); catmats.Add(mat.waveSteepness.y.ToString()); catmats.Add(mat.waveSteepness.z.ToString()); catmats.Add(mat.waveSteepness.w.ToString());
+                catmats.Add(mat.waveSpeed.x.ToString()); catmats.Add(mat.waveSpeed.y.ToString()); catmats.Add(mat.waveSpeed.z.ToString()); catmats.Add(mat.waveSpeed.w.ToString());
+                catmats.Add(mat.waveDirectionAB.x.ToString()); catmats.Add(mat.waveDirectionAB.y.ToString()); catmats.Add(mat.waveDirectionAB.z.ToString()); catmats.Add(mat.waveDirectionAB.w.ToString());
+                catmats.Add(mat.waveDirectionCD.x.ToString()); catmats.Add(mat.waveDirectionCD.y.ToString()); catmats.Add(mat.waveDirectionCD.z.ToString()); catmats.Add(mat.waveDirectionCD.w.ToString());
+                catmats.Add(mat.waveScale.ToString());
+
             }
             else if (mat.shaderName.ToLower() == "fx/water (basic)")
             {
-                ln += mat.waveScale.ToString() + CST_SEPSTR_PROP +
+                /*ln += mat.waveScale.ToString() + CST_SEPSTR_PROP +
                     mat.waveSpeed.x + CST_SEPSTR_PROP + mat.waveSpeed.y + CST_SEPSTR_PROP + mat.waveSpeed.z + CST_SEPSTR_PROP + mat.waveSpeed.w
-                ;
+                ;*/
+
+                catmats.Add(mat.waveScale.ToString());
+                catmats.Add(mat.waveSpeed.x.ToString()); catmats.Add(mat.waveSpeed.y.ToString()); catmats.Add(mat.waveSpeed.z.ToString()); catmats.Add(mat.waveSpeed.w.ToString());
+
             }
             else if (mat.shaderName.ToLower() == "lux water/watersurface")
             {
-                ln += mat.waveScale.ToString()
-                ;
+                //ln += mat.waveScale.ToString()
+                //;
+                catmats.Add(mat.waveScale.ToString());
+
             }
+            else if ((mat.shaderName.ToLower() == OperateLoadedBase.SHAD_SKE) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_PSKE))
+            {
+                catmats.Add(mat.outlinewidth.ToString());
+                catmats.Add(mat.strokedensity.ToString());
+                catmats.Add(mat.addbrightness.ToString());
+                catmats.Add(mat.multbrightness.ToString());
+                catmats.Add(mat.shadowbrightness.ToString());
+
+            }
+            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_REALTOON)
+            {
+                catmats.Add(mat.enableTexTransparent.ToString());
+                catmats.Add(mat.mainColorInAmbientLightOnly.ToString());
+                catmats.Add(mat.doubleSided.ToString());
+                catmats.Add(mat.outlineZPosCam.ToString());
+                catmats.Add(mat.thresHold.ToString());
+                catmats.Add(mat.shadowHardness.ToString());
+            }
+            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_COMIC)
+            {
+                catmats.Add(mat.enableTexTransparent.ToString());
+                catmats.Add(mat.lineWidth.ToString());
+                catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.lineColor));
+                catmats.Add(mat.tone1Threshold.ToString());
+            }
+            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_ICE)
+            {
+                catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.iceColor));
+                catmats.Add(mat.transparency.ToString());
+                catmats.Add(mat.baseTransparency.ToString());
+                catmats.Add(mat.iceRoughness.ToString());
+                catmats.Add(mat.distortion.ToString());
+
+            }
+            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_MICRA)
+            {
+                catmats.Add(mat.pixelSize.ToString());
+            }
+
+            ln = String.Join(CST_SEPSTR_PROP, catmats);
 
             return ln;
         }
@@ -137,7 +225,7 @@ namespace UserHandleSpace
                 }
                 mat.shaderName = matc[inx++];
 
-                if (mat.shaderName.ToLower() == "standard")
+                if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_STD)
                 {
                     //---most less is 8 items.
                     if (matc.Length < 8) continue;
@@ -152,7 +240,7 @@ namespace UserHandleSpace
                     mat.emissioncolor = ColorUtility.TryParseHtmlString(matc[inx++], out mat.emissioncolor) ? mat.emissioncolor : Color.white;
 
                 }
-                else if (mat.shaderName.ToLower() == "vrm/mtoon")
+                else if ((mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM10))
                 {
                     //---most less is 13 items.
                     if (matc.Length < 13) continue;
@@ -183,7 +271,7 @@ namespace UserHandleSpace
                     
 
                 }
-                else if ( (mat.shaderName.ToLower() == "fx/water4") || (mat.shaderName.ToLower() == "fx/simplewater4") )
+                else if ( (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_WT) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_SWT) )
                 {
                     //---most less is 31 items.
                     if (matc.Length < 31) continue;
@@ -259,10 +347,115 @@ namespace UserHandleSpace
                     // v1 = 2, v2 = 3
                     mat.waveScale = float.TryParse(matc[inx++], out mat.waveScale) ? mat.waveScale : 0;
                 }
+                else if ((mat.shaderName.ToLower() == OperateLoadedBase.SHAD_SKE) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_PSKE))
+                {
+                    //---most less is 3 items.
+                    if (matc.Length < 5) continue;
+
+                    // 
+                    mat.outlinewidth = float.TryParse(matc[inx++], out mat.outlinewidth) ? mat.outlinewidth : 0.1f;
+                    mat.strokedensity = float.TryParse(matc[inx++], out mat.strokedensity) ? mat.strokedensity : 0.5f;
+                    mat.addbrightness = float.TryParse(matc[inx++], out mat.addbrightness) ? mat.addbrightness : 1;
+                    mat.multbrightness = float.TryParse(matc[inx++], out mat.multbrightness) ? mat.multbrightness : 1;
+                    mat.shadowbrightness = float.TryParse(matc[inx++], out mat.shadowbrightness) ? mat.shadowbrightness : 1;
+
+                }
+                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_REALTOON)
+                {
+                    mat.enableTexTransparent = float.TryParse(matc[inx++], out mat.enableTexTransparent) ? mat.enableTexTransparent : 0;
+                    mat.mainColorInAmbientLightOnly = float.TryParse(matc[inx++], out mat.mainColorInAmbientLightOnly) ? mat.mainColorInAmbientLightOnly : 0;
+                    mat.doubleSided = int.TryParse(matc[inx++], out mat.doubleSided) ? mat.doubleSided : 0;
+                    mat.outlineZPosCam = float.TryParse(matc[inx++], out mat.outlineZPosCam) ? mat.outlineZPosCam : 0;
+                    mat.thresHold = float.TryParse(matc[inx++], out mat.thresHold) ? mat.thresHold : 0.85f;
+                    mat.shadowHardness = float.TryParse(matc[inx++], out mat.shadowHardness) ? mat.shadowHardness : 1;
+
+                }
+                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_COMIC)
+                {
+                    mat.enableTexTransparent = float.TryParse(matc[inx++], out mat.enableTexTransparent) ? mat.enableTexTransparent : 0;
+                    mat.lineWidth = float.TryParse(matc[inx++], out mat.lineWidth) ? mat.lineWidth : 0.01f;
+                    mat.lineColor = ColorUtility.TryParseHtmlString(matc[inx++], out mat.lineColor) ? mat.lineColor : new Color(0.1f, 0.1f, 0.1f, 1.0f);
+                    mat.tone1Threshold = float.TryParse(matc[inx++], out mat.tone1Threshold) ? mat.tone1Threshold : 0.1f;
+                    
+                }
+                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_ICE)
+                {
+                    mat.iceColor = ColorUtility.TryParseHtmlString(matc[inx++], out mat.iceColor) ? mat.iceColor : Color.white;
+                    mat.transparency = float.TryParse(matc[inx++], out mat.transparency) ? mat.transparency : 1.5f;
+                    mat.baseTransparency = float.TryParse(matc[inx++], out mat.baseTransparency) ? mat.baseTransparency : 0.5f;
+                    mat.iceRoughness = float.TryParse(matc[inx++], out mat.iceRoughness) ? mat.iceRoughness : 0.005f;
+                    mat.distortion = float.TryParse(matc[inx++], out mat.distortion) ? mat.distortion : 1;
+                   
+                }
+                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_MICRA)
+                {
+                    mat.pixelSize = float.TryParse(matc[inx++], out mat.pixelSize) ? mat.pixelSize : 0.01f;
+                }
                 matProp.Add(mat);
             }
             if (matProp.Count > 0) ret = true;
             return ret;
+        }
+        private AnimationTranslateTargetParts CsvToFrameTranslateData(NativeAnimationFrameActor actor, AF_TARGETTYPE targetType, string param, AnimationTranslateTargetParts atp)
+        {
+            string[] lst = param.Split(',');
+            if (lst.Length < 3)
+            {
+                //---error check
+                return atp;
+            }
+            int boneParts;
+
+            int.TryParse(lst[CSV_PARTS], out boneParts);
+            string optParts = lst[CSV_OPTPARTS]; //.ToLower();
+            string movetype = lst[CSV_ANIMTYPE];
+
+            int valueCount = int.TryParse(lst[CSV_VALCNT], out valueCount) ? valueCount : 1;
+
+            //---start each type 
+            if (targetType == AF_TARGETTYPE.VRM)
+            {
+                atp.vrmBone = (ParseIKBoneType)boneParts;
+                //---check numbers of received value.
+
+
+                if ((atp.vrmBone >= ParseIKBoneType.IKParent) && (atp.vrmBone <= ParseIKBoneType.RightLeg))
+                {
+
+                    if (valueCount > 2)
+                    {
+                        //---Here, Value must be 3.
+                        float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+
+                        if (movetype == "position")
+                        {
+                            atp.animationType = AF_MOVETYPE.Translate;
+                            atp.values.Add(new Vector3(vec3[0], vec3[1], vec3[2]));
+                            atp.jumpNum = (int)vec3[3];
+                            atp.jumpPower = vec3[4];
+                        }
+                    }
+                }
+            }
+            else
+            { //---For  Other object, Light, Camera, Image, Effect, Text, UImage, Audio, SystemEffect------------------
+
+                //---Common parse
+                
+                //---Here, Value must be 3.
+                float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+
+                if (movetype == "position")
+                {
+                    atp.animationType = AF_MOVETYPE.Translate;
+                    atp.values.Add(new Vector3(vec3[0], vec3[1], vec3[2]));
+                    atp.jumpNum = (int)vec3[3];
+                    atp.jumpPower = vec3[4];
+                }
+
+            }
+
+            return atp;
         }
         /// <summary>
         /// Convert "movingData" CSV-format to AnimationTargetParts
@@ -345,7 +538,7 @@ namespace UserHandleSpace
                         //---Here, Value must be 3.
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
 
-                        if (movetype == "position")
+                        if (movetype == "xxxposition")
                         {
                             atp.animationType = AF_MOVETYPE.Translate;
                             atp.position = new Vector3(vec3[0], vec3[1], vec3[2]);
@@ -374,7 +567,7 @@ namespace UserHandleSpace
                         //---Here, Value must be 3.
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
 
-                        if (movetype == "position")
+                        if (movetype == "xxxposition")
                         {
                             atp.animationType = AF_MOVETYPE.Translate;
                             atp.position = new Vector3(vec3[0], vec3[1], vec3[2]);
@@ -438,6 +631,8 @@ namespace UserHandleSpace
                                 (blendIndex < actor.blendShapeList.Count)
                             )
                             {
+                                //---convert and apply: 0=99,1=45  --> blendShapeList[0] (probably...PROX:happy) , blendShapeList[1](PROX:angry)
+                                //CAUTION: 別VRMのモーションを読み込むと動かさないシェイプが出る可能性あり。
                                 string bname = actor.blendShapeList[blendIndex];
                                 atp.isBlendShape = 1;
                                 atp.blendshapes.Add(new BasicStringFloatList(bname, blendVal));
@@ -539,12 +734,12 @@ namespace UserHandleSpace
             { //---For  Other object, Light, Camera, Image, Effect, Text, UImage, Audio, SystemEffect------------------
 
                 //---Common parse
-                if ((movetype == "position") || (movetype == "rotation") || (movetype == "scale"))
+                if ((movetype == "xxxposition") || (movetype == "rotation") || (movetype == "scale"))
                 {
                     //---Here, Value must be 3.
                     float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
 
-                    if (movetype == "position")
+                    if (movetype == "xxxposition")
                     {
                         atp.animationType = AF_MOVETYPE.Translate;
                         atp.position = new Vector3(vec3[0], vec3[1], vec3[2]);
@@ -628,6 +823,15 @@ namespace UserHandleSpace
                         atp.spotAngle = vec3[6];
                         atp.lightRenderMode = (LightRenderMode)vec3[7];
                         atp.lightType = (LightType)vec3[8];
+
+                        if (vec3.Length > 9)
+                        {
+                            atp.halo = (int)vec3[9];
+                            atp.flareType = (int)vec3[10];
+                            atp.flareColor = new Color(vec3[11], vec3[12], vec3[13], vec3[14]);
+                            atp.flareBrightness = vec3[15];
+                            atp.flareFade = vec3[16];
+                        }
                     }
                 }
                 else if (targetType == AF_TARGETTYPE.Camera)
@@ -911,6 +1115,14 @@ namespace UserHandleSpace
                         atp.color = new Color(vec3[4], vec3[5], vec3[6], vec3[7]);
                         atp.power = vec3[8];
                         atp.shadowStrength = vec3[9];
+                        if (vec3.Length > 10)
+                        {
+                            atp.halo = (int)vec3[10];
+                            atp.flareType = (int)vec3[11];
+                            atp.flareColor = new Color(vec3[12], vec3[13], vec3[14], vec3[15]);
+                            atp.flareBrightness = vec3[16];
+                            atp.flareFade = vec3[17];
+                        }
                     }
                 }
             }
@@ -921,7 +1133,44 @@ namespace UserHandleSpace
 
 
         /// <summary>
-        /// Convert "movingData" AnimationTargetParts to CSV-format
+        /// Convert "translateMovingData" AnimationTranslateTargetParts to CSV-format (Translate only)
+        /// </summary>
+        /// <param name="targetType"></param>
+        /// <param name="attp"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public string TranslateDataToCSV(AF_TARGETTYPE targetType, AnimationTranslateTargetParts attp, Vector3 value)
+        {
+            
+            List<string> ret = new List<string>();
+
+            if (attp.animationType == AF_MOVETYPE.Translate)
+            {
+                ret.Add(((int)attp.vrmBone).ToString());
+                if ((targetType == AF_TARGETTYPE.VRM) && (attp.vrmBone == ParseIKBoneType.UseHumanBodyBones))
+                {
+                    //---real HumanBodyBones information
+                    //ret.Add(((int)attp.vrmHumanBodyBone).ToString());
+                }
+                else
+                {
+                    //---If VRM, IK information
+                    ret.Add("");
+                }
+
+                ret.Add("position");
+                ret.Add("5");
+                ret.Add(value.x.ToString());
+                ret.Add(value.y.ToString());
+                ret.Add(value.z.ToString());
+                ret.Add(attp.jumpNum.ToString());
+                ret.Add(attp.jumpPower.ToString());
+
+            }
+            return string.Join(",", ret);
+        }
+        /// <summary>
+        /// Convert "movingData" AnimationTargetParts to CSV-format (Rotate/Scale/etc...)
         /// </summary>
         /// <param name="targetType"></param>
         /// <param name="atp"></param>
@@ -1235,7 +1484,7 @@ namespace UserHandleSpace
                     ret.Add(((int)atp.vrmBone).ToString());
                     ret.Add("");
                     ret.Add("lightprop");
-                    ret.Add("9");
+                    ret.Add("17");
                     ret.Add(atp.range.ToString());
                     ret.Add(atp.color.r.ToString());
                     ret.Add(atp.color.g.ToString());
@@ -1245,6 +1494,14 @@ namespace UserHandleSpace
                     ret.Add(atp.spotAngle.ToString());
                     ret.Add(((int)atp.lightRenderMode).ToString());
                     ret.Add(((int)atp.lightType).ToString());
+                    ret.Add(atp.halo.ToString());
+                    ret.Add(atp.flareType.ToString());
+                    ret.Add(atp.flareColor.r.ToString());
+                    ret.Add(atp.flareColor.g.ToString());
+                    ret.Add(atp.flareColor.b.ToString());
+                    ret.Add(atp.flareColor.a.ToString());
+                    ret.Add(atp.flareBrightness.ToString());
+                    ret.Add(atp.flareFade.ToString());
 
                 }
                 else if (targetType == AF_TARGETTYPE.Camera)
@@ -1554,7 +1811,7 @@ namespace UserHandleSpace
                     {
                         ret.Add("");
                         ret.Add("systemlightprop");
-                        ret.Add("10");
+                        ret.Add("18");
                         ret.Add(atp.rotation.x.ToString());
                         ret.Add(atp.rotation.y.ToString());
                         ret.Add(atp.rotation.z.ToString());
@@ -1565,6 +1822,14 @@ namespace UserHandleSpace
                         ret.Add(atp.color.a.ToString());
                         ret.Add(atp.power.ToString());
                         ret.Add(atp.shadowStrength.ToString());
+                        ret.Add(atp.halo.ToString());
+                        ret.Add(atp.flareType.ToString());
+                        ret.Add(atp.flareColor.r.ToString());
+                        ret.Add(atp.flareColor.g.ToString());
+                        ret.Add(atp.flareColor.b.ToString());
+                        ret.Add(atp.flareColor.a.ToString());
+                        ret.Add(atp.flareBrightness.ToString());
+                        ret.Add(atp.flareFade.ToString());
 
                     }
 
@@ -2085,7 +2350,45 @@ namespace UserHandleSpace
             naframe.key = frame.key;
             naframe.ease = frame.ease;
 
-            //foreach (AnimationTargetParts line in frame.movingData)
+            //---for Translate only
+            for (int i = 0; i < (int)ParseIKBoneType.LeftHandPose; i++)
+            {
+                string pikt = i.ToString();
+                List<string> translateLst = frame.movingData.FindAll(match =>
+                {
+                    string[] lst = match.Split(',');
+                    if (lst.Length > 0)
+                    {
+                        if (
+                            (lst[0] == pikt) &&  //---ParseIKBoneType
+                            (lst[2] == "position") //---raw string for AF_MOVETYPE
+                        )
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                });
+                if (translateLst.Count > 0)
+                {
+                    AnimationTranslateTargetParts attp = new AnimationTranslateTargetParts((ParseIKBoneType)i, AF_MOVETYPE.Translate);
+                    foreach (string line in translateLst)
+                    {
+                        attp = CsvToFrameTranslateData(actor, actor.targetType, line, attp);
+                    }
+                    naframe.translateMovingData.Add(attp);
+                }
+            }
+            
+
+            //---for Rotate/Scale/etc...
             foreach (string line in frame.movingData)
             {
                 AnimationTargetParts atp = new AnimationTargetParts();
@@ -2093,6 +2396,7 @@ namespace UserHandleSpace
                 {
                     //naframe.movingData.Add(line);
                     naframe.movingData.Add(CsvToFrameData(actor, actor.targetType, line, atp));
+                    //Memo: position do not generate. "position" change to "xxxposition".
                 }
             }
 
@@ -2136,6 +2440,13 @@ namespace UserHandleSpace
                 }
             }
         }
+        public void LoadSingleMotionDirect(string data)
+        {
+            string ret = LoadSingleMotion_body(data);
+#if !UNITY_EDITOR && UNITY_WEBGL
+                    ReceiveStringVal(ret);
+#endif
+        }
         /// <summary>
         /// To load AnimationSingleMotion to specified FrameActor.
         /// (*) It necessary that you call "SetLoadTargetSingleMotion" beforely.
@@ -2168,18 +2479,37 @@ namespace UserHandleSpace
                     naf.avatar = SingleMotionTargetRole;
 
                     naf.blendShapeList.Clear();
+                    /* ---This blendShapeList is saved VRM's shapes. 
+                     * blendShapeList(hoge, foo, fuga)
+                     * 0=100 ... hoge=100
+                     * Here, NOT Current NativeAnimationAvatar's blendShapes(Expression) of NativeAnimationFrameActor.
+                     * When compiling an animation, check blendshape(Expression) as current NativeAnimationAvatar
+                     */
                     asm.blendShapeList.ForEach(item =>
                     {
                         naf.blendShapeList.Add(item);
                     });
+                    
                     //---sample avatar height --> frame actor height
                     Array.Copy(asm.bodyHeight, naf.bodyHeight, asm.bodyHeight.Length);
 
                     naf.bodyInfoList.Clear();
-                    asm.bodyInfoList.ForEach(item =>
+                    /*asm.bodyInfoList.ForEach(item =>
                     {
                         naf.bodyInfoList.Add(new Vector3(item.x, item.y, item.z));
-                    });
+                    });*/
+                    int IKBoneCnt = (int)ParseIKBoneType.RightLeg + 1;
+                    for (int bi = 0; bi < IKBoneCnt; bi++)
+                    {
+                        if (bi < asm.bodyInfoList.Count) //bi < IKBoneCnt and bodyInfoList.Count
+                        {
+                            Vector3 item = asm.bodyInfoList[bi];
+                            naf.bodyInfoList.Add(new Vector3(item.x, item.y, item.z));
+                        }
+                        
+                    }
+
+
                     naf.frames.Clear();
 
                     //---For returning HTML
@@ -2200,6 +2530,43 @@ namespace UserHandleSpace
 
                             AnimationFrame aframe = new AnimationFrame();
                             aframe.SetFromNative(naframe);
+
+                            //---for Translate only
+                            for (int i = 0; i < (int)ParseIKBoneType.LeftHandPose; i++)
+                            {
+                                string pikt = i.ToString();
+                                List<string> translateLst = fr.movingData.FindAll(match =>
+                                {
+                                    string[] lst = match.Split(',');
+                                    if (lst.Length > 0)
+                                    {
+                                        if (
+                                            (lst[0] == pikt) &&  //---ParseIKBoneType
+                                            (lst[2] == "position") //---raw string for AF_MOVETYPE
+                                        )
+                                        {
+                                            return true;
+                                        }
+                                        else
+                                        {
+                                            return false;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        return false;
+                                    }
+                                });
+                                if (translateLst.Count > 0)
+                                {
+                                    AnimationTranslateTargetParts attp = new AnimationTranslateTargetParts((ParseIKBoneType)i, AF_MOVETYPE.Translate);
+                                    foreach (string line in translateLst)
+                                    {
+                                        attp = CsvToFrameTranslateData(naf, asm.targetType, line, attp);
+                                    }
+                                    naframe.translateMovingData.Add(attp);
+                                }
+                            }
 
                             foreach (string linedata in fr.movingData)
                             {
@@ -2223,6 +2590,7 @@ namespace UserHandleSpace
                     Array.Copy(nav.bodyHeight, naf.bodyHeight, nav.bodyHeight.Length);
 
                     ret = JsonUtility.ToJson(afa);
+
                 }
             }
             return ret;
@@ -2266,6 +2634,16 @@ namespace UserHandleSpace
                     afg.index = frame.index;
                     afg.key = frame.key;
                     afg.ease = frame.ease;
+                    //---translate to csv
+                    foreach (AnimationTranslateTargetParts tmv in frame.translateMovingData)
+                    {
+                        foreach (Vector3 vv in tmv.values)
+                        {
+                            afg.movingData.Add(TranslateDataToCSV(rawactor.targetType, tmv, vv));
+                        }
+                        
+                    }
+                    //---OTHER THAN translate to csv
                     foreach (AnimationTargetParts mv in frame.movingData)
                     {
                         afg.movingData.Add(DataToCSV(rawactor.targetType, mv));
@@ -2354,43 +2732,18 @@ namespace UserHandleSpace
                     asf.finalizeIndex = frame.finalizeIndex;
                     asf.index = frame.index;
                     asf.key = frame.key;
-                    
-                    //---absorb height distance, apply changes.
-                    if (naf.avatar.type == AF_TARGETTYPE.VRM)
+
+                    //---translate to csv
+                    foreach (AnimationTranslateTargetParts tmv in frame.translateMovingData)
                     {
-                        foreach (AnimationTargetParts mv in frame.movingData)
+                        foreach (Vector3 vv in tmv.values)
                         {
-                            /*if ((mv.vrmBone >= ParseIKBoneType.EyeViewHandle) && (mv.vrmBone <= ParseIKBoneType.RightLeg))
-                            {
-                                if (mv.animationType == AF_MOVETYPE.Translate)
-                                {
-                                    int vbone = (int)mv.vrmBone;
-
-                                    Vector3 repos = CalculateDifferenceInHeight(
-                                        curList[vbone],
-                                        frame.useBodyInfo == UseBodyInfoType.TimelineCharacter ? naf.bodyInfoList[vbone] : curList[vbone],
-                                        mv.position, mv.vrmBone
-                                    );
-                                    AnimationTargetParts tmpatp = new AnimationTargetParts();
-                                    tmpatp = mv.SCopy();
-                                    tmpatp.position = repos;
-                                    asf.movingData.Add(DataToCSV(type, tmpatp));
-                                }
-                                else
-                                {
-                                    asf.movingData.Add(DataToCSV(type, mv));
-                                }
-                            }
-                            else*/
-                            {
-                                asf.movingData.Add(DataToCSV(type, mv));
-                            }
-
-
+                            asf.movingData.Add(TranslateDataToCSV(type, tmv, vv));
                         }
-                        asm.frames.Add(asf);
+
                     }
-                    else
+                    //---absorb height distance, apply changes.
+                    
                     {
                         foreach (AnimationTargetParts mv in frame.movingData)
                         {
@@ -2410,9 +2763,29 @@ namespace UserHandleSpace
             return ret;
         }
 
-        public void AutomaticRegisterContinuousFrames(string param)
+        public void SaveBvhData(string param)
         {
+            string ret = "";
+            string[] prm = param.Split(',');
+            string roleName = prm[0];
+            int tmp = int.TryParse(prm[1], out tmp) ? tmp : 99;
+            AF_TARGETTYPE type = (AF_TARGETTYPE)tmp;
+            string jsontype = prm[2];
 
+
+            NativeAnimationFrameActor naf = GetFrameActorFromRole(roleName, type);
+            if (naf != null)
+            {
+                ManageAvatarTransform mat = naf.avatar.avatar.GetComponent<ManageAvatarTransform>();
+                if (mat != null)
+                {
+                    ret = mat.TextOutputBVH();
+                    
+                }
+            }
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
         }
     }
 

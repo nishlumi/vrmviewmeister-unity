@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 using DG.Tweening;
 using System.Linq;
-using VRM;
+using UniVRM10;
 
 namespace UserHandleSpace
 {
@@ -41,6 +41,7 @@ namespace UserHandleSpace
         
         private string[] EffectNames;
 
+        [SerializeField]
         private bool isVRMCollider;
         private float vrmColliderSize;
         public GameObject previewColliderSphere;
@@ -57,10 +58,9 @@ namespace UserHandleSpace
          */
         public UserAnimationState animationStartFlag;
 
-        private void Awake()
+        override protected void Awake()
         {
-            effectPunch = new AvatarPunchEffect();
-            effectShake = new AvatarShakeEffect();
+            base.Awake();
 
 
             targetType = AF_TARGETTYPE.Effect;
@@ -70,8 +70,10 @@ namespace UserHandleSpace
             isPreview = false;
         }
         // Start is called before the first frame update
-        void Start()
+        override protected void Start()
         {
+            base.Start();
+
             manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
 
             isVRMCollider = false;
@@ -87,10 +89,34 @@ namespace UserHandleSpace
                 //---Re-positionning for Effect Object(set this IK object's poisition)
                 targetEffect.transform.position = transform.position;
                 targetEffect.transform.rotation = transform.rotation;
+
+                
+            }
+            
+            oldPosition = transform.position;
+            oldRotation = transform.rotation;
+        }
+        private void LateUpdate()
+        {
+            if (IsVRMCollider)
+            {
+                if (transform.position != oldPosition)
+                {
+                    targetColliderCasts.ForEach(cast =>
+                    {
+                        Vrm10Instance vinst = cast.avatar.GetComponent<Vrm10Instance>();
+                        if (vinst != null)
+                        {
+                            vinst.Runtime.ReconstructSpringBone();
+                        }
+                    });
+                }
             }
         }
-        private void OnDestroy()
+        override protected void OnDestroy()
         {
+            base.OnDestroy();
+
             RelaseEffectRef();
         }
         /// <summary>
@@ -558,25 +584,27 @@ namespace UserHandleSpace
         /// <param name="isenable"></param>
         private void GenerateVRMCollider(bool isenable)
         {
+            /**
+             *  Effect: 
+             *  Effect: VRM10SpringBoneCollidarGroup
+             *    |- Sphere: VRM10SpringBoneCollidar
+             *  exists at first.
+             *  neccesary to do: add VRM10SpringBoneCollidarGroup VRM10Instance.SpringBone
+             */
+
             if (isenable)
             {
-                VRMSpringBoneColliderGroup collider = null;
-                if (!gameObject.TryGetComponent<VRMSpringBoneColliderGroup>(out collider))
+                VRM10SpringBoneColliderGroup colgrp = null;
+                if (!gameObject.TryGetComponent(out colgrp))
                 {
-                    collider = gameObject.AddComponent<VRMSpringBoneColliderGroup>();
-                    
+                    colgrp = gameObject.AddComponent<VRM10SpringBoneColliderGroup>();
                 }
-                collider.enabled = true;
+                colgrp.enabled = true;
 
-                if (collider.Colliders.Length == 0)
+                if (colgrp.Colliders.Count > 0)
                 {
-                    VRMSpringBoneColliderGroup.SphereCollider sphere = new VRMSpringBoneColliderGroup.SphereCollider();
-                    sphere.Radius = vrmColliderSize;
-                    collider.Colliders = new VRMSpringBoneColliderGroup.SphereCollider[] { sphere };
-                }
-                else
-                {
-                    collider.Colliders[0].Radius = vrmColliderSize;
+                    colgrp.Colliders[0].enabled = true;
+                    colgrp.Colliders[0].Radius = vrmColliderSize;
                 }
 
                 //---set collider size (Radius * 2)
@@ -586,8 +614,8 @@ namespace UserHandleSpace
             }
             else
             {
-                VRMSpringBoneColliderGroup collider = null;
-                if (gameObject.TryGetComponent<VRMSpringBoneColliderGroup>(out collider))
+                VRM10SpringBoneCollider collider = null;
+                if (gameObject.TryGetComponent<VRM10SpringBoneCollider>(out collider))
                 {
                     collider.enabled = false;
                     previewColliderSphere.transform.localScale = Vector3.zero;
@@ -605,16 +633,73 @@ namespace UserHandleSpace
         {
             if (cast.type == AF_TARGETTYPE.VRM)
             {
-                VRMSpringBoneColliderGroup collider = null;
+                Vrm10Instance vinst = cast.avatar.GetComponent<Vrm10Instance>();
+                if (vinst == null) return;
+
+                //---location: this effect object
+                VRM10SpringBoneColliderGroup colgrp = null;
+                if (!gameObject.TryGetComponent(out colgrp))
+                {
+                    colgrp = gameObject.AddComponent<VRM10SpringBoneColliderGroup>();
+                }
+                
+                /*VRMSpringBoneColliderGroup collider = null;
                 if (!gameObject.TryGetComponent<VRMSpringBoneColliderGroup>(out collider))
                 {
                     collider = gameObject.AddComponent<VRMSpringBoneColliderGroup>();
 
-                }
+                }*/
                 //---add/delete collider to the spring bone
-                if (collider != null)
+                /*
+                 * TODO: 追加方法
+                 * VRM1.0ではSpringBoneやCollidarの構造が異なるので下記は動かない。
+                 * 要再検討。
+                 * 
+                 */
+
+                if (colgrp != null)
                 {
-                    
+                    Vrm10InstanceSpringBone SpringBone = vinst.SpringBone; // cast.avatar.GetComponent<Vrm10Instance>().SpringBone;
+                    if (isDelete)
+                    {
+                        int delIndex = SpringBone.ColliderGroups.FindIndex(match =>
+                        {
+                            if (match.gameObject.name == colgrp.gameObject.name) return true;
+                            return false;
+                        });
+                        if (delIndex != -1)
+                        {
+                            SpringBone.ColliderGroups.RemoveAt(delIndex);
+                        }
+                    }
+                    else
+                    {
+                        SpringBone.ColliderGroups.Add(colgrp);
+                    }
+                    //---loop of VRM's SpringBones
+                    SpringBone.Springs.ForEach(spring =>
+                    {
+                        if (isDelete)
+                        { //---Remove from SpringBone
+                            int delIndex = -1;
+                            //---loop of CollidarGroups in SpringBone in VRM's SpringBones
+                            delIndex = spring.ColliderGroups.FindIndex(match =>
+                            {
+                                if (match.gameObject.name == colgrp.gameObject.name) return true;
+                                return false;
+                            });
+                            if (delIndex > -1)
+                            {
+                                spring.ColliderGroups.RemoveAt(delIndex);
+                                //colgrp.Colliders.RemoveAt(delIndex);
+                            }
+                        }
+                        else
+                        { //---Add collidar to SpringBone
+                            spring.ColliderGroups.Add(colgrp);
+                        }
+                    });
+                    /*
                     VRMSpringBone[] vsbones = cast.avatar.transform.GetComponentsInChildren<VRMSpringBone>();
                     foreach (VRMSpringBone bone in vsbones)
                     {
@@ -641,7 +726,7 @@ namespace UserHandleSpace
                             }
                             bone.ColliderGroups = lst.ToArray();
                         }
-                    }
+                    }*/
                 }
                 
             }

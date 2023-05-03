@@ -115,12 +115,15 @@ public class ConfigSettingLabs : MonoBehaviour
     /// </summary>
     /// <param name="name"></param>
     /// <param name="val"></param>
-    void ContinuableVariable(string name, string val)
+    public void ContinuableVariable(string name, string val)
+    {
+        
+    }
+    public void ContinuableVariable(string name, int val)
     {
         if (name == "enable_foot_autorotate")
         {
-            int v = int.TryParse(val, out v) ? v : 0;
-            if (v == 1)
+            if (val == 1)
             {
                 enable_foot_autorotate = true;
             }
@@ -129,6 +132,10 @@ public class ConfigSettingLabs : MonoBehaviour
                 enable_foot_autorotate = false;
             }
         }
+    }
+    public void ContinuableVariable(string name, float val)
+    {
+
     }
     /*
     public void SetBoolVal(string key, bool value)
@@ -147,7 +154,7 @@ public class ConfigSettingLabs : MonoBehaviour
         intDataList[key] = value;
         //PlayerPrefs.SetInt(key, value);
 
-        ContinuableVariable(key, value.ToString());
+        ContinuableVariable(key, value);
     }
     public int GetIntVal(string key, int defaultval = 0)
     {
@@ -163,7 +170,7 @@ public class ConfigSettingLabs : MonoBehaviour
     {
         floatDataList[key] = value;
 
-        ContinuableVariable(key, value.ToString());
+        ContinuableVariable(key, value);
     }
     public float GetFloatVal(string key, float defaultval = 0f)
     {

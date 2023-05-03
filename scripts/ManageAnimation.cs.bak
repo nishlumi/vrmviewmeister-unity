@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Networking;
-using VRM;
+using UniVRM10;
 using UserVRMSpace;
 using System.Linq;
 
@@ -376,7 +376,12 @@ namespace UserHandleSpace
                 {
                     if (cast.type == AF_TARGETTYPE.VRM)
                     {
-                        cast.avatar.GetComponent<OperateLoadedVRM>().EnableRotationLimit(flag);
+                        OperateLoadedVRM olvrm = null;
+                        if (cast.avatar.TryGetComponent<OperateLoadedVRM>(out olvrm))
+                        {
+                            olvrm.EnableRotationLimit(flag);
+                        }
+                        
                     }
 
                 });
@@ -922,10 +927,10 @@ namespace UserHandleSpace
             for (int i = 0; i < cnt; i++)
             {
                 GameObject child = AvatarArea.transform.GetChild(i).gameObject;
-                VRMMeta vmeta = null;
+                Vrm10Instance vmeta = null;
                 if (child.TryGetComponent(out vmeta))
                 {
-                    if (vmeta.Meta.Title == roleTitle)
+                    if (vmeta.Vrm.Meta.Name == roleTitle)
                     {
                         ret.avatar = child;
                         ret.ikparent = ret.avatar.GetComponent<OperateLoadedVRM>().relatedHandleParent;
@@ -1316,11 +1321,11 @@ namespace UserHandleSpace
             isOverWrite = false;
             if ((currentProject != null) && (currentProject.isSharing || currentProject.isReadOnly)) return (NativeAnimationAvatar)null;
 
-            VRMMeta vmeta = avatar.GetComponent<VRMMeta>();
+            Vrm10Instance vmeta = avatar.GetComponent<Vrm10Instance>();
             string rtitle = "";
             if (vmeta != null)
             {
-                rtitle = vmeta.Meta.Title != null ? vmeta.Meta.Title : "";
+                rtitle = vmeta.Vrm.Meta.Name != null ? vmeta.Vrm.Meta.Name : "";
             }
 
             bool isExists = false;

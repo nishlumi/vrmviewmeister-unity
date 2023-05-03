@@ -338,6 +338,14 @@ namespace UserHandleSpace
             rect.DOAnchorPos(new Vector2(Screen.width * (x/100f), Screen.height * (y/100f)), 0.1f).SetRelative(!isabs);
 
         }
+        public void ReloadPosition(int neww, int newh)
+        {
+            RectTransform rect = GetRectTransform();
+
+            bool isabs = true;
+
+            rect.DOAnchorPos(new Vector2(neww * (currentPositionPercent.x / 100f), newh * (currentPositionPercent.y / 100f)), 0.1f).SetRelative(!isabs);
+        }
         public Vector3 GetRotationFromOuter()
         {
             RectTransform rect = GetRectTransform();

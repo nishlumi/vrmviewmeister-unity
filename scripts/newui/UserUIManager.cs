@@ -90,6 +90,27 @@ namespace UserUISpace
             Button tlb_btn_changewater = rootElement.Q<Button>("tlb_btn_changewater");
             tlb_btn_changewater.clicked += wateropt1_OnClick;
 
+            Button anp_btn_test1 = rootElement.Q<Button>("anp_btn_test1");
+            anp_btn_test1.clicked += anp_btn_test1_OnClick;
+
+            Button anp_btn_fk2ik = rootElement.Q<Button>("anp_btn_fk2ik");
+            anp_btn_fk2ik.clicked += anp_btn_fk2ik_OnClick;
+
+            Button anp_btn_disaik = rootElement.Q<Button>("anp_btn_disaik");
+            anp_btn_disaik.clicked += anp_btn_disaik_OnClick;
+
+            Button btn_addkeyfarame = rootElement.Q<Button>("btn_addkeyframe");
+            btn_addkeyfarame.clicked += btn_addkeyframe_OnClick;
+
+            Button btn_owkeyframe = rootElement.Q<Button>("btn_owkeyframe");
+            btn_owkeyframe.clicked += btn_owkeyframe_OnClick;
+
+            Slider slid_frames = rootElement.Q<Slider>("slid_frames");
+
+            Button btn_showkeyframe = rootElement.Q<Button>("btn_showkeyframe");
+            btn_showkeyframe.clicked += btn_showkeyframe_OnClick;
+
+
 
             //---tlb_menunew set up 
             VisualElement tlb_menu_new = rootElement.Q<VisualElement>("tlb_menu_new");
@@ -419,11 +440,12 @@ namespace UserUISpace
             AnimationParsingOptions apo = new AnimationParsingOptions();
             apo.isExecuteForDOTween = 1;
             apo.isBuildDoTween = 1;
-            apo.isCompileAnimation = 1;
+            apo.isCompileAnimation = 0;
             apo.isLoop = 0;
             apo.endDelay = 1.5f;
 
             string opt = JsonUtility.ToJson(apo);
+            manim.IsRecordingOtherMotion = true;
             manim.StartAllTimeline(opt);
         }
         void PauseAnimation_OnClick()
@@ -441,27 +463,53 @@ namespace UserUISpace
         async void selectwater_OnClick()
         {
             OperateStage os = GameObject.Find("Stage").GetComponent<OperateStage>();
-            os.SelectStage((int)StageKind.BasicSeaLevel);
-            //os.SelectStage((int)StageKind.SeaNight);
-            os.ListGetOneUserMaterial("");
-
+            //os.SelectStage((int)StageKind.BasicSeaLevel);
+            os.SelectStage((int)StageKind.SeaNight);
+            //os.ListGetOneUserMaterial("");
         }
         void wateropt1_OnClick()
         {
             OperateActiveVRM oav =  GameObject.Find("IKHandleParent").GetComponent<OperateActiveVRM>();
             OperateLoadedVRM ovrm = oav.ActiveAvatar.GetComponent<OperateLoadedVRM>();
+
+            //---2022/10/26
+            //ovrm.changeAvatarBlendShapeByName("Face:Fcl_ALL_Angry", 100f);
+            //return;
+
+            var lst = ovrm.ListAvatarBlendShapeList();
+            Debug.Log(lst.Count);
+            //ovrm.changeProxyBlendShapeByName("PROX:fun_mth,1.0");
+            ovrm.changeProxyBlendShapeByName("PROX:funangry,1.0");
+            //ovrm.changeAvatarBlendShapeByName("Face:Fcl_ALL_Angry,93");
+
+            return;
+            //---2023/02/16
+            ManageAvatarTransform mat = oav.ActiveAvatar.GetComponent<ManageAvatarTransform>();
+            Debug.Log(mat.recbvh.genBVH());
+            return;
+
+            //---2023/02/12
+            VVMMotionRecorder vmrec = oav.ActiveAvatar.GetComponent<VVMMotionRecorder>();
+            Debug.Log(vmrec.GenerateAnimationCurve());
+
+            //---2023/02/08
+            List<string> lum = ovrm.ListUserMaterial();
+            Debug.Log(lum);
+            
+            ovrm.SetUserMaterial("Body,shader,realtoon / version 5 / lite / default");
+            ovrm.SetUserMaterial("Body,shader,custom/comicshader");
+
+            return;
+            //---Ç¢Ç¬ÅH
+            /*
             OperateStage os = GameObject.Find("Stage").GetComponent<OperateStage>();
 
             ManageAvatarTransform mat = oav.ActiveAvatar.GetComponent<ManageAvatarTransform>();
-            /*
             Label datatext = rootElement.Q<Label>("dataText");
             string data = datatext.text;
             mat.SetIKTransformAll2(data);
             return;
             */
-
-            
-
             //os.SetUserMaterial("wavefrequency,1\t1\t1\t1");
             /*
             AnimationRegisterOptions aro = new AnimationRegisterOptions();
@@ -752,6 +800,111 @@ namespace UserUISpace
                 fmc.OnClickBtnUImage();
             }
 
+        }
+
+        void anp_btn_test1_OnClick()
+        {
+            OperateActiveVRM oav = GameObject.Find("IKHandleParent").GetComponent<OperateActiveVRM>();
+            OperateLoadedVRM ovrm = oav.ActiveAvatar.GetComponent<OperateLoadedVRM>();
+            ManageAvatarTransform mat = oav.ActiveAvatar.GetComponent<ManageAvatarTransform>();
+
+            TextField anp_input1 = rootElement.Q<TextField>("anp_input1");
+
+            GameObject animatearea = GameObject.Find("AnimateArea");
+
+            mat.SetIKTransformAll2(anp_input1.text);
+
+        }
+        void anp_btn_fk2ik_OnClick()
+        {
+            OperateActiveVRM oav = GameObject.Find("IKHandleParent").GetComponent<OperateActiveVRM>();
+            OperateLoadedVRM ovrm = oav.ActiveAvatar.GetComponent<OperateLoadedVRM>();
+
+            if (ovrm != null)
+            {
+                StartCoroutine(ovrm.ApplyBoneTransformToIKTransform());
+                
+            }
+        }
+        void anp_btn_disaik_OnClick()
+        {
+            OperateActiveVRM oav = GameObject.Find("IKHandleParent").GetComponent<OperateActiveVRM>();
+            OperateLoadedVRM ovrm = oav.ActiveAvatar.GetComponent<OperateLoadedVRM>();
+
+            if (ovrm != null)
+            {
+                StartCoroutine(ovrm.EnableIKOperationMode(false));
+
+            }
+
+        }
+        void btn_addkeyframe_OnClick()
+        {
+            OperateActiveVRM oav = GameObject.Find("IKHandleParent").GetComponent<OperateActiveVRM>();
+            OperateLoadedVRM ovrm = oav.ActiveAvatar.GetComponent<OperateLoadedVRM>();
+
+            Slider slid_frames = rootElement.Q<Slider>("slid_frames");
+
+            AnimationRegisterOptions aro = new AnimationRegisterOptions();
+            int index = 0;
+            aro.index = (int)slid_frames.value;
+            aro.targetId = oav.GetEffectiveActiveAvatar().name;
+            aro.targetType = oav.ActiveType;
+            aro.isCompileForLibrary = 0;
+            aro.isRegisterAppend = 1;
+            for (int i = (int)ParseIKBoneType.IKParent; i < (int)ParseIKBoneType.LeftHandPose; i++)
+            {
+                aro.registerBoneTypes.Add(i);
+            }
+            aro.registerMoveTypes.Add((int)AF_MOVETYPE.Translate);
+            aro.registerMoveTypes.Add((int)AF_MOVETYPE.NormalTransform);
+            aro.registerMoveTypes.Add((int)AF_MOVETYPE.AllProperties);
+
+            manim.RegisterFrameFromOuter(JsonUtility.ToJson(aro));
+        }
+        void btn_owkeyframe_OnClick()
+        {
+            OperateActiveVRM oav = GameObject.Find("IKHandleParent").GetComponent<OperateActiveVRM>();
+            OperateLoadedVRM ovrm = oav.ActiveAvatar.GetComponent<OperateLoadedVRM>();
+
+            Slider slid_frames = rootElement.Q<Slider>("slid_frames");
+
+            AnimationRegisterOptions aro = new AnimationRegisterOptions();
+            int index = 0;
+            aro.index = (int)slid_frames.value;
+            aro.targetId = oav.GetEffectiveActiveAvatar().name;
+            aro.targetType = oav.ActiveType;
+            aro.isCompileForLibrary = 0;
+            for (int i = (int)ParseIKBoneType.IKParent; i < (int)ParseIKBoneType.LeftHandPose; i++)
+            {
+                aro.registerBoneTypes.Add(i);
+            }
+            aro.registerMoveTypes.Add((int)AF_MOVETYPE.Translate);
+            aro.registerMoveTypes.Add((int)AF_MOVETYPE.NormalTransform);
+            aro.registerMoveTypes.Add((int)AF_MOVETYPE.AllProperties);
+
+            manim.RegisterFrameFromOuter(JsonUtility.ToJson(aro));
+        }
+        void btn_showkeyframe_OnClick()
+        {
+            OperateActiveVRM oav = GameObject.Find("IKHandleParent").GetComponent<OperateActiveVRM>();
+            Slider slid_frames = rootElement.Q<Slider>("slid_frames");
+
+            NativeAnimationAvatar cast = manim.GetCastByAvatar(oav.GetEffectiveActiveAvatar().name);
+            if (cast == null) return;
+            manim.currentProject.casts.ForEach(cast =>
+            {
+                AnimationParsingOptions aro = new AnimationParsingOptions();
+
+                aro.index = (int)slid_frames.value;
+                aro.targetId = ""; // (oavrm.GetEffectiveActiveAvatar() != null) ? oavrm.GetEffectiveActiveAvatar().name : "";
+                aro.targetRole = cast.roleName;
+                aro.targetType = cast.type; //oavrm.ActiveType;
+                aro.isExecuteForDOTween = 1;
+                manim.PreviewSingleFrame(JsonUtility.ToJson(aro));
+            });
+            manim.BackupPreviewMarker();
+            manim.FinishPreviewMarker();
         }
     }
 }

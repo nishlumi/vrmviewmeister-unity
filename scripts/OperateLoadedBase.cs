@@ -8,6 +8,7 @@ using DG.Tweening;
 
 namespace UserHandleSpace
 {
+
     /// <summary>
     /// Base class to attach for All Objects
     /// </summary>
@@ -21,6 +22,18 @@ namespace UserHandleSpace
         private static extern void ReceiveFloatVal(float val);
 
         protected const string CAMERAROLE = "#Camera";
+
+        public const string SHAD_STD = "standard";
+        public const string SHAD_VRM = "vrm/mtoon";
+        public const string SHAD_VRM10 = "vrm10/mtoon10";
+        public const string SHAD_WT = "fx/water4";
+        public const string SHAD_SWT = "fx/simplewater4";
+        public const string SHAD_SKE = "pencilshader/sketchshader";
+        public const string SHAD_PSKE = "pencilshader/postsketchshader";
+        public const string SHAD_REALTOON = "realtoon/version 5/lite/default";
+        public const string SHAD_COMIC = "custom/comicshader";
+        public const string SHAD_ICE = "custom/iceshader";
+        public const string SHAD_MICRA = "custom/pixelizetexture";
 
 
         public string Title;
@@ -41,7 +54,7 @@ namespace UserHandleSpace
 
         protected Vector3 oldikposition;
 
-        protected List<NativeAnimationAvatar> copyToList;
+        //protected List<NativeAnimationAvatar> copyToList;
 
         //---render texture----------------------------------
         protected string renderTextureParentId;
@@ -61,6 +74,10 @@ namespace UserHandleSpace
          * 
          */
         //---Pointer of the each materials
+
+        /// <summary>
+        /// SkinnedMeshRenderer objectname : available Material(s)
+        /// </summary>
         [SerializeField]
         public Dictionary<string, Material> userSharedMaterials;
         //---property saver of material
@@ -69,7 +86,11 @@ namespace UserHandleSpace
         [SerializeField]
         protected Dictionary<string, MaterialProperties> backupTextureFiles;
 
-        private void Awake()
+        protected Dictionary<string, Shader> cachedShaders;
+
+        public List<MaterialProperties> backup_userMaterialProperties;
+
+        virtual protected void Awake()
         {
             effectPunch = new AvatarPunchEffect();
             effectShake = new AvatarShakeEffect();
@@ -78,17 +99,32 @@ namespace UserHandleSpace
 
         }
         // Start is called before the first frame update
-        void Start()
+        virtual protected void Start()
         {
-            SaveDefaultTransform(true, true);
+            //SaveDefaultTransform(true, true);
 
-            copyToList = new List<NativeAnimationAvatar>();
+            //copyToList = new List<NativeAnimationAvatar>();
+            cachedShaders = new Dictionary<string, Shader>();
         }
 
         // Update is called once per frame
         void Update()
         {
 
+        }
+        virtual protected void OnDestroy()
+        {
+            if (cachedShaders != null)
+            {
+                Dictionary<string, Shader>.Enumerator enums = cachedShaders.GetEnumerator();
+                while (enums.MoveNext())
+                {
+                    var s = enums.Current;
+                    Resources.UnloadAsset(s.Value);
+                }
+                cachedShaders.Clear();
+            }
+            
         }
         public List<GameObject> GetColliderAvailable()
         {
@@ -698,6 +734,8 @@ namespace UserHandleSpace
             userSharedTextureFiles = new Dictionary<string, MaterialProperties>();
             backupTextureFiles = new Dictionary<string, MaterialProperties>();
 
+            backup_userMaterialProperties = new List<MaterialProperties>();
+
 
             ManageAvatarTransform matra = GetComponent<ManageAvatarTransform>();
             List<GameObject> meshcnt = matra.CheckSkinnedMeshAvailable();
@@ -720,6 +758,7 @@ namespace UserHandleSpace
                 {
                     foreach (Material mat in mats)
                     {
+                        //---name of SkinedMeshRenderer GameObject
                         string keyname = item.name;// + "_" + mat.name;
                         string newkeyname = "";
                         int dupCount = 0;
@@ -742,6 +781,13 @@ namespace UserHandleSpace
                             mat.shader = Shader.Find("Standard");
                         }*/
 
+                        /*
+                         * Materials : GameObject.name [0]~[n] : Material
+                         * GameObject1.name (Material, Material,Material,...)
+                         * GameObject2.name (Material)
+                         * ...
+                         * 
+                         */
                         userSharedMaterials.Add(newkeyname, mat);
 
                         MaterialProperties matp = new MaterialProperties();
@@ -755,13 +801,150 @@ namespace UserHandleSpace
                     }
                 }
             }
-
+            backup_userMaterialProperties = ListUserMaterialObject();
         }
 
         /// <summary>
-        /// To write real Material to List of MaterialProperties
+        /// Generate MaterialProperites from raw Material (one of each userSharedMaterial)
         /// </summary>
-        /// <returns>packed Listof MaterialProperties</returns>
+        /// <param name="gobjName"></param>
+        /// <param name="mat"></param>
+        /// <returns></returns>
+        public virtual MaterialProperties GetUserMaterialObject(string gobjName, Material mat)
+        {
+            MaterialProperties matp = new MaterialProperties();
+
+            matp.name = gobjName;
+            matp.matName = mat.name;
+
+            matp.shaderName = mat.shader.name;
+
+            if (mat.shader.name.ToLower() == SHAD_VRM)
+            {
+                matp.color = mat.color;
+                matp.emissioncolor = mat.GetColor("_EmissionColor");
+
+                matp.cullmode = mat.GetFloat("_CullMode");
+                matp.blendmode = mat.GetFloat("_BlendMode");
+                matp.shadetexcolor = mat.GetColor("_ShadeColor");
+                matp.shadingtoony = mat.GetFloat("_ShadeToony");
+                matp.rimcolor = mat.GetColor("_RimColor");
+                matp.rimfresnel = mat.GetFloat("_RimFresnelPower");
+                matp.srcblend = mat.GetFloat("_SrcBlend");
+                matp.dstblend = mat.GetFloat("_DstBlend");
+                matp.cutoff = mat.GetFloat("_Cutoff");
+                matp.shadingshift = mat.GetFloat("_ShadeShift");
+                matp.receiveshadow = mat.GetFloat("_ReceiveShadowRate");
+                matp.shadinggrade = mat.GetFloat("_ShadingGradeRate");
+                matp.lightcolorattenuation = mat.GetFloat("_LightColorAttenuation");
+
+                matp.texturePath = userSharedTextureFiles[gobjName].texturePath;
+                matp.textureRole = userSharedTextureFiles[gobjName].textureRole;
+                matp.textureIsCamera = userSharedTextureFiles[gobjName].textureIsCamera;
+
+            }
+            else if (mat.shader.name.ToLower() == SHAD_VRM10)
+            {
+                matp.color = mat.color;
+                matp.emissioncolor = mat.GetColor("_EmissionColor");
+
+                matp.cullmode = mat.GetFloat("_M_CullMode");
+                matp.blendmode = mat.GetFloat("_AlphaMode");
+                matp.shadetexcolor = mat.GetColor("_ShadeColor");
+                matp.shadingtoony = mat.GetFloat("_ShadingToonyFactor");
+                matp.rimcolor = mat.GetColor("_RimColor");
+                matp.rimfresnel = mat.GetFloat("_RimFresnelPower");
+                matp.srcblend = mat.GetFloat("_M_SrcBlend");
+                matp.dstblend = mat.GetFloat("_M_DstBlend");
+                matp.cutoff = mat.GetFloat("_Cutoff");
+                matp.shadingshift = mat.GetFloat("_ShadingShiftFactor");
+                matp.receiveshadow = 0f;
+                matp.shadinggrade = 1f;
+                matp.lightcolorattenuation = 0;
+
+                matp.texturePath = userSharedTextureFiles[gobjName].texturePath;
+                matp.textureRole = userSharedTextureFiles[gobjName].textureRole;
+                matp.textureIsCamera = userSharedTextureFiles[gobjName].textureIsCamera;
+            }
+            else if (mat.shader.name.ToLower() == SHAD_STD)
+            {
+                matp.color = mat.color;
+                matp.emissioncolor = mat.GetColor("_EmissionColor");
+
+                matp.cullmode = 0;
+                matp.blendmode = mat.GetFloat("_Mode");
+                matp.metallic = mat.GetFloat("_Metallic");
+                matp.glossiness = mat.GetFloat("_Glossiness");
+
+                matp.texturePath = userSharedTextureFiles[gobjName].texturePath;
+                matp.textureRole = userSharedTextureFiles[gobjName].textureRole;
+                matp.textureIsCamera = userSharedTextureFiles[gobjName].textureIsCamera;
+
+            }
+            else if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
+            {
+                matp.fresnelScale = mat.GetFloat("_FresnelScale");
+                matp.color = mat.GetColor("_BaseColor");
+                matp.reflectionColor = mat.GetColor("_ReflectionColor");
+                matp.specularColor = mat.GetColor("_SpecularColor");
+
+                matp.waveAmplitude = mat.GetVector("_GAmplitude");
+                matp.waveFrequency = mat.GetVector("_GFrequency");
+                matp.waveSteepness = mat.GetVector("_GSteepness");
+                matp.waveSpeed = mat.GetVector("_GSpeed");
+                matp.waveDirectionAB = mat.GetVector("_GDirectionAB");
+                matp.waveDirectionCD = mat.GetVector("_GDirectionCD");
+            }
+            else if ((mat.shader.name.ToLower() == SHAD_SKE) || (mat.shader.name.ToLower() == SHAD_PSKE))
+            {
+                matp.outlinewidth = mat.GetFloat("_OutlineWidth");
+                if (mat.shader.name.ToLower() == SHAD_PSKE)
+                {
+                    matp.strokedensity = mat.GetFloat("_StrokeDensity");
+                    matp.addbrightness = mat.GetFloat("_AddBrightNess");
+                    matp.multbrightness = mat.GetFloat("_MultBrightNess");
+                }
+                else
+                {
+                    matp.shadowbrightness = mat.GetFloat("_ShadowBrightNess");
+                }
+            }
+            else if (mat.shader.name.ToLower() == SHAD_REALTOON)
+            {
+                matp.enableTexTransparent = mat.GetFloat("_EnableTextureTransparent");
+                matp.mainColorInAmbientLightOnly = mat.GetFloat("_MCIALO");
+                matp.doubleSided = mat.GetInteger("_DoubleSided");
+                matp.outlineZPosCam = mat.GetFloat("_OutlineZPostionInCamera");
+                matp.thresHold = mat.GetFloat("_SelfShadowThreshold");
+                matp.shadowHardness = mat.GetFloat("_ShadowTHardness");
+            }
+            else if (mat.shader.name.ToLower() == SHAD_COMIC)
+            {
+                matp.enableTexTransparent = mat.GetFloat("_EnableTextureTransparent");
+                matp.lineWidth = mat.GetFloat("_LineWidth");
+                matp.lineColor = mat.GetColor("_LineColor");
+                matp.tone1Threshold = mat.GetFloat("_Tone1Threshold");
+
+            }
+            else if (mat.shader.name.ToLower() == SHAD_ICE)
+            {
+                matp.iceColor = mat.GetColor("_Color");
+                matp.transparency = mat.GetFloat("_Transparency");
+                matp.baseTransparency = mat.GetFloat("_BaseTransparency");
+                matp.iceRoughness = mat.GetFloat("_IceRoughness");
+                matp.distortion = mat.GetFloat("_Distortion");
+            }
+            else if (mat.shader.name.ToLower() == SHAD_MICRA)
+            {
+                matp.pixelSize = mat.GetFloat("_PixelSize");
+            }
+
+            return matp;
+        }
+        /// <summary>
+        /// Generate a list of MaterialProperties from raw Material
+        /// </summary>
+        /// <returns>packed List of MaterialProperties</returns>
         public virtual List<MaterialProperties> ListUserMaterialObject()
         {
             List<MaterialProperties> ret = new List<MaterialProperties>();
@@ -770,66 +953,7 @@ namespace UserHandleSpace
             {
                 Material mat = kvp.Value;
 
-                MaterialProperties matp = new MaterialProperties();
-
-                matp.name = kvp.Key;
-                matp.matName = mat.name;
-                
-                matp.shaderName = mat.shader.name;
-                
-                if (mat.shader.name.ToLower() == "vrm/mtoon")
-                {
-                    matp.color = mat.color;
-                    matp.emissioncolor = mat.GetColor("_EmissionColor");
-
-                    matp.cullmode = mat.GetFloat("_CullMode");
-                    matp.blendmode = mat.GetFloat("_BlendMode");
-                    matp.shadetexcolor = mat.GetColor("_ShadeColor");
-                    matp.shadingtoony = mat.GetFloat("_ShadeToony");
-                    matp.rimcolor = mat.GetColor("_RimColor");
-                    matp.rimfresnel = mat.GetFloat("_RimFresnelPower");
-                    matp.srcblend = mat.GetFloat("_SrcBlend");
-                    matp.dstblend = mat.GetFloat("_DstBlend");
-                    matp.cutoff = mat.GetFloat("_Cutoff");
-                    matp.shadingshift = mat.GetFloat("_ShadeShift");
-                    matp.receiveshadow = mat.GetFloat("_ReceiveShadowRate");
-                    matp.shadinggrade = mat.GetFloat("_ShadingGradeRate");
-                    matp.lightcolorattenuation = mat.GetFloat("_LightColorAttenuation");
-
-                    matp.texturePath = userSharedTextureFiles[kvp.Key].texturePath;
-                    matp.textureRole = userSharedTextureFiles[kvp.Key].textureRole;
-                    matp.textureIsCamera = userSharedTextureFiles[kvp.Key].textureIsCamera;
-
-                }
-                else if (mat.shader.name.ToLower() == "standard")
-                {
-                    matp.color = mat.color;
-                    matp.emissioncolor = mat.GetColor("_EmissionColor");
-
-                    matp.cullmode = 0;
-                    matp.blendmode = mat.GetFloat("_Mode");
-                    matp.metallic = mat.GetFloat("_Metallic");
-                    matp.glossiness = mat.GetFloat("_Glossiness");
-
-                    matp.texturePath = userSharedTextureFiles[kvp.Key].texturePath;
-                    matp.textureRole = userSharedTextureFiles[kvp.Key].textureRole;
-                    matp.textureIsCamera = userSharedTextureFiles[kvp.Key].textureIsCamera;
-
-                }
-                else if ( (mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4") )
-                {
-                    matp.fresnelScale = mat.GetFloat("_FresnelScale");
-                    matp.color = mat.GetColor("_BaseColor");
-                    matp.reflectionColor = mat.GetColor("_ReflectionColor");
-                    matp.specularColor = mat.GetColor("_SpecularColor");
-
-                    matp.waveAmplitude = mat.GetVector("_GAmplitude");
-                    matp.waveFrequency = mat.GetVector("_GFrequency");
-                    matp.waveSteepness = mat.GetVector("_GSteepness");
-                    matp.waveSpeed = mat.GetVector("_GSpeed");
-                    matp.waveDirectionAB = mat.GetVector("_GDirectionAB");
-                    matp.waveDirectionCD = mat.GetVector("_GDirectionCD");
-                }
+                MaterialProperties matp = GetUserMaterialObject(kvp.Key, mat);
 
                 ret.Add(matp);
             }
@@ -849,26 +973,26 @@ namespace UserHandleSpace
             while (matlst.MoveNext())
             {
                 //Debug.Log("matlst.Current.Key=" + matlst.Current.Key);
-                ret.Add(ListGetOneUserMaterial(matlst.Current.Key));
+                ret.Add(ListGetOneUserMaterial2(matlst.Current.Key));
             }
 
             return ret;
         }
         public virtual void ListUserMaterialFromOuter()
         {
-#if !UNITY_EDITOR && UNITY_WEBGL
             List<string> list = ListUserMaterial();
             string js = string.Join("\r\n", list.ToArray());
+#if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(js);
 #endif
         }
 
         /// <summary>
-        /// To write 1 - material to csv-string 
+        /// Generate material properties csv-string from raw Material data (To write 1 - material to csv-string )
         /// </summary>
-        /// <param name="param"></param>
+        /// <param name="gobjName"></param>
         /// <returns></returns>
-        public virtual string ListGetOneUserMaterial(string param)
+        public virtual string ListGetOneUserMaterial(string gobjName)
         {
             const string SEPSTR = "=";
             string ret = "";
@@ -876,16 +1000,16 @@ namespace UserHandleSpace
             //Debug.Log("param=" + param);
             //Debug.Log(userSharedMaterials.ContainsKey(param));
 
-            if (userSharedMaterials.ContainsKey(param))
+            if (userSharedMaterials.ContainsKey(gobjName))
             {
-                Material mat = userSharedMaterials[param];
+                Material mat = userSharedMaterials[gobjName];
                 //Debug.Log("material name=" + mat.name);
-                string texturePath = userSharedTextureFiles[param].texturePath;
+                string texturePath = userSharedTextureFiles[gobjName].texturePath;
 
-                if (mat.shader.name.ToLower() == "vrm/mtoon")
+                if (mat.shader.name.ToLower() == SHAD_VRM)
                 {
                     ret = (
-                        param + SEPSTR +
+                        gobjName + SEPSTR +
                         mat.name + SEPSTR + 
                         mat.shader.name + SEPSTR +
                         ColorUtility.ToHtmlStringRGBA(mat.color) + SEPSTR +
@@ -908,12 +1032,41 @@ namespace UserHandleSpace
                         mat.GetFloat("_ReceiveShadowRate").ToString() + SEPSTR + 
                         mat.GetFloat("_ShadingGradeRate").ToString() + SEPSTR + 
                         mat.GetFloat("_LightColorAttenuation").ToString()
-                    );
+                    );                    
                 }
-                else if (mat.shader.name.ToLower() == "standard")
+                else if (mat.shader.name.ToLower() == SHAD_VRM10)
                 {
                     ret = (
-                        param + SEPSTR +
+                        gobjName + SEPSTR +
+                        mat.name + SEPSTR +
+                        mat.shader.name + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(mat.color) + SEPSTR +
+                        mat.GetFloat("_M_CullMode").ToString() + SEPSTR +
+                        mat.GetFloat("_AlphaMode").ToString() + SEPSTR +
+                        texturePath + SEPSTR +
+                        //---v1 = 6, v2 = 7
+                        "0" + SEPSTR +
+                        "0" + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_EmissionColor")) + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_ShadeColor")) + SEPSTR +
+                        mat.GetFloat("_ShadingToonyFactor").ToString() + SEPSTR +
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_RimColor")) + SEPSTR +
+                        mat.GetFloat("_RimFresnelPower").ToString() + SEPSTR +
+                        mat.GetFloat("_M_SrcBlend").ToString() + SEPSTR +
+                        mat.GetFloat("_M_DstBlend").ToString() + SEPSTR +
+                        //---v2 = 16
+                        mat.GetFloat("_Cutoff").ToString() + SEPSTR +
+                        mat.GetFloat("_ShadingShiftFactor").ToString() + SEPSTR +
+                        "1" + SEPSTR +
+                        "1" + SEPSTR +
+                        "0"
+                    );
+
+                }
+                else if (mat.shader.name.ToLower() == SHAD_STD)
+                {
+                    ret = (
+                        gobjName + SEPSTR +
                         mat.name + SEPSTR +
                         mat.shader.name + SEPSTR +
                         ColorUtility.ToHtmlStringRGBA(mat.color) + SEPSTR +
@@ -938,7 +1091,7 @@ namespace UserHandleSpace
                         "0"
                     );
                 }
-                else if ( (mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4") )
+                else if ( (mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT) )
                 {
                     Vector4 wa = mat.GetVector("_GAmplitude");
                     Vector4 wf = mat.GetVector("_GFrequency");
@@ -947,7 +1100,7 @@ namespace UserHandleSpace
                     Vector4 wdab = mat.GetVector("_GDirectionAB");
                     Vector4 wdcd = mat.GetVector("_GDirectionCD");
                     ret = (
-                        param + SEPSTR +
+                        gobjName + SEPSTR +
                         mat.name + SEPSTR +
                         mat.shader.name + SEPSTR +
                         mat.GetFloat("_FresnelScale").ToString() + SEPSTR +
@@ -962,6 +1115,86 @@ namespace UserHandleSpace
                         wdab.x.ToString() + "," + wdab.y.ToString() + "," + wdab.z.ToString() + "," + wdab.w.ToString() + SEPSTR +
                         wdcd.x.ToString() + "," + wdcd.y.ToString() + "," + wdcd.z.ToString() + "," + wdcd.w.ToString()
                     );
+                }
+                else if ((mat.shader.name.ToLower() == SHAD_SKE))
+                {
+
+                    string [] tmparr = new string[] {
+                        gobjName,
+                        mat.name,
+                        mat.shader.name,
+                        "0",
+                        "0",
+                        "0",
+                        mat.GetFloat("_ShadowBrightNess").ToString()
+                    };
+                    ret = String.Join(SEPSTR, tmparr);
+                }
+                else if (mat.shader.name.ToLower() == SHAD_PSKE)
+                {
+                    string[] tmparr = new string[] {
+                        gobjName,
+                        mat.name,
+                        mat.shader.name,
+                        mat.GetFloat("_StrokeDensity").ToString(),
+                        mat.GetFloat("_AddBrightNess").ToString(),
+                        mat.GetFloat("_MultBrightNess").ToString(),
+                        "0"
+                    };
+                    ret = String.Join(SEPSTR, tmparr);
+                }
+                else if (mat.shader.name.ToLower() == SHAD_REALTOON)
+                {
+                    string[] tmparr = new string[] {
+                        gobjName,
+                        mat.name,
+                        mat.shader.name,
+                        mat.GetFloat("_EnableTextureTransparent").ToString(),
+                        mat.GetFloat("_MCIALO").ToString(),
+                        mat.GetInteger("_DoubleSided").ToString(),
+                        mat.GetFloat("_OutlineZPostionInCamera").ToString(),
+                        mat.GetFloat("_SelfShadowThreshold").ToString(),
+                        mat.GetFloat("_ShadowTHardness").ToString()
+                    };
+                    ret = String.Join(SEPSTR, tmparr);
+                }
+                else if (mat.shader.name.ToLower() == SHAD_COMIC)
+                {
+                    string[] tmparr = new string[] {
+                        gobjName,
+                        mat.name,
+                        mat.shader.name,
+                        mat.GetFloat("_EnableTextureTransparent").ToString(),
+                        mat.GetFloat("_LineWidth").ToString(),
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_LineColor")),
+                        mat.GetFloat("_Tone1Threshold").ToString()
+                    };
+                    ret = String.Join(SEPSTR, tmparr);
+                }
+                else if (mat.shader.name.ToLower() == SHAD_ICE)
+                {
+                    string[] tmparr = new string[] {
+                        gobjName,
+                        mat.name,
+                        mat.shader.name,
+                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_Color")),
+                        mat.GetFloat("_Transparency").ToString(),
+                        mat.GetFloat("_BaseTransparency").ToString(),
+                        mat.GetFloat("_IceRoughness").ToString(),
+                        mat.GetFloat("_Distortion").ToString()
+                    };
+                    ret = String.Join(SEPSTR, tmparr);
+                }
+                else if (mat.shader.name.ToLower() == SHAD_MICRA)
+                {
+                    string[] tmparr = new string[]
+                    {
+                        gobjName,
+                        mat.name,
+                        mat.shader.name,
+                        mat.GetFloat("_PixelSize").ToString()
+                    };
+                    ret = String.Join(SEPSTR, tmparr);
                 }
             }
             /////Debug.Log("ret=" + ret);
@@ -984,16 +1217,240 @@ namespace UserHandleSpace
 
             return ret;
         }
-        public virtual void ListGetOneUserMaterialFromOuter(string param)
+
+        /// <summary>
+        /// Generate material properties csv-string from backup properties
+        /// </summary>
+        /// <param name="gobjName"></param>
+        /// <returns></returns>
+        public virtual string ListGetOneUserMaterial2(string gobjName)
         {
-            string ret = ListGetOneUserMaterial(param);
+            const string SEPSTR = "=";
+            string ret = "";
+
+            int inx = backup_userMaterialProperties.FindIndex(item =>
+            {
+                if (item.name == gobjName)  return true;
+                return false;
+            });
+            if (inx > -1)
+            {
+                List<string> retarr = new List<string>();
+                MaterialProperties mat = backup_userMaterialProperties[inx];
+                string texturePath = userSharedTextureFiles[gobjName].texturePath;
+
+                if (mat.shaderName.ToLower() == SHAD_STD)
+                {
+                    retarr.AddRange(new string[]
+                    {
+                        mat.name, mat.matName, mat.shaderName,
+                        ColorUtility.ToHtmlStringRGBA(mat.color),
+                        "0", mat.blendmode.ToString(),
+                        texturePath, mat.metallic.ToString(), mat.glossiness.ToString(),
+                        ColorUtility.ToHtmlStringRGBA(mat.emissioncolor),
+                        ColorUtility.ToHtmlStringRGBA(Color.white),
+                        "0",
+                        ColorUtility.ToHtmlStringRGBA(Color.white),
+                        "0", "1", "0", 
+                        "0.5", "0", "1", "1", "0"
+                    });
+                }
+                else if (mat.shaderName.ToLower() == SHAD_VRM)
+                {
+                    retarr.AddRange(new string[]  { 
+                        mat.name, mat.matName, mat.shaderName,
+                        ColorUtility.ToHtmlStringRGBA(mat.color),
+                        mat.cullmode.ToString(), mat.blendmode.ToString(),
+                        texturePath, "0", "0",
+                        ColorUtility.ToHtmlStringRGBA(mat.emissioncolor),
+                        ColorUtility.ToHtmlStringRGBA(mat.shadetexcolor),
+                        mat.shadingtoony.ToString(),
+                        ColorUtility.ToHtmlStringRGBA(mat.rimcolor),
+                        mat.rimfresnel.ToString(),
+                        mat.srcblend.ToString(), mat.dstblend.ToString(),
+
+                        mat.cutoff.ToString(), mat.shadingshift.ToString(),
+                        mat.receiveshadow.ToString(), mat.shadinggrade.ToString(),
+                        mat.lightcolorattenuation.ToString()
+                    });
+                }
+                else if (mat.shaderName.ToLower() == SHAD_VRM10)
+                {
+                    retarr.AddRange(new string[]  {
+                        mat.name, mat.matName, mat.shaderName,
+                        ColorUtility.ToHtmlStringRGBA(mat.color),
+                        mat.cullmode.ToString(), mat.blendmode.ToString(),
+                        texturePath, "0", "0",
+                        ColorUtility.ToHtmlStringRGBA(mat.emissioncolor),
+                        ColorUtility.ToHtmlStringRGBA(mat.shadetexcolor),
+                        mat.shadingtoony.ToString(),
+                        ColorUtility.ToHtmlStringRGBA(mat.rimcolor),
+                        mat.rimfresnel.ToString(),
+                        mat.srcblend.ToString(), mat.dstblend.ToString(),
+
+                        mat.cutoff.ToString(), mat.shadingshift.ToString(),
+                        "1", "1", "0"
+                    });
+                }
+                else if ((mat.shaderName.ToLower() == SHAD_WT) || (mat.shaderName.ToLower() == SHAD_SWT))
+                {
+                    Vector4 wa = mat.waveAmplitude;
+                    Vector4 wf = mat.waveFrequency;
+                    Vector4 wt = mat.waveSteepness;
+                    Vector4 ws = mat.waveSpeed;
+                    Vector4 wdab = mat.waveDirectionAB;
+                    Vector4 wdcd = mat.waveDirectionCD;
+
+                    retarr.AddRange(new string[]  {
+                        mat.name, mat.matName, mat.shaderName,
+                        mat.fresnelScale.ToString(),
+                        ColorUtility.ToHtmlStringRGBA(mat.color),
+                        ColorUtility.ToHtmlStringRGBA(mat.reflectionColor),
+                        ColorUtility.ToHtmlStringRGBA(mat.specularColor),
+                        //---v1 = 6, v2 = 7
+                        wa.x.ToString() + "," + wa.y.ToString() + "," + wa.z.ToString() + "," + wa.w.ToString(),
+                        wf.x.ToString() + "," + wf.y.ToString() + "," + wf.z.ToString() + "," + wf.w.ToString(),
+                        wt.x.ToString() + "," + wt.y.ToString() + "," + wt.z.ToString() + "," + wt.w.ToString(),
+                        ws.x.ToString() + "," + ws.y.ToString() + "," + ws.z.ToString() + "," + ws.w.ToString(),
+                        wdab.x.ToString() + "," + wdab.y.ToString() + "," + wdab.z.ToString() + "," + wdab.w.ToString(),
+                        wdcd.x.ToString() + "," + wdcd.y.ToString() + "," + wdcd.z.ToString() + "," + wdcd.w.ToString()
+
+                    });
+                }
+                else if ((mat.shaderName.ToLower() == SHAD_SKE))
+                {
+
+                    retarr.AddRange(new string[]  {
+                        gobjName,
+                        mat.matName,
+                        mat.shaderName,
+                        "0",
+                        "0",
+                        "0",
+                        mat.shadowbrightness.ToString()
+                    });
+                    
+                }
+                else if ((mat.shaderName.ToLower() == SHAD_PSKE))
+                {
+
+                    retarr.AddRange(new string[]  {
+                        gobjName,
+                        mat.matName,
+                        mat.shaderName,
+                        mat.strokedensity.ToString(),
+                        mat.addbrightness.ToString(),
+                        mat.multbrightness.ToString(),
+                        "0"
+                    });
+
+                }
+                else if ((mat.shaderName.ToLower() == SHAD_REALTOON))
+                {
+
+                    retarr.AddRange(new string[]  {
+                        gobjName,
+                        mat.matName,
+                        mat.shaderName,
+                        mat.enableTexTransparent.ToString(),
+                        mat.mainColorInAmbientLightOnly.ToString(),
+                        mat.doubleSided.ToString(),
+                        mat.outlineZPosCam.ToString(),
+                        mat.thresHold.ToString(),
+                        mat.shadowHardness.ToString()
+                    });
+
+                }
+                else if ((mat.shaderName.ToLower() == SHAD_COMIC))
+                {
+
+                    retarr.AddRange(new string[]  {
+                        gobjName,
+                        mat.matName,
+                        mat.shaderName,
+                        mat.enableTexTransparent.ToString(),
+                        mat.lineWidth.ToString(),
+                        mat.lineColor.ToString(),
+                        mat.tone1Threshold.ToString()
+                    });
+
+                }
+                else if ((mat.shaderName.ToLower() == SHAD_ICE))
+                {
+
+                    retarr.AddRange(new string[]  {
+                        gobjName,
+                        mat.matName,
+                        mat.shaderName,
+                        ColorUtility.ToHtmlStringRGBA(mat.iceColor),
+                        mat.transparency.ToString(),
+                        mat.baseTransparency.ToString(),
+                        mat.iceRoughness.ToString(),
+                        mat.distortion.ToString()
+                    });
+
+                }
+                else if ((mat.shaderName.ToLower() == SHAD_MICRA))
+                {
+
+                    retarr.AddRange(new string[]  {
+                        gobjName,
+                        mat.matName,
+                        mat.shaderName,
+                        mat.pixelSize.ToString()
+                    });
+
+                }
+                ret = String.Join(SEPSTR, retarr);
+            }
+            return ret;
+        }
+
+        /// <summary>
+        /// Get material properties as text data (for HTML)
+        /// </summary>
+        /// <param name="gobjName">GameObject name</param>
+        public virtual void ListGetOneUserMaterialFromOuter(string gobjName)
+        {
+            string ret = ListGetOneUserMaterial(gobjName);
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(ret);
 #endif
         }
 
         /// <summary>
-        /// To set material property from Unity
+        /// Find a shader from Resouces, cache(own object), BuiltIn
+        /// </summary>
+        /// <param name="path">Shader path name</param>
+        /// <returns></returns>
+        public virtual Shader FindShader(string path)
+        {
+            Shader ret = null;
+            if (cachedShaders.ContainsKey(path))
+            {
+                ret = cachedShaders[path];
+            }
+            else
+            {
+                if (path.ToLower() == SHAD_REALTOON)
+                {
+                    ret = Resources.Load<Shader>("L_Default");
+                    cachedShaders.Add(path, ret);
+
+                }
+                else
+                {
+                    ret = Shader.Find(path);
+                }
+                
+            }
+
+            return ret;
+
+        }
+
+        /// <summary>
+        /// To set material property from Unity (NOT USE)
         /// </summary>
         /// <param name="item_name"></param>
         /// <param name="mat_name"></param>
@@ -1013,7 +1470,7 @@ namespace UserHandleSpace
                 {
                     if (propname.ToLower() == "shader")
                     {
-                        Shader target = Shader.Find(vmat.shaderName);
+                        Shader target = FindShader(vmat.shaderName); //Shader.Find(vmat.shaderName);
                         if (target != null)
                         {
                             mat.shader = target;
@@ -1021,11 +1478,11 @@ namespace UserHandleSpace
                     }
                     else if (propname.ToLower() == "color")
                     {
-                        if ( (mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4") )
+                        if ( (mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT) )
                         {
                             mat.SetColor("_BaseColor", vmat.color);
                         }
-                        else if ((mat.shader.name.ToLower() == "standard") || (mat.shader.name.ToLower() == "vrm/mtoon"))
+                        else if ((mat.shader.name.ToLower() == SHAD_STD) || (mat.shader.name.ToLower() == SHAD_VRM))
                         {
                             mat.SetColor("_Color", vmat.color);
                         }
@@ -1033,25 +1490,36 @@ namespace UserHandleSpace
                     }
                     else if (propname.ToLower() == "renderingtype")
                     {
-                        if (mat.shader.name.ToLower() == "standard")
+                        if (mat.shader.name.ToLower() == SHAD_STD)
                         {
                             mat.SetFloat("_Mode", vmat.blendmode);
                         }
-                        else if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        else if (mat.shader.name.ToLower() == SHAD_VRM)
                         {
                             mat.SetFloat("_BlendMode", vmat.blendmode);
+                        }
+                        else if (mat.shader.name.ToLower() == SHAD_VRM10)
+                        {
+                            mat.SetFloat("_AlphaMode", vmat.blendmode);
                         }
                     }
                     else if (propname.ToLower() == "cullmode")
                     { //0 - off, 1 - front, 2 - back
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (mat.shader.name.ToLower() == SHAD_VRM)
                         {
                             mat.SetFloat("_CullMode", vmat.cullmode);
+                        }
+                        else if (mat.shader.name.ToLower() == SHAD_VRM10)
+                        {
+                            mat.SetFloat("_M_CullMode", vmat.cullmode);
                         }
                     }
                     else if (propname.ToLower() == "alphacutoff")
                     {
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_VRM) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM10)
+                        )
                         {
                             mat.SetFloat("_Cutoff", vmat.cutoff);
                         }
@@ -1139,14 +1607,14 @@ namespace UserHandleSpace
                     }
                     else if (propname.ToLower() == "metallic")
                     {
-                        if (mat.shader.name.ToLower() == "standard")
+                        if (mat.shader.name.ToLower() == SHAD_STD)
                         {
                             mat.SetFloat("_Metallic", vmat.metallic);
                         }
                     }
                     else if (propname.ToLower() == "glossiness")
                     {
-                        if (mat.shader.name.ToLower() == "standard")
+                        if (mat.shader.name.ToLower() == SHAD_STD)
                         {
                             mat.SetFloat("_Glossiness", vmat.glossiness);
                         }
@@ -1159,135 +1627,312 @@ namespace UserHandleSpace
                     }
                     else if (propname.ToLower() == "shadetexcolor")
                     {
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_VRM) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM10)
+                        )
                         {
                             mat.SetColor("_ShadeColor", vmat.shadetexcolor);
                         }
                     }
                     else if (propname.ToLower() == "shadingtoony")
                     {
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (mat.shader.name.ToLower() == SHAD_VRM)
                         {
                             mat.SetFloat("_ShadeToony", vmat.shadingtoony);
-                        }   
+                        }
+                        else if (mat.shader.name.ToLower() == SHAD_VRM10)
+                        {
+                            mat.SetFloat("_ShadingToonyFactor", vmat.shadingtoony);
+                        }
                     }
                     else if (propname.ToLower() == "shadingshift")
                     {
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (mat.shader.name.ToLower() == SHAD_VRM)
                         {
                             mat.SetFloat("_ShadeShift", vmat.shadingshift);
+                        }
+                        else if (mat.shader.name.ToLower() == SHAD_VRM10)
+                        {
+                            mat.SetFloat("_ShadingShiftFactor", vmat.shadingshift);
                         }
                     }
                     else if (propname.ToLower() == "receiveshadow")
                     {
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (mat.shader.name.ToLower() == SHAD_VRM)
                         {
                             mat.SetFloat("_ReceiveShadowRate", vmat.receiveshadow);
                         }
                     }
                     else if (propname.ToLower() == "shadinggrade")
                     {
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (mat.shader.name.ToLower() == SHAD_VRM)
                         {
                             mat.SetFloat("_ShadingGradeRate", vmat.shadinggrade);
                         }
                     }
                     else if (propname.ToLower() == "lightcolorattenuation")
                     {
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (mat.shader.name.ToLower() == SHAD_VRM)
                         {
                             mat.SetFloat("_LightColorAttenuation", vmat.lightcolorattenuation);
                         }
                     }
                     else if (propname.ToLower() == "rimcolor")
                     {
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_VRM) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM10)
+                        )
                         {
                             mat.SetColor("_RimColor", vmat.rimcolor);
                         }
                     }
                     else if (propname.ToLower() == "rimfresnel")
                     {
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_VRM) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM10)
+                        )
                         {
                             mat.SetFloat("_RimFresnelPower", vmat.rimfresnel);
                         }                        
                     }
                     else if (propname.ToLower() == "srcblend")
                     {
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_VRM)
+                            
+                        )
                         {
                             mat.SetFloat("_SrcBlend", vmat.srcblend);
+                        }
+                        else if (mat.shader.name.ToLower() == SHAD_VRM10)
+                        {
+                            mat.SetFloat("_M_SrcBlend", vmat.srcblend);
                         }
                     }
                     else if (propname.ToLower() == "dstblend")
                     {
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_VRM)
+                        )
                         {
                             mat.SetFloat("_DstBlend", vmat.dstblend);
+                        }
+                        else if (mat.shader.name.ToLower() == SHAD_VRM10)
+                        {
+                            mat.SetFloat("_M_DstBlend", vmat.dstblend);
                         }
                     }
                     else if (propname.ToLower() == "fresnelscale")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             mat.SetFloat("_FresnelScale", vmat.fresnelScale);
                         }
                     }
                     else if (propname.ToLower() == "reflectioncolor")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             mat.SetColor("_ReflectionColor", vmat.reflectionColor);
                         }
                     }
                     else if (propname.ToLower() == "specularcolor")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             mat.SetColor("_SpecularColor", vmat.specularColor);
                         }
                     }
                     else if (propname.ToLower() == "waveamplitude")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             mat.SetVector("_GAmplitude", vmat.waveAmplitude);
                         }
                     }
                     else if (propname.ToLower() == "wavefrequency")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             mat.SetVector("_GFrequency", vmat.waveFrequency);
                         }
                     }
                     else if (propname.ToLower() == "wavesteepness")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             mat.SetVector("_GSteepness", vmat.waveSteepness);
                         }
                     }
                     else if (propname.ToLower() == "wavespeed")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             mat.SetVector("_GSpeed", vmat.waveSpeed);
                         }
                     }
                     else if (propname.ToLower() == "wavedirectionab")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             mat.SetVector("_GDirectionAB", vmat.waveDirectionAB);
                         }
                     }
                     else if (propname.ToLower() == "wavedirectioncd")
                     {
-                        if ( (mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4") )
+                        if ( (mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT) )
                         {
                             mat.SetVector("_GDirectionCD", vmat.waveDirectionCD);
+                        }
+                    }
+                    else if (propname.ToLower() == "outlinewidth")
+                    {
+                        if ((mat.shader.name.ToLower() == SHAD_SKE) || (mat.shader.name.ToLower() == SHAD_PSKE))
+                        {
+                            mat.SetFloat("_OutlineWidth", vmat.outlinewidth);
+                        }
+                    }
+                    else if (propname.ToLower() == "strokedensity")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_PSKE)
+                        {
+                            mat.SetFloat("_StrokeDensity", vmat.strokedensity);
+                        }
+                    }
+                    else if (propname.ToLower() == "addbrightness")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_PSKE)
+                        {
+                            mat.SetFloat("_AddBrightNess", vmat.addbrightness);
+                        }
+                    }
+                    else if (propname.ToLower() == "multbrightness")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_PSKE)
+                        {
+                            mat.SetFloat("_MultBrightNess", vmat.multbrightness);
+                        }
+                    }
+                    else if (propname.ToLower() == "shadowbrightness")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_SKE)
+                        {
+                            mat.SetFloat("_ShadowBrightNess", vmat.shadowbrightness);
+                        }
+                    }
+                    else if (propname.ToLower() == "enabletextransparent")
+                    {
+                        if ((mat.shader.name.ToLower() == SHAD_REALTOON) || (mat.shader.name.ToLower() == SHAD_COMIC))
+                        {
+                            mat.SetFloat("_EnableTextureTransparent", vmat.enableTexTransparent);
+                        }
+                    }
+                    else if (propname.ToLower() == "maincolorinambientlightonly")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_REALTOON)
+                        {
+                            mat.SetFloat("_MCIALO", vmat.mainColorInAmbientLightOnly);
+                        }
+                    }
+                    else if (propname.ToLower() == "doublesided")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_REALTOON)
+                        {
+                            mat.SetInteger("_DoubleSided", vmat.doubleSided);
+                        }
+                    }
+                    else if (propname.ToLower() == "outlinezposcam")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_REALTOON)
+                        {
+                            mat.SetFloat("_OutlineZPostionInCamera", vmat.outlineZPosCam);
+                        }
+                    }
+                    else if (propname.ToLower() == "threshold")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_REALTOON)
+                        {
+                            mat.SetFloat("_SelfShadowThreshold", vmat.thresHold);
+                        }
+                    }
+                    else if (propname.ToLower() == "shadowhardness")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_REALTOON)
+                        {
+                            mat.SetFloat("_ShadowTHardness", vmat.shadowHardness);
+                        }
+                    }
+                    else if (propname.ToLower() == "linewidth")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_COMIC)
+                        {
+                            mat.SetFloat("_LineWidth", vmat.lineWidth);
+                        }
+                    }
+                    else if (propname.ToLower() == "linecolor")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_COMIC)
+                        {
+                            mat.SetColor("_LineColor", vmat.lineColor);
+                        }
+                    }
+                    else if (propname.ToLower() == "tone1threshold")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_COMIC)
+                        {
+                            mat.SetFloat("_Tone1Threshold", vmat.tone1Threshold);
+                        }
+                    }
+                    else if (propname.ToLower() == "icecolor")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_ICE)
+                        {
+                            mat.SetColor("_Color", vmat.iceColor);
+                        }
+                    }
+                    else if (propname.ToLower() == "transparency")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_ICE)
+                        {
+                            mat.SetFloat("_Transparency", vmat.transparency);
+                        }
+                    }
+                    else if (propname.ToLower() == "basetransparency")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_ICE)
+                        {
+                            mat.SetFloat("_BaseTransparency", vmat.baseTransparency);
+                        }
+                    }
+                    else if (propname.ToLower() == "basetransparency")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_ICE)
+                        {
+                            mat.SetFloat("_BaseTransparency", vmat.baseTransparency);
+                        }
+                    }
+                    else if (propname.ToLower() == "iceroughness")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_ICE)
+                        {
+                            mat.SetFloat("_IceRoughness", vmat.iceRoughness);
+                        }
+                    }
+                    else if (propname.ToLower() == "distortion")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_ICE)
+                        {
+                            mat.SetFloat("_Distortion", vmat.distortion);
+                        }
+                    }
+                    else if (propname.ToLower() == "pixelsize")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_MICRA)
+                        {
+                            mat.SetFloat("_PixelSize", vmat.pixelSize);
                         }
                     }
                 }
@@ -1318,7 +1963,8 @@ namespace UserHandleSpace
                 {
                     if (propname.ToLower() == "shader")
                     {
-                        Shader target = Shader.Find(value);
+
+                        Shader target = FindShader(value); // Shader.Find(value);
                         if (target != null)
                         {
                             mat.shader = target;
@@ -1330,11 +1976,11 @@ namespace UserHandleSpace
                         if (ColorUtility.TryParseHtmlString(value, out col))
                         {
                             //mat.color = col;
-                            if ((mat.shader.name.ToLower() == "standard") || (mat.shader.name.ToLower() == "vrm/mtoon"))
+                            if ((mat.shader.name.ToLower() == SHAD_STD) || (mat.shader.name.ToLower() == SHAD_VRM))
                             {
                                 mat.SetColor("_Color", col);
                             }
-                            else if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                            else if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                             {
                                 mat.SetColor("_BaseColor", col);
                             }
@@ -1343,27 +1989,38 @@ namespace UserHandleSpace
                     else if (propname.ToLower() == "renderingtype")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == "standard")
+                        if (mat.shader.name.ToLower() == SHAD_STD)
                         {
                             mat.SetFloat("_Mode", fv);
                         }
-                        else if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        else if (mat.shader.name.ToLower() == SHAD_VRM)
                         {
                             mat.SetFloat("_BlendMode", fv);
+                        }
+                        else if (mat.shader.name.ToLower() == SHAD_VRM10)
+                        {
+                            mat.SetFloat("_AlphaMode", fv);
                         }
                     }
                     else if (propname.ToLower() == "cullmode")
                     { //0 - off, 1 - front, 2 - back
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (mat.shader.name.ToLower() == SHAD_VRM)
                         {
                             mat.SetFloat("_CullMode", fv);
+                        }
+                        else if (mat.shader.name.ToLower() == SHAD_VRM10)
+                        {
+                            mat.SetFloat("_M_CullMode", fv);
                         }
                     }
                     else if (propname.ToLower() == "alphacutoff")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_VRM) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM10)
+                        )
                         {
                             mat.SetFloat("_Cutoff", fv);
                         }
@@ -1460,7 +2117,7 @@ namespace UserHandleSpace
                     else if (propname.ToLower() == "metallic")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == "standard")
+                        if (mat.shader.name.ToLower() == SHAD_STD)
                         {
                             mat.SetFloat("_Metallic", fv);
                         }
@@ -1468,7 +2125,7 @@ namespace UserHandleSpace
                     else if (propname.ToLower() == "glossiness")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == "standard")
+                        if (mat.shader.name.ToLower() == SHAD_STD)
                         {
                             mat.SetFloat("_Glossiness", fv);
                         }
@@ -1484,7 +2141,10 @@ namespace UserHandleSpace
                     }
                     else if (propname.ToLower() == "shadetexcolor")
                     {
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_VRM) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM10)
+                        )
                         {
                             Color col;
                             if (ColorUtility.TryParseHtmlString(value, out col))
@@ -1496,23 +2156,31 @@ namespace UserHandleSpace
                     else if (propname.ToLower() == "shadingtoony")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (mat.shader.name.ToLower() == SHAD_VRM)
                         {
                             mat.SetFloat("_ShadeToony", fv);
+                        }
+                        else if (mat.shader.name.ToLower() == SHAD_VRM10)
+                        {
+                            mat.SetFloat("_ShadingToonyFactor", fv);
                         }
                     }
                     else if (propname.ToLower() == "shadingshift")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (mat.shader.name.ToLower() == SHAD_VRM)
                         {
                             mat.SetFloat("_ShadeShift", fv);
+                        }
+                        else if (mat.shader.name.ToLower() == SHAD_VRM10)
+                        {
+                            mat.SetFloat("_ShadingShiftFactor", fv);
                         }
                     }
                     else if (propname.ToLower() == "receiveshadow")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (mat.shader.name.ToLower() == SHAD_VRM)
                         {
                             mat.SetFloat("_ReceiveShadowRate", fv);
                         }
@@ -1520,7 +2188,7 @@ namespace UserHandleSpace
                     else if (propname.ToLower() == "shadinggrade")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (mat.shader.name.ToLower() == SHAD_VRM)
                         {
                             mat.SetFloat("_ShadingGradeRate", fv);
                         }
@@ -1528,14 +2196,17 @@ namespace UserHandleSpace
                     else if (propname.ToLower() == "lightcolorattenuation")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (mat.shader.name.ToLower() == SHAD_VRM)
                         {
                             mat.SetFloat("_LightColorAttenuation", fv);
                         }
                     }
                     else if (propname.ToLower() == "rimcolor")
                     {
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_VRM) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM10)
+                        )
                         {
                             Color col;
                             if (ColorUtility.TryParseHtmlString(value, out col))
@@ -1547,7 +2218,10 @@ namespace UserHandleSpace
                     else if (propname.ToLower() == "rimfresnel")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_VRM) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM10)
+                        )
                         {
                             mat.SetFloat("_RimFresnelPower", fv);
                         }
@@ -1555,30 +2229,42 @@ namespace UserHandleSpace
                     else if (propname.ToLower() == "srcblend")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_VRM)
+                        )
                         {
                             mat.SetFloat("_SrcBlend", fv);
+                        }
+                        else if (mat.shader.name.ToLower() == SHAD_VRM10)
+                        {
+                            mat.SetFloat("_M_SrcBlend", fv);
                         }
                     }
                     else if (propname.ToLower() == "dstblend")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == "vrm/mtoon")
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_VRM)
+                        )
                         {
                             mat.SetFloat("_DstBlend", fv);
+                        }
+                        else if (mat.shader.name.ToLower() == SHAD_VRM10)
+                        {
+                            mat.SetFloat("_M_DstBlend", fv);
                         }
                     }
                     else if (propname.ToLower() == "fresnelscale")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             mat.SetFloat("_FresnelScale", fv);
                         }
                     }
                     else if (propname.ToLower() == "reflectioncolor")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             Color col;
                             if (ColorUtility.TryParseHtmlString(value, out col))
@@ -1590,7 +2276,7 @@ namespace UserHandleSpace
                     }
                     else if (propname.ToLower() == "specularcolor")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             Color col;
                             if (ColorUtility.TryParseHtmlString(value, out col))
@@ -1601,7 +2287,7 @@ namespace UserHandleSpace
                     }
                     else if (propname.ToLower() == "waveamplitude")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             string[] arr = value.Split("\t");
                             float x = float.TryParse(arr[0], out x) ? x : 0f;
@@ -1614,7 +2300,7 @@ namespace UserHandleSpace
                     }
                     else if (propname.ToLower() == "wavefrequency")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             string[] arr = value.Split("\t");
                             float x = float.TryParse(arr[0], out x) ? x : 0f;
@@ -1627,7 +2313,7 @@ namespace UserHandleSpace
                     }
                     else if (propname.ToLower() == "wavesteepness")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             string[] arr = value.Split("\t");
                             float x = float.TryParse(arr[0], out x) ? x : 0f;
@@ -1640,7 +2326,7 @@ namespace UserHandleSpace
                     }
                     else if (propname.ToLower() == "wavespeed")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             string[] arr = value.Split("\t");
                             float x = float.TryParse(arr[0], out x) ? x : 0f;
@@ -1653,7 +2339,7 @@ namespace UserHandleSpace
                     }
                     else if (propname.ToLower() == "wavedirectionab")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             string[] arr = value.Split("\t");
                             float x = float.TryParse(arr[0], out x) ? x : 0f;
@@ -1666,7 +2352,7 @@ namespace UserHandleSpace
                     }
                     else if (propname.ToLower() == "wavedirectioncd")
                     {
-                        if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                        if ((mat.shader.name.ToLower() == SHAD_WT) || (mat.shader.name.ToLower() == SHAD_SWT))
                         {
                             string[] arr = value.Split("\t");
                             float x = float.TryParse(arr[0], out x) ? x : 0f;
@@ -1677,6 +2363,184 @@ namespace UserHandleSpace
                             mat.SetVector("_GDirectionCD", vec);
                         }
                     }
+                    else if (propname.ToLower() == "outlinewidth")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if ((mat.shader.name.ToLower() == SHAD_SKE) || (mat.shader.name.ToLower() == SHAD_PSKE))
+                        {
+                            mat.SetFloat("_OutlineWidth", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "strokedensity")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_PSKE)
+                        {
+                            mat.SetFloat("_StrokeDensity", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "addbrightness")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_PSKE)
+                        {
+                            mat.SetFloat("_AddBrightNess", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "multbrightness")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_PSKE)
+                        {
+                            mat.SetFloat("_MultBrightNess", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "shadowbrightness")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_SKE)
+                        {
+                            mat.SetFloat("_ShadowBrightNess", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "enabletextransparent")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if ((mat.shader.name.ToLower() == SHAD_REALTOON) || (mat.shader.name.ToLower() == SHAD_COMIC))
+                        {
+                            mat.SetFloat("_EnableTextureTransparent", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "maincolorinambientlightonly")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_REALTOON)
+                        {
+                            mat.SetFloat("_MCIALO", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "doublesided")
+                    {
+                        int fv = int.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_REALTOON)
+                        {
+                            mat.SetInteger("_DoubleSided", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "outlinezposcam")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_REALTOON)
+                        {
+                            mat.SetFloat("_OutlineZPostionInCamera", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "threshold")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_REALTOON)
+                        {
+                            mat.SetFloat("_SelfShadowThreshold", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "shadowhardness")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_REALTOON)
+                        {
+                            mat.SetFloat("_ShadowTHardness", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "linewidth")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_COMIC)
+                        {
+                            mat.SetFloat("_LineWidth", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "linecolor")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_COMIC)
+                        {
+                            Color col;
+                            if (ColorUtility.TryParseHtmlString(value, out col))
+                            {
+                                mat.SetColor("_LineColor", col);
+                            }
+                        }
+                    }
+                    else if (propname.ToLower() == "tone1threshold")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_COMIC)
+                        {
+                            mat.SetFloat("_Tone1Threshold", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "icecolor")
+                    {
+                        if (mat.shader.name.ToLower() == SHAD_ICE)
+                        {
+                            Color col;
+                            if (ColorUtility.TryParseHtmlString(value, out col))
+                            {
+                                mat.SetColor("_Color", col);
+                            }
+                        }
+                    }
+                    else if (propname.ToLower() == "transparency")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_ICE)
+                        {
+                            mat.SetFloat("_Transparency", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "basetransparency")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_ICE)
+                        {
+                            mat.SetFloat("_BaseTransparency", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "basetransparency")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_ICE)
+                        {
+                            mat.SetFloat("_BaseTransparency", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "iceroughness")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_ICE)
+                        {
+                            mat.SetFloat("_IceRoughness", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "distortion")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_ICE)
+                        {
+                            mat.SetFloat("_Distortion", fv);
+                        }
+                    }
+                    else if (propname.ToLower() == "pixelsize")
+                    {
+                        float fv = float.TryParse(value, out fv) ? fv : 0;
+                        if (mat.shader.name.ToLower() == SHAD_MICRA)
+                        {
+                            mat.SetFloat("_PixelSize", fv);
+                        }
+                    }
+
+                    //---back up after to set raw property.
+                    MaterialProperties matp = GetUserMaterialObject(mat_name, mat);
+                    SetTextureConfig(mat_name, matp);
                 }
             }
 
@@ -1697,18 +2561,25 @@ namespace UserHandleSpace
                 Material mat = userSharedMaterials[mat_name];
                 if (mat != null)
                 {
-                    
-                    if (value.shaderName.ToLower() == "standard")
+                    //---change only shader
+                    if (mat.shader.name != value.shaderName)
                     {
                         seq.Join(DOVirtual.DelayedCall(duration, () =>
                         {
-                            Shader target = Shader.Find(value.shaderName);
+                            Shader target = FindShader(value.shaderName); //Shader.Find(value.shaderName);
                             if (target != null)
                             {
                                 mat.shader = target;
-                                SetUserMaterial(mat_name + ",maintex," + value.texturePath);
+                                //---once direct apply, after changing shader.
+                                SetMaterialTween(seq, mat_name, value, duration);
                             }
                         }, false));
+                    }
+
+                    //---each properties
+                    if (value.shaderName.ToLower() == SHAD_STD)
+                    {
+                        
 
 
                         if (mat.HasProperty("_Color")) seq.Join(mat.DOColor(value.color, duration));
@@ -1720,49 +2591,54 @@ namespace UserHandleSpace
                         if (mat.HasProperty("_EmissionColor")) seq.Join(mat.DOColor(value.emissioncolor, "_EmissionColor", duration));
 
                     }
-                    else if (value.shaderName.ToLower() == "vrm/mtoon")
+                    else if (value.shaderName.ToLower() == SHAD_VRM)
                     {
-                        seq.Join(DOVirtual.DelayedCall(duration, () =>
-                        {
-                            Shader target = Shader.Find(value.shaderName);
-                            if (target != null)
-                            {
-                                mat.shader = target;
-                                //Debug.Log("sequence join, delay, texture=" + value.texturePath);
-                                SetUserMaterial(mat_name + ",maintex," + value.texturePath);
-                            }
-                        }, false));
+                        
 
 
                         if (mat.HasProperty("_Color")) seq.Join(mat.DOColor(value.color, duration));
-                        if (mat.HasProperty("_BlendMode")) seq.Join(mat.DOFloat(value.blendmode, "_BlendMode", duration));
+                        if (mat.HasProperty("_BlendMode")) seq.Join(mat.DOFloat(value.blendmode, "_BlendMode", duration));  //For UniVRM0.x
                         if (mat.HasProperty("_CullMode")) seq.Join(mat.DOFloat(value.cullmode, "_CullMode", duration));
                         if (mat.HasProperty("_ShadeColor")) seq.Join(mat.DOColor(value.shadetexcolor, "_ShadeColor", duration));
-                        if (mat.HasProperty("_ShadeToony")) seq.Join(mat.DOFloat(value.shadingtoony, "_ShadeToony", duration));
+                        if (mat.HasProperty("_ShadeToony")) seq.Join(mat.DOFloat(value.shadingtoony, "_ShadeToony", duration)); //For UniVRM0.x
                         if (mat.HasProperty("_RimColor")) seq.Join(mat.DOColor(value.rimcolor, "_RimColor", duration));
                         if (mat.HasProperty("_RimFresnelPower")) seq.Join(mat.DOFloat(value.rimfresnel, "_RimFresnelPower", duration));
                         if (mat.HasProperty("_SrcBlend")) seq.Join(mat.DOFloat(value.srcblend, "_SrcBlend", duration));
                         if (mat.HasProperty("_DstBlend")) seq.Join(mat.DOFloat(value.dstblend, "_DstBlend", duration));
                         if (mat.HasProperty("_Cutoff")) seq.Join(mat.DOFloat(value.cutoff, "_Cutoff", duration));
-                        if (mat.HasProperty("_ShadeShift")) seq.Join(mat.DOFloat(value.shadingshift, "_ShadeShift", duration));
-                        if (mat.HasProperty("_ReceiveShadowRate")) seq.Join(mat.DOFloat(value.receiveshadow, "_ReceiveShadowRate", duration));
-                        if (mat.HasProperty("_ShadingGradeRate")) seq.Join(mat.DOFloat(value.shadinggrade, "_ShadingGradeRate", duration));
+                        if (mat.HasProperty("_ShadeShift")) seq.Join(mat.DOFloat(value.shadingshift, "_ShadeShift", duration)); //For UniVRM0.x
+                        if (mat.HasProperty("_ReceiveShadowRate")) seq.Join(mat.DOFloat(value.receiveshadow, "_ReceiveShadowRate", duration)); //For UniVRM0.x
+                        if (mat.HasProperty("_ShadingGradeRate")) seq.Join(mat.DOFloat(value.shadinggrade, "_ShadingGradeRate", duration)); //For UniVRM0.x
                         if (mat.HasProperty("_LightColorAttenuation")) seq.Join(mat.DOFloat(value.shadinggrade, "_LightColorAttenuation", duration));
+
+                        seq.Join(DOVirtual.DelayedCall(duration, () => mat.EnableKeyword("EMISSION"), false));
+                        if (mat.HasProperty("_EmissionColor")) seq.Join(mat.DOColor(value.emissioncolor, "_EmissionColor", duration));
+                    }
+                    else if (value.shaderName.ToLower() == SHAD_VRM10)
+                    {
+                        
+
+
+                        if (mat.HasProperty("_Color")) seq.Join(mat.DOColor(value.color, duration));
+                        if (mat.HasProperty("_AlphaMode")) seq.Join(mat.DOFloat(value.blendmode, "_AlphaMode", duration));  //For VRM1.0
+                        if (mat.HasProperty("_M_CullMode")) seq.Join(mat.DOFloat(value.cullmode, "_M_CullMode", duration));
+                        if (mat.HasProperty("_ShadeColor")) seq.Join(mat.DOColor(value.shadetexcolor, "_ShadeColor", duration));
+                        if (mat.HasProperty("_ShadingToonyFactor")) seq.Join(mat.DOFloat(value.shadingtoony, "_ShadingToonyFactor", duration)); //For VRM1.0
+                        if (mat.HasProperty("_RimColor")) seq.Join(mat.DOColor(value.rimcolor, "_RimColor", duration));
+                        if (mat.HasProperty("_RimFresnelPower")) seq.Join(mat.DOFloat(value.rimfresnel, "_RimFresnelPower", duration));
+                        if (mat.HasProperty("_M_SrcBlend")) seq.Join(mat.DOFloat(value.srcblend, "_M_SrcBlend", duration));
+                        if (mat.HasProperty("_M_DstBlend")) seq.Join(mat.DOFloat(value.dstblend, "_M_DstBlend", duration));
+                        if (mat.HasProperty("_Cutoff")) seq.Join(mat.DOFloat(value.cutoff, "_Cutoff", duration));
+                        if (mat.HasProperty("_ShadingShiftFactor")) seq.Join(mat.DOFloat(value.shadingshift, "_ShadingShiftFactor", duration)); //For VRM1.0
+                        //if (mat.HasProperty("_LightColorAttenuation")) seq.Join(mat.DOFloat(value.shadinggrade, "_LightColorAttenuation", duration));
 
                         seq.Join(DOVirtual.DelayedCall(duration, () => mat.EnableKeyword("EMISSION"), false));
                         if (mat.HasProperty("_EmissionColor")) seq.Join(mat.DOColor(value.emissioncolor, "_EmissionColor", duration));
 
                     }
-                    else if ((mat.shader.name.ToLower() == "fx/water4") || (mat.shader.name.ToLower() == "fx/simplewater4"))
+                    else if ((value.shaderName.ToLower() == SHAD_WT) || (value.shaderName.ToLower() == SHAD_SWT))
                     {
-                        seq.Join(DOVirtual.DelayedCall(duration, () =>
-                        {
-                            Shader target = Shader.Find(value.shaderName);
-                            if (target != null)
-                            {
-                                mat.shader = target;
-                            }
-                        }, false));
+                        
 
                         if (mat.HasProperty("_FresnelScale")) seq.Join(mat.DOFloat(value.fresnelScale, "_FresnelScale", duration));
                         if (mat.HasProperty("_BaseColor")) seq.Join(mat.DOColor(value.color, "_BaseColor", duration));
@@ -1775,13 +2651,93 @@ namespace UserHandleSpace
                         if (mat.HasProperty("_GDirectionAB")) seq.Join(mat.DOVector(value.waveDirectionAB, "_GDirectionAB", duration));
                         if (mat.HasProperty("_GDirectionCD")) seq.Join(mat.DOVector(value.waveDirectionCD, "_GDirectionCD", duration));
                     }
+                    else if ((value.shaderName.ToLower() == SHAD_SKE) || (value.shaderName.ToLower() == SHAD_PSKE))
+                    {
+                        
 
+                        if (mat.HasProperty("_OutlineWidth")) seq.Join(mat.DOFloat(value.outlinewidth, "_OutlineWidth", duration));
+                        if (mat.shader.name.ToLower() == SHAD_PSKE)
+                        {
+                            if (mat.HasProperty("_StrokeDensity")) seq.Join(mat.DOFloat(value.strokedensity, "_StrokeDensity", duration));
+                            if (mat.HasProperty("_AddBrightNess")) seq.Join(mat.DOFloat(value.addbrightness, "_AddBrightNess", duration));
+                            if (mat.HasProperty("_MultBrightNess")) seq.Join(mat.DOFloat(value.multbrightness, "_MultBrightNess", duration));
+                        }
+                        if (mat.HasProperty("_ShadowBrightNess")) seq.Join(mat.DOFloat(value.shadowbrightness, "_ShadowBrightNess", duration));
+
+                    }
+                    else if (value.shaderName.ToLower() == SHAD_REALTOON)
+                    {
+                        
+
+                        if (mat.HasProperty("_EnableTextureTransparent")) seq.Join(mat.DOFloat(value.enableTexTransparent, "_EnableTextureTransparent", duration));
+                        if (mat.HasProperty("_MCIALO")) seq.Join(mat.DOFloat(value.mainColorInAmbientLightOnly, "_MCIALO", duration));
+                        if (mat.HasProperty("_DoubleSided")) seq.Join(mat.DOFloat(value.doubleSided, "_DoubleSided", duration));
+                        if (mat.HasProperty("_OutlineZPostionInCamera")) seq.Join(mat.DOFloat(value.outlineZPosCam, "_OutlineZPostionInCamera", duration));
+                        if (mat.HasProperty("_SelfShadowThreshold")) seq.Join(mat.DOFloat(value.thresHold, "_SelfShadowThreshold", duration));
+                        if (mat.HasProperty("_ShadowTHardness")) seq.Join(mat.DOFloat(value.shadowHardness, "_ShadowTHardness", duration));
+                    }
+                    else if (value.shaderName.ToLower() == SHAD_COMIC)
+                    {
+                        
+
+                        if (mat.HasProperty("_EnableTextureTransparent")) seq.Join(mat.DOFloat(value.enableTexTransparent, "_EnableTextureTransparent", duration));
+                        if (mat.HasProperty("_LineWidth")) seq.Join(mat.DOFloat(value.lineWidth, "_LineWidth", duration));
+                        if (mat.HasProperty("_LineColor")) seq.Join(mat.DOColor(value.lineColor, "_LineColor", duration));
+                        if (mat.HasProperty("_Tone1Threshold")) seq.Join(mat.DOFloat(value.tone1Threshold, "_Tone1Threshold", duration));
+
+                    }
+                    else if (value.shaderName.ToLower() == SHAD_ICE)
+                    {
+                        
+
+                        if (mat.HasProperty("_Color")) seq.Join(mat.DOColor(value.iceColor, "_Color", duration));
+                        if (mat.HasProperty("_Transparency")) seq.Join(mat.DOFloat(value.transparency, "_Transparency", duration));
+                        if (mat.HasProperty("_BaseTransparency")) seq.Join(mat.DOFloat(value.baseTransparency, "_BaseTransparency", duration));
+                        if (mat.HasProperty("_IceRoughness")) seq.Join(mat.DOFloat(value.iceRoughness, "_IceRoughness", duration));
+                        if (mat.HasProperty("_Distortion")) seq.Join(mat.DOFloat(value.distortion, "_Distortion", duration));
+
+                    }
+                    else if (value.shaderName.ToLower() == SHAD_MICRA)
+                    {
+                        
+                        
+
+                        if (mat.HasProperty("_PixelSize")) seq.Join(mat.DOFloat(value.pixelSize, "_PixelSize", duration));
+
+                    }
                 }
             }
 
 
             return seq;
         }
-    }
 
+        /// <summary>
+        /// Set to backup normally NON-animate (when PREVIEW only)
+        /// </summary>
+        /// <param name="mat_name">GameObject name</param>
+        /// <param name="value">target MaterialProperties</param>
+        /// <param name="isClone"></param>
+        public void SetTextureConfig(string mat_name, MaterialProperties value, bool isClone = false)
+        {
+            int inx = backup_userMaterialProperties.FindIndex(item =>
+            {
+                if (item.name == value.name)  return true;
+                return false;
+            });
+            if (inx != -1)
+            {
+                if (isClone)
+                {
+                    backup_userMaterialProperties[inx] = value.Clone();
+                }
+                else
+                {
+                    backup_userMaterialProperties[inx] = value;
+                }
+                
+                
+            }
+        }
+    }
 }

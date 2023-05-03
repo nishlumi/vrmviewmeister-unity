@@ -108,8 +108,11 @@ public class ownscr_OpeTimeline : MonoBehaviour
         aro.targetId = oavrm.GetEffectiveActiveAvatar().name;
         aro.targetType = oavrm.ActiveType;
         aro.isCompileForLibrary = 0;
+        aro.registerMoveTypes.Add((int)AF_MOVETYPE.Translate);
+        aro.registerMoveTypes.Add((int)AF_MOVETYPE.NormalTransform);
+        aro.registerMoveTypes.Add((int)AF_MOVETYPE.AllProperties);
 
-        ma.RegisterFrame(JsonUtility.ToJson(aro));
+        ma.RegisterFrameFromOuter(JsonUtility.ToJson(aro));
     }
     public void OnClickBtnSRegTL()
     {
@@ -124,7 +127,7 @@ public class ownscr_OpeTimeline : MonoBehaviour
         aro.isCompileForLibrary = 0;
         //aro.isTransformOnly = 1;
 
-        ma.RegisterFrame(JsonUtility.ToJson(aro));
+        ma.RegisterFrameFromOuter(JsonUtility.ToJson(aro));
     }
     public void OnClickBtnUnRegTL()
     {

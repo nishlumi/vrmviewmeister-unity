@@ -402,12 +402,17 @@ namespace LumisIkApp
             {
                 if ((hBone !=  HumanBodyBones.Jaw) && (hBone != HumanBodyBones.LastBone))
                 {
+                    
                     Transform tran = animator.GetBoneTransform(hBone);
-                    Vector3 pos = new Vector3();
-                    pos.x = tran.position.x;
-                    pos.y = tran.position.y;
-                    pos.z = tran.position.z;
-                    savedPosition.Add(hBone, pos);
+                    if (tran != null)
+                    {
+                        Vector3 pos = new Vector3();
+                        pos.x = tran.position.x;
+                        pos.y = tran.position.y;
+                        pos.z = tran.position.z;
+                        savedPosition.Add(hBone, pos);
+                    }
+                    
                 }
                 
             }
@@ -422,13 +427,17 @@ namespace LumisIkApp
                 if ((hBone != HumanBodyBones.Jaw) && (hBone != HumanBodyBones.LastBone))
                 {
                     Transform tran = animator.GetBoneTransform(hBone);
-                    Vector3 defrot = tran.rotation.eulerAngles;
+                    if (tran != null)
+                    {
+                        Vector3 defrot = tran.rotation.eulerAngles;
 
-                    Vector3 rot = new Vector3();
-                    rot.x = defrot.x;
-                    rot.y = defrot.y;
-                    rot.z = defrot.z;
-                    savedRotation.Add(hBone, rot);
+                        Vector3 rot = new Vector3();
+                        rot.x = defrot.x;
+                        rot.y = defrot.y;
+                        rot.z = defrot.z;
+                        savedRotation.Add(hBone, rot);
+                    }
+                    
                 }
                 
             }

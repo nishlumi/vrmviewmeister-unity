@@ -7,13 +7,14 @@ public class LeftHandPoseController : HandPoseController
 
     override protected void  Awake()
     {
+        switchLeft = true;
         base.Awake();
     }
 
     override protected void Start()
     {
         base.Start();
-        switchLeft = true;
+        
     }
 
     override protected void Update()

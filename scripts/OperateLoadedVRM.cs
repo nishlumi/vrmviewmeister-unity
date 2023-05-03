@@ -2,10 +2,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using UnityEngine.ResourceManagement.AsyncOperations;
+using System.Threading.Tasks;
+using System.Linq;
 using UnityEngine;
 using UserHandleSpace;
 using RootMotion.FinalIK;
 using VRM;
+using UniVRM10;
 using DG.Tweening;
 using LumisIkApp;
 
@@ -32,7 +36,7 @@ namespace UserHandleSpace
          *  Variables only...
          */
         //public GameObject relatedHandleParent;
-        private VRMImporterContext context;
+        //private VRMImporterContext context;
         private Bounds bodyInfoTPose;
         private List<Vector3> bodyinfoList;
         private SkinnedMeshRenderer BSFace;
@@ -47,7 +51,8 @@ namespace UserHandleSpace
         public AvatarGravityClass gravityList;
         public List<AvatarIKMappingClass> ikMappingList;
 
-        private Blinker blink;
+        private Vrm10Instance vrminstance;
+        private UniVRM10.VRM10Viewer.VRM10Blinker blink;
         public MaterialProperties userSharedProperties;
 
         private ManageAnimation manim;
@@ -66,15 +71,13 @@ namespace UserHandleSpace
         public AvatarFingerInHand RightFingerBkup;
 
         // Start is called before the first frame update
-        private void Awake()
+        override protected void Awake()
         {
-            effectPunch = new AvatarPunchEffect();
-            effectShake = new AvatarShakeEffect();
+            base.Awake();
 
 
             SaveDefaultTransform(true, true);
             BSMeshs = new List<SkinnedMeshRenderer>();
-            //SetActiveFace();
 
             targetType = AF_TARGETTYPE.VRM;
 
@@ -88,16 +91,16 @@ namespace UserHandleSpace
 
             LeftFingerBkup = new AvatarFingerInHand();
             RightFingerBkup = new AvatarFingerInHand();
+            vrminstance = GetComponent<Vrm10Instance>();
 
-            LeftFingerBackupHPC = new AvatarFingerForHPC();
-            RightFingerBackupHPC = new AvatarFingerForHPC();
         }
-        void Start() 
+        override protected void Start() 
         {
+            base.Start();
             
             manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
 
-            blink = GetComponent<Blinker>();
+            blink = GetComponent<UniVRM10.VRM10Viewer.VRM10Blinker>();
             /*blendShapeList.Clear();
             
             List<string> lst = ListAvatarBlendShape();
@@ -132,15 +135,26 @@ namespace UserHandleSpace
 
             }
             //}
-
+            if (vrminstance != null)
+            {
+                //vrminstance.Runtime.Process();
+                //BSMeshs.ForEach(action => actio);
+                //vrminstance.Runtime.ReconstructSpringBone();
+            }
 
         }
         private void LateUpdate()
         {
-
+            if (vrminstance != null)
+            {
+                //vrminstance.Runtime.ReconstructSpringBone();
+                //vrminstance.SpringBone.Springs[0].EnumHeadTail(
+            }
         }
-        private void OnDestroy()
+        override protected void OnDestroy()
         {
+            base.OnDestroy();
+
             foreach (KeyValuePair<string, Material> kvp in userSharedMaterials)
             {
                 Material mat = kvp.Value;
@@ -177,6 +191,7 @@ namespace UserHandleSpace
                 }
             }
         }
+        /*
         public VRMImporterContext GetContext()
         {
             return context;
@@ -185,6 +200,7 @@ namespace UserHandleSpace
         {
             context = cont;
         }
+        */
         public Bounds GetTPoseBodyInfo()
         {
             return bodyInfoTPose;
@@ -281,7 +297,7 @@ namespace UserHandleSpace
         {
             GameObject ret = null;
 
-            int cnt = relatedHandleParent.transform.childCount;
+            /*int cnt = relatedHandleParent.transform.childCount;
             for (int i = 0; i < cnt; i++)
             {
                 if (relatedHandleParent.transform.GetChild(i).name == name)
@@ -289,7 +305,9 @@ namespace UserHandleSpace
                     ret = relatedHandleParent.transform.GetChild(i).gameObject;
                     break;
                 }
-            }
+            }*/
+
+            ret = relatedHandleParent.transform.Find(name).gameObject;
             return ret;
         }
         /// <summary>
@@ -350,7 +368,7 @@ namespace UserHandleSpace
         /// Change Enable/Disable of IK-system
         /// </summary>
         /// <param name="flag"></param>
-        public void EnableIKOperationMode(bool flag)
+        public IEnumerator EnableIKOperationMode(bool flag)
         {
             float weight = 0f;
             if (flag) weight = 1.0f;
@@ -360,12 +378,27 @@ namespace UserHandleSpace
             VvmIk vik = GetComponent<VvmIk>();
 
             if (bik != null)
-            {
+            {                
                 //---change IK to disable
                 if (flag == false)
                 {
+
                     bik.fixTransforms = flag;
                     cik.fixTransforms = flag;
+                    yield return null;
+
+                    UserHandleOperation[] uhos = relatedHandleParent.transform.GetComponentsInChildren<UserHandleOperation>();
+                    foreach (var uho in uhos)
+                    {
+                        uho.IsFixTransform = flag;
+                    }
+                    //GetIKHandle("Chest/LeftShoulder").GetComponent<UserHandleOperation>().IsFixTransform = flag;
+                    //GetIKHandle("Chest/RightShoulder").GetComponent<UserHandleOperation>().IsFixTransform = flag;
+                    bik.references.leftForearm.GetComponent<RotationLimitHinge>().enabled = flag;
+                    bik.references.rightForearm.GetComponent<RotationLimitHinge>().enabled = flag;
+                    bik.references.leftCalf.GetComponent<RotationLimitHinge>().enabled = flag;
+                    bik.references.rightCalf.GetComponent<RotationLimitHinge>().enabled = flag;
+
                 }
 
                 //---head
@@ -409,17 +442,30 @@ namespace UserHandleSpace
                 bik.solvers.leftFoot.IKRotationWeight = weight;
 
                 //---right lower leg
-                bik.solvers.leftFoot.bendModifierWeight = weight;
+                bik.solvers.rightFoot.bendModifierWeight = weight;
 
                 //---right foot
-                bik.solvers.leftFoot.IKPositionWeight = weight;
-                bik.solvers.leftFoot.IKRotationWeight = weight;
+                bik.solvers.rightFoot.IKPositionWeight = weight;
+                bik.solvers.rightFoot.IKRotationWeight = weight;
 
                 //---Change IK to enable
                 if (flag == true)
                 {
                     bik.fixTransforms = flag;
                     cik.fixTransforms = flag;
+
+
+                    UserHandleOperation[] uhos = relatedHandleParent.transform.GetComponentsInChildren<UserHandleOperation>();
+                    foreach (var uho in uhos)
+                    {
+                        uho.IsFixTransform = flag;
+                    }
+                    bik.references.leftCalf.GetComponent<RotationLimitHinge>().enabled = flag;
+                    bik.references.rightCalf.GetComponent<RotationLimitHinge>().enabled = flag;
+                    bik.references.leftForearm.GetComponent<RotationLimitHinge>().enabled = flag;
+                    bik.references.rightForearm.GetComponent<RotationLimitHinge>().enabled = flag;
+                    yield return null;
+
                 }
             }
             else if (vik != null)
@@ -486,15 +532,19 @@ namespace UserHandleSpace
         }
         public IEnumerator ApplyBoneTransformToIKTransform()
         {
+            const int BIPEDIK = 1;
+            const int VVMIK = 2;
             Animator animator = GetComponent<Animator>();
             BipedIK bik = GetComponent<BipedIK>();
             CCDIK cik = GetComponent<CCDIK>();
             VvmIk vik = GetComponent<VvmIk>();
             int isIK = 0;
-            if (bik != null) isIK = 1;
-            if (vik != null) isIK = 2;
+            if (bik != null) isIK = BIPEDIK;
+            if (vik != null) isIK = VVMIK;
 
             yield return null;
+
+            //---start condition: a weight of each IK target == 0
 
             Transform bleye = animator.GetBoneTransform(HumanBodyBones.LeftEye);
             Transform breye = animator.GetBoneTransform(HumanBodyBones.RightEye);
@@ -524,8 +574,12 @@ namespace UserHandleSpace
                 {
                     pelvis.position = bpelvis.position;
                     yield return null;
-                    pelvis.rotation = bpelvis.rotation;
-                    if (isIK == 2)
+                    Vector3 bpeltmp1 = bpelvis.rotation.eulerAngles;
+                    //bpeltmp1.y += -180f;
+                    //bpeltmp1.y = Mathf.Repeat(bpeltmp1.y, 360f);
+                    pelvis.rotation = Quaternion.Euler(bpeltmp1);
+                    //pelvis.Rotate(0, 180, 0);
+                    if (isIK == VVMIK)
                     {
                         Vector3 rot = bpelvis.rotation.eulerAngles + new Vector3(0, 180f, 0);
                         rot.y = Mathf.Repeat(rot.y + 180f, 360f) - 180f;
@@ -536,43 +590,6 @@ namespace UserHandleSpace
                 }
                 
             }
-            //---Eye and Head----------------------------------------------------------------------------
-            Transform eye = relatedHandleParent.transform.Find("EyeViewHandle");
-            if (eye != null)
-            {
-                Vector3 pos = (bleye.position + breye.position) / 2f;
-                Vector3 rot = (bleye.rotation.eulerAngles + breye.rotation.eulerAngles) / 2f;
-
-                eye.rotation = Quaternion.Euler(rot);
-                yield return null;
-
-                pos.z--;
-                eye.position = pos;
-                yield return null;
-
-            }
-            Transform head = relatedHandleParent.transform.Find("Head");
-            if (head != null)
-            {
-                head.rotation = Quaternion.Euler(bhead.rotation.eulerAngles);
-                yield return null;
-            }
-
-            Transform lookat = relatedHandleParent.transform.Find("LookAt");
-            if (lookat != null)
-            {
-                Vector3 pos = bhead.position;
-                Vector3 rot = bhead.rotation.eulerAngles;
-
-
-                lookat.rotation = Quaternion.Euler(rot);
-                yield return null;
-
-                pos.z--;
-                lookat.position = pos;
-                yield return null;
-            }
-
             //---UpperChest, Chest and Aim------------------------------------------------------------------
             Transform aim = relatedHandleParent.transform.Find("Aim");
             if (aim != null)
@@ -585,32 +602,33 @@ namespace UserHandleSpace
                     rot = bupperchest.rotation.eulerAngles;
                 }
                 else */
-                if (isIK == 1)
+                if (isIK == BIPEDIK)
                 {
-                    if (bchest != null)
+                    if (bupperchest != null)
+                    {
+                        pos = bupperchest.position;
+                        rot = bupperchest.rotation.eulerAngles;
+
+                        aim.position = bupperchest.TransformPoint(bupperchest.localPosition - Vector3.back);
+                    }
+                    else if (bchest != null) 
                     {
                         pos = bchest.position;
                         rot = bchest.rotation.eulerAngles;
+
+                        aim.position = bchest.TransformPoint(bchest.localPosition - Vector3.back);
                     }
+                    
 
-
-                    //rot.y = 180;
-                    aim.rotation = Quaternion.Euler(Vector3.zero);
-                    yield return null;
-                    aim.Rotate(rot, Space.World);
-                    yield return null;
-
-                    //pos.x = 1f - pos.x;
-                    //pos.y = 1f - pos.y;
-                    //pos.z = pos.z - 0.5f;
-                    aim.position = pos;
-                    aim.Translate(Vector3.forward, Space.Self);
-                    yield return null;
+                    //aim.position = pos;
+                    //aim.Translate(Vector3.back, Space.Self);
+                    //aim.position = bchest.TransformPoint(bchest.localPosition + Vector3.back);
+                    ///yield return null;
 
                     aim.rotation = Quaternion.Euler(new Vector3(0, 180, 0));
                     yield return null;
                 }
-                else if (isIK == 2)
+                else if (isIK == VVMIK)
                 {
                     if (bspine != null)
                     {
@@ -628,19 +646,61 @@ namespace UserHandleSpace
             Transform chest = relatedHandleParent.transform.Find("Chest");
             if (chest != null)
             {
-                chest.rotation = bneck.rotation;
+                Vector3 bnecktmp1 = bneck.localRotation.eulerAngles;
+                //bnecktmp1.y += -180f;
+                chest.position = bneck.position;
+                chest.rotation = Quaternion.Euler(bnecktmp1.x, bnecktmp1.y, bnecktmp1.z);
                 yield return null;
             }
+
+            //---Eye and Head----------------------------------------------------------------------------
+            /*Transform eye = relatedHandleParent.transform.Find("EyeViewHandle");
+            if (eye != null)
+            {
+                Vector3 pos = (bleye.position + breye.position) / 2f;
+                //Vector3 rot = (bleye.rotation.eulerAngles + breye.rotation.eulerAngles) / 2f;
+                pos = bleye.TransformPoint(bleye.localPosition - Vector3.back);
+
+                //eye.rotation = Quaternion.Euler(rot);
+                //yield return null;
+
+                //pos.z--;
+                eye.position = pos - new Vector3(0,0,0.15f);
+                yield return null;
+
+            }*/
+            Transform head = relatedHandleParent.transform.Find("Head");
+            if (head != null)
+            {
+                Vector3 bheadtmp1 = bhead.rotation.eulerAngles;
+                head.rotation = Quaternion.Euler(bheadtmp1.x, bheadtmp1.y, bheadtmp1.z);
+                yield return null;
+            }
+
+            Transform lookat = relatedHandleParent.transform.Find("LookAt");
+            if (lookat != null)
+            {
+                Vector3 pos = bhead.TransformPoint(bhead.localPosition - Vector3.back);
+                //Vector3 rot = bhead.rotation.eulerAngles;
+                //lookat.rotation = Quaternion.Euler(rot);
+                yield return null;
+
+                //pos.z--;
+                lookat.position = pos - new Vector3(0, 0, 0.15f);
+                yield return null;
+            }
+
 
             //---arm and hand------------------------------------------------------------------------------
             Transform lhand = relatedHandleParent.transform.Find("LeftHand");
             if (lhand != null)
             {
-                lhand.position = new Vector3(blefthand.position.x, blefthand.position.y, blefthand.position.z*-1);
+                lhand.position = new Vector3(blefthand.position.x, blefthand.position.y, blefthand.position.z);
                 yield return null;
 
                 Vector3 rot = blefthand.rotation.eulerAngles;
-                //rot.y = 180;
+                //rot.y += -180f;
+                //rot.y = Mathf.Repeat(rot.y, 360f);
                 lhand.rotation = Quaternion.Euler(rot);
                 yield return null;
             }
@@ -654,18 +714,18 @@ namespace UserHandleSpace
             if (lsho != null)
             {
                 lsho.position = bleftshoulder.position;
-                yield return null;
                 lsho.rotation = bleftshoulder.rotation;
                 yield return null;
             }
             Transform rhand = relatedHandleParent.transform.Find("RightHand");
             if (rhand != null)
             {
-                rhand.position = new Vector3(brighthand.position.x, brighthand.position.y, brighthand.position.z*-1);
+                rhand.position = new Vector3(brighthand.position.x, brighthand.position.y, brighthand.position.z);
                 yield return null;
 
                 Vector3 rot = brighthand.rotation.eulerAngles;
-                //rot.y = 180;
+                //rot.y += -180f;
+                //rot.y = Mathf.Repeat(rot.y, 360f);
                 rhand.rotation = Quaternion.Euler(rot);
                 yield return null;
             }
@@ -679,7 +739,6 @@ namespace UserHandleSpace
             if (rsho != null)
             {
                 rsho.position = brightshoulder.position;
-                yield return null;
                 rsho.rotation = brightshoulder.rotation;
                 yield return null;
             }
@@ -689,11 +748,11 @@ namespace UserHandleSpace
             Transform lfoot = relatedHandleParent.transform.Find("LeftLeg");
             if (lfoot != null)
             {
-                lfoot.position = bleftfoot.position;
+                lfoot.position = new Vector3(bleftfoot.position.x, bleftfoot.position.y, bleftfoot.position.z);
                 yield return null;
 
                 Vector3 rot = bleftfoot.rotation.eulerAngles;
-                rot.y = 180;
+                //rot.y += 180;
                 lfoot.rotation = Quaternion.Euler(rot);
                 
                 yield return null;
@@ -701,33 +760,35 @@ namespace UserHandleSpace
             Transform lllg = relatedHandleParent.transform.Find("LeftLowerLeg");
             if (lllg != null)
             {
-                lllg.position = bleftlowerleg.position;
+                lllg.position = bleftlowerleg.position + new Vector3(0,0,-0.1f);
                 yield return null;
             }
 
             Transform rfoot = relatedHandleParent.transform.Find("RightLeg");
             if (rfoot != null)
             {
-                rfoot.position = brightfoot.position;
+                rfoot.position = new Vector3(brightfoot.position.x, brightfoot.position.y, brightfoot.position.z);
                 yield return null;
 
                 Vector3 rot = brightfoot.rotation.eulerAngles;
-                rot.y = 180;
+                //rot.y += 180;
                 rfoot.rotation = Quaternion.Euler(rot);
                 yield return null;
             }
             Transform rllg = relatedHandleParent.transform.Find("RightLowerLeg");
             if (rllg != null)
             {
-                rllg.position = brightlowerleg.position;
+                rllg.position = brightlowerleg.position + new Vector3(0, 0, -0.1f);
                 yield return null;
             }
 
-            yield return null;
 
             //---finally, already recover IK weight and FixTransform
-            EnableIK(true);
-            EnableIKOperationMode(true);
+            //   as preparing, proceed Frame
+            yield return null;
+            
+            //EnableIK(true);
+            StartCoroutine(EnableIKOperationMode(true));
         }
 
         //===============================================================================================================================
@@ -738,8 +799,9 @@ namespace UserHandleSpace
         /// </summary>
         public void ListGravityInfo()
         {
-            VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
             gravityList.list.Clear();
+            /*
+            VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
             for (int i = 0; i < bones.Length; i++)
             {
                 VRMGravityInfo vgi = new VRMGravityInfo();
@@ -750,6 +812,29 @@ namespace UserHandleSpace
                 vgi.dir.y = bones[i].m_gravityDir.y;
                 vgi.dir.z = bones[i].m_gravityDir.z;
                 gravityList.list.Add(vgi);
+            }
+            */
+            //1.x
+            List<Vrm10InstanceSpringBone.Spring> springs = vrminstance.SpringBone.Springs;
+            for (int spi = 0; spi < springs.Count; spi++)
+            {
+                if (springs[spi].Joints.Count > 0)
+                {                    
+                    //---0.xとの互換性のため、Jointsの0番目のみ取得し、後続のJointsにもその値を反映するようにする。
+                    VRM10SpringBoneJoint bone = springs[spi].Joints[0];
+                    if (!bone.gameObject.name.EndsWith("_end"))
+                    { //--- 0.xモデルは_endが末尾についているものがあり、それだけのJointsもあるためそれは省く
+                        VRMGravityInfo vgi = new VRMGravityInfo();
+                        vgi.comment = springs[spi].Name;
+                        vgi.rootBoneName = bone.gameObject.name;
+                        vgi.power = bone.m_gravityPower;
+                        vgi.dir.x = bone.m_gravityDir.x;
+                        vgi.dir.y = bone.m_gravityDir.y;
+                        vgi.dir.z = bone.m_gravityDir.z;
+                        gravityList.list.Add(vgi);
+                    }
+                    
+                }
             }
         }
         public void ListGravityInfoFromOuter()
@@ -766,12 +851,12 @@ namespace UserHandleSpace
         /// </summary>
         /// <param name="param">csv-string: 0 - comment, 1 - root bone[0] name</param>
         /// <returns></returns>
-        public VRMGravityInfo GetGravityInfo(string param)
+        public AvatarGravityClass GetGravityInfo(string param)
         {
             VRMGravityInfo ret = null;
 
             string[] arr = param.Split(',');
-
+            /*
             VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
             for (int i = 0; i < bones.Length; i++)
             {
@@ -793,12 +878,36 @@ namespace UserHandleSpace
                     }
                 }
             }
+            */
+            //---1.x
+            AvatarGravityClass vgilist = new AvatarGravityClass();
+            List<Vrm10InstanceSpringBone.Spring> springs = vrminstance.SpringBone.Springs;
+            springs.ForEach(item =>
+            {
+                VRMGravityInfo vgi = new VRMGravityInfo();
+                if ((item.Name == arr[0]) && (item.Joints[0].gameObject.name == arr[1]))
+                {
+                    ret = gravityList.list.Find(match =>
+                    {
+                        if ((match.comment == arr[0]) && (match.rootBoneName == arr[1])) return true;
+                        return false;
+                    });
+                    if (ret != null)
+                    {
+                        ret.power = item.Joints[0].m_gravityPower;
+                        ret.dir.x = item.Joints[0].m_gravityDir.x;
+                        ret.dir.y = item.Joints[0].m_gravityDir.y;
+                        ret.dir.z = item.Joints[0].m_gravityDir.z;
+                        vgilist.list.Add(ret);
+                    }
+                }
+            });
 
-            return ret;
+            return vgilist;
         }
         public void GetGravityInfoFromOuter(string param)
         {
-            VRMGravityInfo ret = GetGravityInfo(param);
+            AvatarGravityClass ret = GetGravityInfo(param);
             string js = "";
             if (ret != null) js = JsonUtility.ToJson(ret);
 #if !UNITY_EDITOR && UNITY_WEBGL
@@ -819,7 +928,7 @@ namespace UserHandleSpace
             if (arr.Length > 2)
             {
                 float val = float.TryParse(arr[2], out val) ? val : 0f;
-
+                /*
                 VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
                 for (int i = 0; i < bones.Length; i++)
                 {
@@ -834,12 +943,31 @@ namespace UserHandleSpace
                         break;
                     }
                 }
+                */
+                //---1.x
+                List<Vrm10InstanceSpringBone.Spring> springs = vrminstance.SpringBone.Springs;
+                springs.ForEach(spring =>
+                {
+                    string bonecomment = spring.Name == null ? "" : spring.Name;
+                    if ((bonecomment == arr[0]) && (spring.Joints[0].gameObject.name == arr[1]))
+                    {
+                        //Debug.Log(";[" + arr[0] + "," + arr[1] + ":" + bones[i].m_comment + "," + bones[i].RootBones[0].gameObject.name + "]");
+                        spring.Joints.ForEach(bone =>
+                        {
+                            bone.m_gravityPower = val;
+                        });
+
+                        AvatarGravityClass ags = GetGravityInfo(arr[0] + "," + arr[1]);
+                        if (ags.list.Count > 0) ags.list.ForEach(gs => gs.power = val);
+                    }
+                });
+                vrminstance.Runtime.ReconstructSpringBone();
             }
             
         }
         public void SetAnimationGravityPower(string comment, string bonename, Sequence seq, float val_power, float duration)
         {
-
+            /*
             VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
             for (int i = 0; i < bones.Length; i++)
             {
@@ -849,7 +977,27 @@ namespace UserHandleSpace
                     break;
                 }
             }
-            
+            */
+            //---1.x
+            List<Vrm10InstanceSpringBone.Spring> springs = vrminstance.SpringBone.Springs;
+            springs.ForEach(spring =>
+            {
+                string bonecomment = spring.Name == null ? "" : spring.Name;
+                if ((bonecomment == comment) && (spring.Joints[0].gameObject.name == bonename))
+                {
+                    spring.Joints.ForEach(bone =>
+                    {
+                        seq.Join(
+                            DOTween.To(() => bone.m_gravityPower, x => bone.m_gravityPower = x, val_power, duration)
+                        );
+                    });
+                    seq.Join(DOVirtual.DelayedCall(duration, () =>
+                    {
+                        vrminstance.Runtime.ReconstructSpringBone();
+
+                    }));
+                }
+            });
         }
 
         /// <summary>
@@ -866,7 +1014,8 @@ namespace UserHandleSpace
                 float x = float.TryParse(arr[2], out x) ? x : 0f;
                 float y = float.TryParse(arr[3], out y) ? y : 0f;
                 float z = float.TryParse(arr[4], out z) ? z : 0f;
-
+                SetGravityDir(arr[0], arr[1], x, y, z);
+                /*
                 VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
                 for (int i = 0; i < bones.Length; i++)
                 {
@@ -886,11 +1035,13 @@ namespace UserHandleSpace
                         break;
                     }
                 }
+                */
             }
 
         }
         public void SetGravityDir(string comment, string bonename, float x, float y, float z)
         {
+            /*
             VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
             for (int i = 0; i < bones.Length; i++)
             {
@@ -909,6 +1060,35 @@ namespace UserHandleSpace
                     
                     break;
                 }
+            }*/
+            //---1.x
+            List<Vrm10InstanceSpringBone.Spring> springs = vrminstance.SpringBone.Springs;
+            Vrm10InstanceSpringBone.Spring ret = springs.Find(item =>
+            {
+                string bonecomment = item.Name == null ? "" : item.Name;
+                if ((bonecomment == comment) && (item.Joints[0].gameObject.name == bonename))
+                {
+                    
+                    return true;
+                }
+                return false;
+            });
+            if (ret != null)
+            {
+                ret.Joints.ForEach(bone =>
+                {
+                    bone.m_gravityDir.x = x;
+                    bone.m_gravityDir.y = y;
+                    bone.m_gravityDir.z = z;
+                });
+                AvatarGravityClass ags = GetGravityInfo(comment + "," + bonename);
+                ags.list.ForEach(vgi =>
+                {
+                    vgi.dir.x = x;
+                    vgi.dir.y = y;
+                    vgi.dir.z = z;
+                });
+                vrminstance.Runtime.ReconstructSpringBone();
             }
         }
 
@@ -1028,13 +1208,13 @@ namespace UserHandleSpace
             {
                 RightCurrentHand = currentpose;
                 RightHandValue = handvalue;
-                RightFingerBackupHPC.Copy(hpc);
+                if (RightFingerBackupHPC != null) RightFingerBackupHPC.Copy(hpc);
             }
             else if (hand == "l")
             {
                 LeftCurrentHand = currentpose;
                 LeftHandValue = handvalue;
-                LeftFingerBackupHPC.Copy(hpc);
+                if (LeftFingerBackupHPC != null) LeftFingerBackupHPC.Copy(hpc);
             }
         }
         public void BackupFingerNative()
@@ -1047,6 +1227,7 @@ namespace UserHandleSpace
         {
             LeftHandCtrl = GetComponent<LeftHandPoseController>();
             RightHandCtrl = GetComponent<RightHandPoseController>();
+
         }
         public void SetHandFingerMode(string param)
         {
@@ -1435,6 +1616,12 @@ namespace UserHandleSpace
                 }
             });
 
+            //---custom clip version
+            vrminstance.Vrm.Expression.CustomClips.ForEach(item =>
+            {
+                ret.Add(item.name + "=" + getProxyBlendShape(item.name).ToString());
+            });
+
 
             return ret;
         }
@@ -1467,6 +1654,11 @@ namespace UserHandleSpace
 #endif
             return ret;
         }
+        public Vrm10RuntimeExpression RunExpression => vrminstance.Runtime.Expression;
+        public void ReloadProxyCustomExpression()
+        {
+            RunExpression.ReloadCustomClip(vrminstance);
+        }
 
         /// <summary>
         /// Gert all blend shape proxy, the avatar has.
@@ -1475,7 +1667,7 @@ namespace UserHandleSpace
         public List<BasicStringFloatList> ListProxyBlendShape()
         {
             List<BasicStringFloatList> ret = new List<BasicStringFloatList>();
-            
+            /*
             VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
 
             IEnumerable<KeyValuePair<BlendShapeKey, float>> bsk = prox.GetValues();
@@ -1485,8 +1677,15 @@ namespace UserHandleSpace
                 KeyValuePair<BlendShapeKey, float> bs = bslist.Current;
                 BasicStringFloatList bsf = new BasicStringFloatList(PREFIX_PROXY + bs.Key.Name, bs.Value);
                 ret.Add(bsf);
-            }            
-            
+            }
+            */
+            //---1.x
+            IReadOnlyList<ExpressionKey> eklist = vrminstance.Runtime.Expression.ExpressionKeys;
+            for (int i = 0; i < eklist.Count; i++)
+            {
+                BasicStringFloatList bsf = new BasicStringFloatList(PREFIX_PROXY + eklist[i].Name, vrminstance.Runtime.Expression.GetWeight(eklist[i]));
+                ret.Add(bsf);
+            }
 
             return ret;
         }
@@ -1529,12 +1728,13 @@ namespace UserHandleSpace
                 blendShapeList.Add(lsf);
             });*/
             //---1.x
-            List<BasicStringFloatList> lst_skn = ListAvatarBlendShapeList();
-            lst_skn.ForEach(item =>
-            {
-                blendShapeList.Add(item);
-            });
+            //List<BasicStringFloatList> lst_skn = ListAvatarBlendShapeList();
+            //lst_skn.ForEach(item =>
+            //{
+            //    blendShapeList.Add(item);
+            //});
 
+            //---Expression only
             List<BasicStringFloatList> lst_px = ListProxyBlendShape();
             lst_px.ForEach(item =>
             {
@@ -1586,6 +1786,20 @@ namespace UserHandleSpace
             }
             return ret;
         }*/
+        public float getAvatarBlendShapeValue(string shapename)
+        {
+            float ret = 0;
+            foreach (SkinnedMeshRenderer mesh in BSMeshs)
+            {
+                int index = getAvatarBlendShapeIndex(mesh, shapename);
+                if (index > -1)
+                {
+                    ret = mesh.GetBlendShapeWeight(index);
+                    break;
+                }
+            }
+            return ret;
+        }
         public int getAvatarBlendShapeIndex(SkinnedMeshRenderer mesh, string name)
         {
             //return BSFace.sharedMesh.GetBlendShapeIndex(name);
@@ -1600,7 +1814,7 @@ namespace UserHandleSpace
         }
         public float getProxyBlendShape(string param)
         {
-            VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
+            //VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
 
             float ret = 0f;
             List<BasicStringFloatList> lst = ListProxyBlendShape();
@@ -1608,7 +1822,7 @@ namespace UserHandleSpace
             {
                 if (lst[i].text == param)
                 {
-
+                    /*
                     BlendShapeClip bsclip = prox.BlendShapeAvatar.Clips.Find(cl =>
                     {
                         if (cl.Key.Name == param.Replace(PREFIX_PROXY, ""))
@@ -1621,10 +1835,19 @@ namespace UserHandleSpace
                     if (bsclip != null)
                     {
                         ret = prox.GetValue(bsclip.Key);
+                    }*/
+                    //---1.x
+                    for (int e = 0; e < vrminstance.Runtime.Expression.ExpressionKeys.Count; e++)
+                    {
+                        if (vrminstance.Runtime.Expression.ExpressionKeys[e].Name == param.Replace(PREFIX_PROXY, ""))
+                        {
+                            ret = vrminstance.Runtime.Expression.GetWeight(vrminstance.Runtime.Expression.ExpressionKeys[i]);
+                        }
                     }
                     break;
                 }
             }
+            
 
             return ret;
         }
@@ -1635,6 +1858,7 @@ namespace UserHandleSpace
             ReceiveFloatVal(ret);
 #endif
         }
+        /*
         public BlendShapeKey getProxyBlendShapeKey(string param)
         {
             VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
@@ -1656,6 +1880,21 @@ namespace UserHandleSpace
 
             return ret;
         }
+        */
+        public ExpressionKey getVrm10ExpressionKey(string param)
+        {
+            ExpressionKey ret = new ExpressionKey(ExpressionPreset.custom,"d%d"); //null代わりのダミーキー
+            
+            for (int e = 0; e < vrminstance.Runtime.Expression.ExpressionKeys.Count; e++)
+            {
+                if (vrminstance.Runtime.Expression.ExpressionKeys[e].Name == param.Replace(PREFIX_PROXY, ""))
+                {
+                    ret = vrminstance.Runtime.Expression.ExpressionKeys[e];
+                    break;
+                }
+            }
+            return ret;
+        }
         //------ setting blendshape ----------------------==========================
         public void changeAvatarBlendShape(string param)
         {
@@ -1674,20 +1913,23 @@ namespace UserHandleSpace
             string shapename = prm[0];
             float value = float.TryParse(prm[1], out value) ? value : 0f;
 
+            changeAvatarBlendShapeByName(shapename, value);
+
             /*int index = getAvatarBlendShapeIndex(shapename);
             if (index > -1)
             {
                 BSFace.SetBlendShapeWeight(index, value);
             }*/
             //---1.x
-            foreach (SkinnedMeshRenderer mesh in BSMeshs)
+            /*foreach (SkinnedMeshRenderer mesh in BSMeshs)
             {
                 int index = getAvatarBlendShapeIndex(mesh, shapename);
                 if (index > -1)
                 {
                     mesh.SetBlendShapeWeight(index, value);
+                    vrminstance.Runtime.Process();
                 }
-            }
+            }*/
         }
         public void changeAvatarBlendShapeByName(string shapename, float value)
         {
@@ -1703,6 +1945,9 @@ namespace UserHandleSpace
                 if (index > -1)
                 {
                     mesh.SetBlendShapeWeight(index, value);
+                    //vrminstance.Runtime.Process();
+                    break;
+                    
                 }
             }
         }
@@ -1713,19 +1958,26 @@ namespace UserHandleSpace
         /// <param name="param">equal separated string: [0] - key name, [1] - float value(already 0.xxf) </param>
         public void changeProxyBlendShapeByName(string param)
         {
-            VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
+            //VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
 
             string[] prm = param.Split(',');
             string shapename = prm[0];
             float value = float.TryParse(prm[1], out value) ? value : 0f;
 
-            BlendShapeKey bskey = getProxyBlendShapeKey(shapename);
+            //BlendShapeKey bskey = getProxyBlendShapeKey(shapename);
+            ExpressionKey bskey = getVrm10ExpressionKey(shapename);
             if (bskey.Name != "d%d")
             {
-                prox.AccumulateValue(bskey, value);
-                prox.Apply();
+                //prox.AccumulateValue(bskey, value);
+                //prox.Apply();
+                
+                //---1.x
+                changeProxyBlendShapeByName(bskey, value);
+
+                SetBlendShapeToBackup(shapename, value);
             }
         }
+        /*
         public void changeProxyBlendShapeByName(BlendShapeKey shape, float value)
         {
             VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
@@ -1733,6 +1985,11 @@ namespace UserHandleSpace
             prox.AccumulateValue(shape, value);
             prox.Apply();
 
+        }
+        */
+        public void changeProxyBlendShapeByName(ExpressionKey shape, float value)
+        {
+            vrminstance.Runtime.Expression.SetWeight(shape, value);
         }
         //---For animation
         public Sequence AnimationBlendShape(Sequence seq, string shapename, float value, float duration)
@@ -1765,7 +2022,7 @@ namespace UserHandleSpace
         {
             return blink.enabled ? 1 : 0;
         }
-        public Blinker BlinkEye
+        public UniVRM10.VRM10Viewer.VRM10Blinker BlinkEye
         {
             get
             {
@@ -1813,10 +2070,20 @@ namespace UserHandleSpace
         //===============================================================================================================================
         //  Equip 
 
+
+        /// <summary>
+        /// Flag for animation: -1 - unequip, 0 - no change, 1 - to equip
+        /// </summary>
+        /// <param name="flag"></param>
         public void SetEquipFlag(int flag)
         {
             equipType = flag;
         }
+
+        /// <summary>
+        /// Flag for animation: -1 - unequip, 0 - no change, 1 - to equip
+        /// </summary>
+        /// <returns></returns>
         public int GetEquipFlag()
         {
             return equipType;
@@ -2125,8 +2392,10 @@ namespace UserHandleSpace
 
             if (parts == IKBoneType.EyeViewHandle)
             {
-                VRMLookAtHead vlook = gameObject.GetComponent<VRMLookAtHead>();
-                js = vlook.Target.gameObject.name;
+                //VRMLookAtHead vlook = gameObject.GetComponent<VRMLookAtHead>();
+                //js = vlook.Target.gameObject.name;
+                vrminstance.LookAtTargetType = VRM10ObjectLookAt.LookAtTargetTypes.CalcYawPitchToGaze;
+                js = vrminstance.Gaze.gameObject.name;
             }
             else if (parts == IKBoneType.LookAt)
             {
@@ -2260,8 +2529,9 @@ namespace UserHandleSpace
 
             if (parts == IKBoneType.EyeViewHandle)
             {
-                VRMLookAtHead vlook = gameObject.GetComponent<VRMLookAtHead>();
-                vlook.Target = target;
+                //VRMLookAtHead vlook = gameObject.GetComponent<VRMLookAtHead>();
+                //vlook.Target = target;
+                vrminstance.Gaze = target;
             }
             else if (parts == IKBoneType.LookAt)
             {
@@ -2874,6 +3144,98 @@ namespace UserHandleSpace
             return seq;
         }
         */
+        public IEnumerator SetupAdditionalExpression ()
+        {
+            //VRM10Expression ex2 = new VRM10Expression();
+            //ex2.MorphTargetBindings = new MorphTargetBinding[] {
+            //    new MorphTargetBinding("Face", 6, 1.0f), //BRW_Angry
+            //    //new MorphTargetBinding("Face", 17, 1.0f), //EYE_Joy
+            //    new MorphTargetBinding("Face", 20, 1.0f) //EYE_Sorrow
+            //};
+            //ex2.name = "funangry";
+            //Dictionary<ExpressionPreset, VRM10Expression>.Enumerator clips = 
+            Dictionary<ExpressionKey, VRM10Expression> dic1 = vrminstance.Vrm.Expression.Clips.ToDictionary(x => vrminstance.Vrm.Expression.CreateKey(x.Clip),x => x.Clip);
+            List<VRM10Expression> lstvrmexp = new List<VRM10Expression>();
+            var dicenum = dic1.GetEnumerator();
+            while (dicenum.MoveNext())
+            {
+                lstvrmexp.Add(dicenum.Current.Value);
+            }
+
+
+            List<VRM10Expression> exlist = new List<VRM10Expression>();
+            //---all BlendShapes loop
+            foreach (SkinnedMeshRenderer smr in BSMeshs)
+            {                                
+                for (int i = 0; i < smr.sharedMesh.blendShapeCount; i++)
+                { //---Loop of current blendshape exists in expression ?
+
+                    int ishit = -1;
+                    
+                    foreach (VRM10Expression ve in lstvrmexp)
+                    { //---Loop for existed expression
+                        MorphTargetBinding[] mors = ve.MorphTargetBindings;
+
+                        if (mors.Length > 1)
+                        { //---MorphTarget is multi, add each item as single shape.
+                            foreach (MorphTargetBinding mor in mors)
+                            {
+                                if (
+                                    (vrminstance.transform.Find(mor.RelativePath) != null)
+                                    &&
+                                    (mor.Index == i)
+                                )
+                                { //---if shape exists, but other exists also...?
+                                    ishit = -1;
+                                }
+                            }
+                        }
+                        else if (mors.Length == 1)
+                        {
+
+                            if (
+                                (vrminstance.transform.Find(mors[0].RelativePath) != null)
+                                &&
+                                (mors[0].Index == i)
+                            )
+                            {
+                                ishit = mors[0].Index;
+                            }
+                        }
+                    }
+                    if (ishit == -1)
+                    { //---current shape not found in the expression[]
+                        VRM10Expression exi = ScriptableObject.CreateInstance<VRM10Expression>();
+                        exi.MorphTargetBindings = new MorphTargetBinding[] {
+                            new MorphTargetBinding(smr.transform.RelativePathFrom(vrminstance.transform), i, 1.0f)
+                        };
+                        exi.name = smr.sharedMesh.GetBlendShapeName(i);
+                        int ccinx = vrminstance.Vrm.Expression.CustomClips.FindIndex(match =>
+                        {
+                            if (match.name == exi.name) return true;
+                            return false;
+                        });
+                        if (ccinx == -1) vrminstance.Vrm.Expression.AddClip(ExpressionPreset.custom, exi);
+                    }
+                }
+                    
+
+                
+                
+                
+            }
+            
+
+            //VRM10Expression exp = Resources.Load<VRM10Expression>("vrm/fun_mth"); //Angry_mth
+            //ExpressionKey exp2 = ExpressionKey.CreateCustom("angry_mth");
+            //ExpressionKey ek = vrminstance.Vrm.Expression.CreateKey(exp);
+            //vrminstance.Vrm.Expression.AddClip(ExpressionPreset.custom, exp);
+            //vrminstance.Vrm.Expression.AddClip(ExpressionPreset.custom, ex2);
+            //Debug.Log(exp.name);
+            ReloadProxyCustomExpression();
+
+            yield return null;
+        }
     }
 
 }

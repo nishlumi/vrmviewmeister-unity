@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.UI;
-using VRM;
+using UniVRM10;
 using DG.Tweening;
-
+using RootMotion.FinalIK;
 
 namespace UserHandleSpace
 {
@@ -15,7 +15,7 @@ namespace UserHandleSpace
     /// <summary>
     /// To manage transform of all avatar object
     /// </summary>
-    public class ManageAvatarTransform : MonoBehaviour
+    public partial class ManageAvatarTransform : MonoBehaviour
     {
 
 
@@ -59,12 +59,16 @@ namespace UserHandleSpace
 
         private ManageAnimation maa;
 
+        private Animator animator;
+        private GameObject TmpPointer;
+
         //TEST CODE
         public List<string> PoseSaveList = new List<string>();
 
         private void Awake()
         {
             ChangeFullIKType(false);
+
         }
         // Start is called before the first frame update
         void Start()
@@ -73,6 +77,10 @@ namespace UserHandleSpace
             isOpenSaveMode = false;
 
             maa = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+            TmpPointer = GameObject.Find("TmpPointer");
+
+            BaseBik = gameObject.GetComponent<BipedIK>();
+            animator = gameObject.GetComponent<Animator>();
         }
 
         // Update is called once per frame
@@ -83,6 +91,7 @@ namespace UserHandleSpace
         public static Vector3 GetTwoPointAngleDirection(Vector3 point1, Vector3 point2, Vector3 axis)
         {
             Vector3 ret = Vector3.zero;
+            /*
             if (axis == Vector3.right)
             { //axis is X, rotate Y and Z
                 float angle_z2y = Mathf.Atan2(point2.z - point1.z, point2.x - point1.x) * Mathf.Rad2Deg * -1;
@@ -107,14 +116,88 @@ namespace UserHandleSpace
                 ret.x = angle_y2x;
                 ret.y = angle_x2y;
             }
+            */
+            //ret = Quaternion.LookRotation(point1, point2).eulerAngles;
+            ret = Quaternion.LookRotation(point1 - point2).eulerAngles;
             return ret;
         }
-        public static void TranslateDummyPoint(Transform tmpobj, Vector3 rot, Vector3 left, Vector3 right, Vector3 pelvis)
+
+        /// <summary>
+        /// calculate one object direction from position of two object.
+        /// </summary>
+        /// <param name="left">1st object position</param>
+        /// <param name="right">2nd object position</param>
+        /// <param name="keisu"></param>
+        /// <returns></returns>
+        public static Vector3 CalcFromTwoPointToObjectDirection(Vector3 left, Vector3 right, float keisu)
         {
-            Vector3 objcenter = (left + right) / 2;
+            Vector3 ret = Vector3.zero;
+
+            Vector3 center = Vector3.Lerp(left, right, keisu);
+            Vector3 tmpleft = left - center;
+            Vector3 tmpright = right - center;
+
+            Vector3 slerp = Vector3.Slerp(tmpleft, tmpright, keisu);
+            slerp += center;
+
+            ret = slerp;
+
+            return ret;
+        }
+        public static Vector3 TranslateDummyPoint(Transform tmpobj, Vector3 rot, Vector3 left, Vector3 right, Vector3 pelvis)
+        {
+            Vector3 objcenter = Vector3.Lerp(left,right,0.5f);
             tmpobj.position = new Vector3(objcenter.x, Mathf.Abs(objcenter.y) + pelvis.y, objcenter.z);
             tmpobj.localRotation = Quaternion.Euler(rot);
 
+            return tmpobj.position;
+        }
+        public static Quaternion TranslateDummyRotate(Vector3 rot)
+        {
+            return Quaternion.Euler(rot);
+        }
+
+        /// <summary>
+        /// Decide the aim position from left and right object positions
+        /// </summary>
+        /// <param name="BasePos"></param>
+        /// <param name="left"></param>
+        /// <param name="right"></param>
+        /// <returns></returns>
+        public static Vector3 DecideAimPlateDirection(Vector3 BasePos, Vector3 left, Vector3 right)
+        {
+            Vector3 ret = BasePos;
+
+            Vector3 lrdist = Quaternion.LookRotation(left, right).eulerAngles;
+            float zsa = lrdist.normalized.z * 100 / 90f;
+            float xsa = lrdist.normalized.x * 100 / 90f;
+
+            if (right.x < left.x)
+            { //---front
+
+                if (left.z < right.z)
+                { //---left
+                    ret = ret + Vector3.left * xsa;
+                }
+                else if (left.z > right.z)
+                { //---right
+                    ret = ret + Vector3.right * xsa;
+                }
+                ret = ret + Vector3.back * zsa;
+            }
+            else if (right.x > left.x)
+            { //---back
+                if (left.z < right.z)
+                { //---left
+                    ret = ret + Vector3.left * xsa;
+                }
+                else if (left.z > right.z)
+                { //---right
+                    ret = ret + Vector3.right * xsa;
+                }
+                ret = ret + Vector3.forward * zsa;
+            }
+            return ret;
         }
         public void ChangeFullIKType(bool useFullIK)
         {
@@ -285,6 +368,11 @@ namespace UserHandleSpace
                         break;
                     }
                 }
+            }
+            if (ret == null)
+            {
+                //---if GameObject with blendshape is none, default is first SkinedMesheRenderer GameObject.
+                ret = glist[0];
             }
             /*
             for (int i = 0; i < transform.childCount; i++)
@@ -464,6 +552,13 @@ namespace UserHandleSpace
 
             return ret;
         }
+
+        /// <summary>
+        /// Save and parse T-pose body infomation.
+        /// </summary>
+        /// <param name="bnd"></param>
+        /// <param name="ikparent"></param>
+        /// <returns></returns>
         public List<Vector3> ParseBodyInfoList(Bounds bnd, GameObject ikparent)
         {
             Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
@@ -597,7 +692,7 @@ namespace UserHandleSpace
             OperateLoadedVRM ovrm = gameObject.GetComponent<OperateLoadedVRM>();
             string[] sortedBones = {
                     "IKParent",
-                    "Pelvis","Chest","Head", "Aim", "LookAt",
+                    "Pelvis", "Aim", "LookAt", "Chest","Head",
                     "LeftLeg",
                     "RightLeg",
                     "LeftLowerLeg",
@@ -649,7 +744,7 @@ namespace UserHandleSpace
                                 child.transform.localPosition = asit.position;
                             }
                             
-                            if (asit.ikname.ToLower() == "chest")
+                            if (asit.ikname.ToLower() == "xxxchest")
                             {
                                 AvatarSingleIKTransform asit_leftshld = aai.list.Find(match =>
                                 {
@@ -686,8 +781,25 @@ namespace UserHandleSpace
             //seq.Join(ikparent.transform.DOMove(aai.list[0].position, 0.01f));
             //seq.Join(ikparent.transform.DORotate(aai.list[0].rotation, 0.01f));
         }
-        private IEnumerator SetIKTransformAll_Body2(AvatarAllIKParts aai)
+        private bool SIKTAB2_calc_mindistance(Vector3 body)
         {
+            bool ret = false;
+            const float MINDISTANCE = 0.001f;
+
+            if (body.x < MINDISTANCE) ret = true;
+            if (body.y < MINDISTANCE) ret = true;
+            if (body.z < MINDISTANCE) ret = true;
+
+            return ret;
+        }
+
+        /// <summary>
+        /// Analyze and apply pose data from MediaPipe-format
+        /// </summary>
+        /// <param name="aai">pose data</param>
+        /// <returns></returns>
+        private IEnumerator SetIKTransformAll_Body2(AvatarAllIKParts aai)
+        {                        
             OperateLoadedVRM ovrm = gameObject.GetComponent<OperateLoadedVRM>();
             string[] sortedBones = {
                     "IKParent",
@@ -712,31 +824,184 @@ namespace UserHandleSpace
             GameObject tmpobj = new GameObject();
 
             //---common using
-            Vector3 chestcenter = (aai.list[11].position + aai.list[12].position) / 2;
-            Vector3 hipcenter = (aai.list[23].position + aai.list[24].position) / 2;
+            Vector3 chestcenter = Vector3.Lerp(aai.list[12].position, aai.list[11].position, 0.5f);
+
+            Vector3 lhipplus = aai.list[23].position;
+            Vector3 rhipplus = aai.list[24].position;
+            Vector3 hipcenter = Vector3.Lerp(rhipplus, lhipplus, 0.5f);
+
             Vector3 eyerot = GetTwoPointAngleDirection(aai.list[2].position, aai.list[5].position, Vector3.right);
-            Vector3 aimrot = GetTwoPointAngleDirection(aai.list[11].position, aai.list[12].position, Vector3.right);
-            Vector3 hiprot = GetTwoPointAngleDirection(aai.list[23].position, aai.list[24].position, Vector3.right);
+            Vector3 aimrot = GetTwoPointAngleDirection(aai.list[12].position, aai.list[11].position, Vector3.up);
+            Vector3 hiprot = GetTwoPointAngleDirection(aai.list[24].position, aai.list[23].position, Vector3.right);
             Vector3 hipXrot = GetTwoPointAngleDirection(hipcenter, chestcenter, Vector3.up);
+
+            //---new code for center of 2-pos
+            Vector3 lshoul = new Vector3(aai.list[11].position.x, Mathf.Abs(aai.list[11].position.y), aai.list[11].position.z);
+            Vector3 rshoul = new Vector3(aai.list[12].position.x, Mathf.Abs(aai.list[12].position.y), aai.list[12].position.z);
+
+            Vector3 shoulder_rot = GetTwoPointAngleDirection(lshoul, rshoul, Vector3.up);
+            Vector3 shouldercenter = Vector3.Lerp(lshoul, rshoul, 0.5f);
+
 
             //---Pelvis
             Transform pelvis = ovrm.relatedHandleParent.transform.Find("Pelvis");
             {
-                TranslateDummyPoint(tmpobj.transform, hiprot, aai.list[23].position, aai.list[24].position, t_pelvis);
+                Vector3 tmppos = TranslateDummyPoint(tmpobj.transform, hiprot, aai.list[23].position, aai.list[24].position, t_pelvis);
+                //Quaternion tmprot = TranslateDummyRotate(hiprot);
                 yield return null;
 
-                //tmpobj.transform.Translate(Vector3.back);
-                pelvis.localPosition = new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tmpobj.transform.position.z);
-                pelvis.localRotation = Quaternion.Euler(hipXrot.x, hiprot.y, hiprot.z - 180f);
+                //---new code for center of 2-pos
+                tmppos = CalcFromTwoPointToObjectDirection(aai.list[23].position, aai.list[24].position, 0.5f);
+                tmppos.x = tmppos.x + t_pelvis.x;
+                tmppos.y = Mathf.Abs(tmppos.y) + t_pelvis.y;
+
+                
+                pelvis.localPosition = tmppos; // new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tmpobj.transform.position.z);
+                pelvis.localRotation = Quaternion.Euler(hiprot.x, hiprot.y-180f, 0);
+                
+                
+            }
+            yield return null;
+
+
+
+            //---Aim
+            Transform aim = ovrm.relatedHandleParent.transform.Find("Aim");
+            aimrot.z = Mathf.Abs(aimrot.z);
+            {
+                //Vector3 aimcenter = Vector3.Leap(aai.list[11].position, aai.list[24].position, 0.5f);
+
+
+
+                Vector3 tmppos = CalcFromTwoPointToObjectDirection(shouldercenter, hipcenter, 0.5f);
+                //Debug.Log("aim tmppos 1=" + tmppos.ToString());
+                //tmppos.x = (Mathf.Abs(tmppos.x) + t_pelvis.x);
+
+                ////tmppos.z = (Mathf.Abs(tmppos.z) + t_pelvis.z);
+                //Debug.Log("aim tmppos 2=" + tmppos.ToString());
+
+                tmppos = DecideAimPlateDirection(shouldercenter, lshoul, rshoul);
+                tmppos.y = (Mathf.Abs(tmppos.y) + t_pelvis.y);
+
+                //---肩中心とケツのz位置の関係性から、態勢を決める（前かがみ・のけぞり）
+                float sa = Mathf.Abs(hipcenter.z - shouldercenter.z);
+                if (rshoul.x < lshoul.x)
+                { //---front
+                    if (shouldercenter.z < hipcenter.z)
+                    { //mae kagami
+                        tmppos.y = tmppos.y - sa;
+                    }
+                    else if (shouldercenter.z > hipcenter.z)
+                    { //noke zori
+                        tmppos.y = tmppos.y + sa;
+                    }
+                }
+                else if (rshoul.x > lshoul.x)
+                { //---back
+                    if (shouldercenter.z < hipcenter.z)
+                    { //mae kagami
+                        tmppos.y = tmppos.y - sa;
+                    }
+                    else if (shouldercenter.z > hipcenter.z)
+                    { //noke zori
+                        tmppos.y = tmppos.y + sa;
+                    }
+                }
+                
+                
+
+
+                //Vector3 shoulder_hip_center = Vector3.Lerp(shouldercenter, hipcenter, 0.5f);
+
+                //Quaternion to_tmppos_rot = Quaternion.LookRotation(shoulder_hip_center, tmppos);
+
+
+                yield return null;
+                //tmppos.z += Vector3.back.z;
+                aim.localPosition = tmppos; // new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tmpobj.transform.position.z);
+                                
             }
             yield return null;
 
             //---Chest
             Transform chest = ovrm.relatedHandleParent.transform.Find("Chest");
             {
-                chestcenter.y = t_pelvis.y + Mathf.Abs(chestcenter.y);
-                chest.localPosition = chestcenter;
-                chest.localRotation = Quaternion.Euler(aimrot.x - 180f, aimrot.y - 180f, aimrot.z);
+                Vector3 chestpos = new Vector3(chestcenter.x, chestcenter.y, chestcenter.z);
+                chestpos.y = t_pelvis.y + Mathf.Abs(chestpos.y);
+                //chestcenter.x = chestcenter.x + chest.localPosition.x;
+                //Vector3 distance = chest.localPosition - chestcenter;
+                Vector3 chestrot = chest.localRotation.eulerAngles;
+
+                Quaternion chestlookat_aim = Quaternion.LookRotation(chestcenter - aim.position);
+                
+
+                chest.localPosition = chestpos;
+                chest.localRotation = chestlookat_aim; // Quaternion.Euler(shoulder_rot); //chestrot.x, aimrot.y, aimrot.z);
+
+
+            }
+            yield return null;
+
+
+            //---LookAt
+            Transform lookat = ovrm.relatedHandleParent.transform.Find("LookAt");
+            {
+                //Vector3 tmppos = GetTwoPointAngleDirection(aai.list[2].position, aai.list[5].position, Vector3.right);
+                //lookat.localPosition = new Vector3(aai.list[0].position.x, t_pelvis.y + MathF.Abs(aai.list[0].position.y), tpose[3].z);
+                //tmpobj.transform.position = lookat.position;
+                //tmpobj.transform.localRotation = Quaternion.Euler(tmppos.x, tmppos.y, tmppos.z);
+
+                Vector3 leye = new Vector3(aai.list[2].position.x, Mathf.Abs(aai.list[2].position.y), aai.list[2].position.z);
+                Vector3 reye = new Vector3(aai.list[5].position.x, Mathf.Abs(aai.list[5].position.y), aai.list[5].position.z);
+
+                Vector3 eyecenter_lr = Vector3.Lerp(leye, reye, 0.5f);
+
+                Vector3 tmppos = CalcFromTwoPointToObjectDirection(reye, leye, 0.5f);
+                //tmppos.x = (Mathf.Abs(tmppos.x) + t_pelvis.x);
+                //tmppos.y = (Mathf.Abs(tmppos.y) + t_pelvis.y);
+                //tmppos.z = (Mathf.Abs(tmppos.z) + t_pelvis.z);
+                tmppos = DecideAimPlateDirection(eyecenter_lr, leye, reye);
+                tmppos.y = (Mathf.Abs(tmppos.y) + t_pelvis.y);
+
+                //Quaternion to_tmppos_rot = Quaternion.LookRotation(eyecenter_lr, tmppos);
+
+                //tmpobj.transform.Translate(Vector3.back);
+                lookat.localPosition = tmppos; // new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tpose[3].z);
+                //lookat.localRotation = to_tmppos_rot;
+                yield return null;
+
+                //lookat.localPosition = new Vector3(aim.localPosition.x, aim.localPosition.y, tmppos.z + Vector3.back.z);
+            }
+            yield return null;
+
+            //---EyeViewHandle
+            Transform eye = ovrm.relatedHandleParent.transform.Find("EyeViewHandle");
+            {
+                //Vector3 tmppos = Vector3.Lerp(aai.list[2].position, aai.list[5].position, 0.5f);
+                //tmpobj.transform.position = new Vector3(tmppos.x, tmppos.y + t_pelvis.y, tmppos.z);
+                //tmpobj.transform.localRotation = Quaternion.Euler(eyerot);
+
+                Vector3 leye = new Vector3(aai.list[2].position.x, Mathf.Abs(aai.list[2].position.y), aai.list[2].position.z);
+                Vector3 reye = new Vector3(aai.list[5].position.x, Mathf.Abs(aai.list[5].position.y), aai.list[5].position.z);
+
+                Vector3 eyecenter_lr = Vector3.Lerp(leye, reye, 0.5f);
+
+                Vector3 tmppos = CalcFromTwoPointToObjectDirection(reye, leye, 0.5f);
+                //tmppos.x = (Mathf.Abs(tmppos.x) + t_pelvis.x);
+                //tmppos.y = (Mathf.Abs(tmppos.y) + t_pelvis.y);
+                //tmppos.z = (Mathf.Abs(tmppos.z) + t_pelvis.z);
+                tmppos = DecideAimPlateDirection(eyecenter_lr, leye, reye);
+                tmppos.y = (Mathf.Abs(tmppos.y) + t_pelvis.y);
+
+                //Quaternion to_tmppos_rot = Quaternion.LookRotation(eyecenter_lr, tmppos);
+                
+
+                //tmpobj.transform.Translate(Vector3.back);
+                eye.localPosition = tmppos; // new Vector3(tmppos.x, tmppos.y, tpose[1].z);
+                //lookat.localRotation = to_tmppos_rot;
+                yield return null;
+
+                //lookat.localPosition = new Vector3(aim.localPosition.x, aim.localPosition.y, tmppos.z + Vector3.back.z);
             }
             yield return null;
 
@@ -744,110 +1009,115 @@ namespace UserHandleSpace
             Transform head = ovrm.relatedHandleParent.transform.Find("Head");
             {
                 head.localPosition = new Vector3(aai.list[0].position.x, t_pelvis.y + Mathf.Abs(aai.list[0].position.y), aai.list[0].position.z);
-                head.localRotation = Quaternion.Euler(eyerot.x-180f, eyerot.y-180f, eyerot.z);
+                //head.localRotation = Quaternion.Euler(eyerot.x, head.localRotation.eulerAngles.y, head.localRotation.eulerAngles.z);
             }
             yield return null;
 
-            //---Aim
-            Transform aim = ovrm.relatedHandleParent.transform.Find("Aim");
-            aimrot.z = Mathf.Abs(aimrot.z);
-            {
-                //Vector3 aimcenter = (aai.list[11].position + aai.list[12].position) / 2;
-                //tmpobj.transform.position = aimcenter;
-                //tmpobj.transform.localRotation = Quaternion.Euler(aimrot);
-                TranslateDummyPoint(tmpobj.transform, aimrot, aai.list[11].position, aai.list[12].position, t_pelvis);
-                yield return null;
-
-                tmpobj.transform.Translate(Vector3.forward);
-                aim.localPosition = new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tmpobj.transform.position.z);
-            }
-            yield return null;
-
-            //---LookAt
-            Transform lookat = ovrm.relatedHandleParent.transform.Find("LookAt");
-            {
-                Vector3 lookatrot = GetTwoPointAngleDirection(aai.list[9].position, aai.list[10].position, Vector3.right);
-                //lookat.localPosition = new Vector3(aai.list[0].position.x, t_pelvis.y + MathF.Abs(aai.list[0].position.y), tpose[3].z);
-                tmpobj.transform.position = lookat.position;
-                tmpobj.transform.localRotation = Quaternion.Euler(lookatrot.x, lookatrot.y, lookatrot.z);
-                yield return null;
-
-                //tmpobj.transform.Translate(Vector3.back);
-                lookat.localPosition = new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tpose[3].z);
-            }
-            yield return null;
-
-            //---EyeViewHandle
-            Transform eye = ovrm.relatedHandleParent.transform.Find("EyeViewHandle");
-            {
-                //Vector3 eyecenter = (aai.list[2].position + aai.list[5].position) / 2;
-                //tmpobj.transform.position = new Vector3(eyecenter.x, eyecenter.y + t_pelvis.y, eyecenter.z);
-                //tmpobj.transform.localRotation = Quaternion.Euler(eyerot);
-                TranslateDummyPoint(tmpobj.transform, eyerot, aai.list[2].position, aai.list[5].position, t_pelvis);
-                yield return null;
-
-                //tmpobj.transform.Translate(Vector3.back);
-                eye.localPosition = new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tpose[1].z);
-            }
-            yield return null;
-
-            //---left lower arm
-            Transform leftlowerarm = ovrm.relatedHandleParent.transform.Find("LeftLowerArm");
-            {
-                leftlowerarm.localPosition = new Vector3(aai.list[13].position.x, Mathf.Abs(aai.list[13].position.y) + t_pelvis.y, aai.list[13].position.z);
-            }
-            yield return null;
-
-            //---right lower arm
-            Transform rightlowerarm = ovrm.relatedHandleParent.transform.Find("RightLowerArm");
-            {
-                rightlowerarm.localPosition = new Vector3(aai.list[14].position.x, Mathf.Abs(aai.list[14].position.y) + t_pelvis.y, aai.list[14].position.z);
-            }
-            yield return null;
 
             //---left hand
             Transform lefthand = ovrm.relatedHandleParent.transform.Find("LeftHand");
             {
-                lefthand.localPosition = new Vector3(aai.list[15].position.x, Mathf.Abs(aai.list[15].position.y) + t_pelvis.y, aai.list[15].position.z);
+                //te no hira
+                Vector3 handrot = GetTwoPointAngleDirection(aai.list[21].position, aai.list[17].position, Vector3.up);
+                //te kara ude
+                Vector3 handbrarot = GetTwoPointAngleDirection(aai.list[19].position, aai.list[15].position, Vector3.right);
+
+                Vector3 lh = aai.list[15].position;
+                lh.y = Mathf.Abs(lh.y);
+
+                lefthand.localPosition = lh + t_pelvis; // new Vector3(aai.list[15].position.x, Mathf.Abs(aai.list[15].position.y) + t_pelvis.y, aai.list[15].position.z);
+                lefthand.localRotation = Quaternion.Euler(handrot.x, lefthand.localRotation.eulerAngles.y, handbrarot.z+180f); //aai.list[15].rotation.x, aai.list[15].rotation.y + 180f, aai.list[15].rotation.z);
             }
             yield return null;
 
             //---right hand
             Transform righthand = ovrm.relatedHandleParent.transform.Find("RightHand");
             {
-                righthand.localPosition = new Vector3(aai.list[16].position.x, Mathf.Abs(aai.list[16].position.y) + t_pelvis.y, aai.list[16].position.z);
+                //te no hira
+                Vector3 handrot = GetTwoPointAngleDirection(aai.list[22].position, aai.list[18].position, Vector3.up);
+                //te kara ude
+                Vector3 handbrarot = GetTwoPointAngleDirection(aai.list[20].position, aai.list[16].position, Vector3.right);
+
+                Vector3 rh = aai.list[16].position;
+                rh.y = Mathf.Abs(rh.y);
+
+                righthand.localPosition = rh + t_pelvis; //  new Vector3(aai.list[16].position.x+t_pelvis.x, aai.list[16].position.y + t_pelvis.y, aai.list[16].position.z);
+                righthand.localRotation = Quaternion.Euler(handrot.x, righthand.localRotation.eulerAngles.y, handbrarot.z+180f); //aai.list[16].rotation.x, aai.list[16].rotation.y + 180f, aai.list[16].rotation.z);
             }
             yield return null;
+
+            //---left lower arm
+            Transform leftlowerarm = ovrm.relatedHandleParent.transform.Find("LeftLowerArm");
+            {
+                Vector3 lh = aai.list[13].position;
+                lh.y = Mathf.Abs(lh.y);
+
+                leftlowerarm.localPosition = lh + t_pelvis; //new Vector3(aai.list[13].position.x, Mathf.Abs(aai.list[13].position.y) + t_pelvis.y, aai.list[13].position.z);
+            }
+            yield return null;
+
+            //---right lower arm
+            Transform rightlowerarm = ovrm.relatedHandleParent.transform.Find("RightLowerArm");
+            {
+                Vector3 rh = aai.list[14].position;
+                rh.y = Mathf.Abs(rh.y);
+
+                rightlowerarm.localPosition = rh + t_pelvis; //new Vector3(aai.list[14].position.x, Mathf.Abs(aai.list[14].position.y) + t_pelvis.y, aai.list[14].position.z);
+            }
+            yield return null;
+
 
             //---left lower leg
             Transform leftlowerleg = ovrm.relatedHandleParent.transform.Find("LeftLowerLeg");
             {
-                leftlowerleg.localPosition = new Vector3(aai.list[25].position.x, t_pelvis.y - Mathf.Abs(aai.list[25].position.y), aai.list[25].position.z);
+                Vector3 lll = t_pelvis - aai.list[25].position;
+                lll.x = aai.list[25].position.x;
+                lll.z *= -1f;
+                leftlowerleg.localPosition = lll; //new Vector3(aai.list[25].position.x, t_pelvis.y - Mathf.Abs(aai.list[25].position.y), aai.list[25].position.z);
             }
             yield return null;
 
             //---right lower leg
             Transform rightlowerleg = ovrm.relatedHandleParent.transform.Find("RightLowerLeg");
             {
-                rightlowerleg.localPosition = new Vector3(aai.list[26].position.x, t_pelvis.y - Mathf.Abs(aai.list[26].position.y), aai.list[26].position.z);
+                Vector3 rll = t_pelvis - aai.list[26].position;
+                rll.x = aai.list[26].position.x;
+                rll.z *= -1f;
+                rightlowerleg.localPosition = rll; //new Vector3(aai.list[26].position.x, t_pelvis.y - Mathf.Abs(aai.list[26].position.y), aai.list[26].position.z);
             }
             yield return null;
 
             //---left foot
             Transform leftfoot = ovrm.relatedHandleParent.transform.Find("LeftLeg");
-            Vector3 leftfootrot = GetTwoPointAngleDirection(aai.list[29].position, aai.list[31].position, Vector3.forward);
+            //Vector3 leftfootrot = GetTwoPointAngleDirection(aai.list[29].position, aai.list[31].position, Vector3.forward);
             {
-                leftfoot.localPosition = new Vector3(aai.list[27].position.x, t_pelvis.y - Mathf.Abs(aai.list[27].position.y), aai.list[27].position.z);
-                leftfoot.localRotation = Quaternion.Euler(leftfootrot.x, leftfootrot.y-180f, leftfootrot.z+180f);
+                Vector3 indexheel = Vector3.Lerp(aai.list[31].position, aai.list[29].position, 0.5f);
+                Vector3 rot_ankle = GetTwoPointAngleDirection(aai.list[27].position, indexheel, Vector3.up);
+                Vector3 rot_indexheel = GetTwoPointAngleDirection(aai.list[31].position, aai.list[29].position, Vector3.up);
+                Vector3 leftfoot_rot = leftfoot.localRotation.eulerAngles;
+
+                Vector3 fnllocpos = t_pelvis - aai.list[27].position;
+                fnllocpos.z *= -1f;
+                fnllocpos.x *= -1f;
+                leftfoot.localPosition = fnllocpos; // new Vector3(aai.list[27].position.x, t_pelvis.y - Mathf.Abs(aai.list[27].position.y), aai.list[27].position.z);
+                leftfoot.localRotation = Quaternion.Euler(leftfoot_rot.x, rot_indexheel.y, leftfoot_rot.z); //leftfootrot.x, leftfootrot.y, leftfootrot.z+180f);
             }
             yield return null;
 
             //---right foot
             Transform rightfoot = ovrm.relatedHandleParent.transform.Find("RightLeg");
-            Vector3 rightfootrot = GetTwoPointAngleDirection(aai.list[30].position, aai.list[32].position, Vector3.forward);
+            //Vector3 rightfootrot = GetTwoPointAngleDirection(aai.list[30].position, aai.list[32].position, Vector3.forward);
             {
-                rightfoot.localPosition = new Vector3(aai.list[28].position.x, t_pelvis.y - Mathf.Abs(aai.list[28].position.y), aai.list[28].position.z);
-                rightfoot.localRotation = Quaternion.Euler(rightfootrot.x, rightfootrot.y-180f, rightfootrot.z+180f);
+                Vector3 indexheel = Vector3.Lerp(aai.list[32].position, aai.list[30].position, 0.5f);
+                Vector3 rot_ankle = GetTwoPointAngleDirection(aai.list[28].position, indexheel, Vector3.up);
+                Vector3 rot_indexheel = GetTwoPointAngleDirection(aai.list[32].position, aai.list[30].position, Vector3.up);
+                Vector3 rightfoot_rot = rightfoot.localRotation.eulerAngles;
+
+                Vector3 fnllocpos = t_pelvis - aai.list[28].position;
+                fnllocpos.z *= -1f;
+                fnllocpos.x *= -1f;
+                rightfoot.localPosition = fnllocpos; // new Vector3(aai.list[28].position.x, t_pelvis.y - Mathf.Abs(aai.list[28].position.y), aai.list[28].position.z);
+                rightfoot.localRotation = Quaternion.Euler(rightfoot_rot.x, rot_indexheel.y, rightfoot_rot.z); //rightfootrot.x, rightfootrot.y, rightfootrot.z+180f);
             }
             yield return null;
 
@@ -1074,7 +1344,7 @@ namespace UserHandleSpace
             if (param.ToLower() == "vrm")
             {
                 
-                atran.sampleavatar = transform.gameObject.GetComponent<VRMMeta>().Meta.Title;
+                atran.sampleavatar = transform.gameObject.GetComponent<Vrm10Instance>().Vrm.Meta.Name;
 
             }
             /*
@@ -1107,8 +1377,9 @@ namespace UserHandleSpace
             NativeAnimationFrameActor savedActor = new NativeAnimationFrameActor();
             NativeAnimationFrameActor actor = maa.GetFrameActorFromObjectID(gameObject.name, AF_TARGETTYPE.VRM);
             savedActor = actor.SCopy();
+            Array.Copy(actor.bodyHeight, savedActor.bodyHeight, actor.bodyHeight.Length);
 
-            NativeAnimationFrame fr = maa.SaveFrameData(1, -1, actor, aro);
+            NativeAnimationFrame fr = maa.SaveFrameData(1, null, -1, actor, aro);
             //savedActor.frames.Add(fr);
 
             AnimationFrameActor afactor = new AnimationFrameActor();
@@ -1120,6 +1391,16 @@ namespace UserHandleSpace
             afg.finalizeIndex = fr.finalizeIndex;
             afg.index = fr.index;
             afg.key = fr.key;
+
+            //---translate to csv
+            foreach (AnimationTranslateTargetParts tmv in fr.translateMovingData)
+            {
+                foreach (Vector3 vv in tmv.values)
+                {
+                    afg.movingData.Add(maa.TranslateDataToCSV(afactor.targetType, tmv, vv));
+                }
+
+            }
             foreach (AnimationTargetParts mv in fr.movingData)
             {
                 afg.movingData.Add(maa.DataToCSV(afactor.targetType, mv));
@@ -1131,11 +1412,11 @@ namespace UserHandleSpace
                 return false;
             });
             if (isHit < 0)
-            {
+            { //---if not found, add newly
                 afactor.frames.Add(afg);
             }
             else
-            {
+            { //---overwrite
                 afactor.frames[isHit] = afg;
             }
                 
@@ -1672,6 +1953,12 @@ namespace UserHandleSpace
             AnimateBlendShape(transform.gameObject, atran.type, atran.blendshapes, atran.duration);
 
             */
+            for (int i = 0; i < atran.frameData.bodyInfoList.Count; i++)
+            {
+                Vector3 fi = atran.frameData.bodyInfoList[i];
+
+                Debug.Log(IKbones[i] + "=" + fi.x.ToString() + " - " + fi.y.ToString() + " - " + fi.z.ToString());
+            }
 
             //---open new code
             AnimationParsingOptions aro = new AnimationParsingOptions();
@@ -1682,22 +1969,33 @@ namespace UserHandleSpace
             aro.isExecuteForDOTween = 1;
             aro.targetType = AF_TARGETTYPE.VRM;
             
+            //---extract frame data from text file
             NativeAnimationFrameActor nact = new NativeAnimationFrameActor();
             nact.SetFromRaw(atran.frameData);
-            NativeAnimationAvatar nav = maa.currentProject.casts.Find(match =>
+            //---get cast to action
+            NativeAnimationAvatar nav = maa.GetCastByAvatar(gameObject.name); 
+            /*maa.currentProject.casts.Find(match =>
             {
                 if (match.avatarId == gameObject.name) return true;
                 return false;
-            });
+            });*/
+            //---apply to frame actor
             nact.avatar = nav;
 
+            //---construct frame data
             foreach (AnimationFrame fr in atran.frameData.frames)
             {
                 NativeAnimationFrame nframe = maa.ParseEffectiveFrame(nact, fr);
                 nact.frames.Add(nframe);
             }
+            //---calculate difference of the height
+            maa.CalculateAllFrameForCurrent(nav, nact);
+            Array.Copy(nav.bodyHeight, nact.bodyHeight, nav.bodyHeight.Length);
+
+
             aro.targetRole = nact.targetRole;
 
+            //---at this time, cast : frame actor = 1 : 1
             maa.PreviewSingleFrame(nact,aro);
         }
     }
@@ -1778,5 +2076,6 @@ namespace UserHandleSpace
             
         }
     }
+
 }
 

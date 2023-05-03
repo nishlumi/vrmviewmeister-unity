@@ -15,6 +15,7 @@ namespace UserHandleSpace
     public class UserHandleOperation : MonoBehaviour
     {
         //public GameObject avatar;
+        public bool IsFixTransform;
         public string PartsName;
         public GameObject relatedAvatar;
         Animator animator;
@@ -31,21 +32,27 @@ namespace UserHandleSpace
 
         private const float cns_lowerleg_z = 0.05f;
 
+        private void Awake()
+        {
+            cnf = GameObject.Find("Canvas").GetComponent<ConfigSettingLabs>();
+
+            //mat = relatedAvatar.GetComponent<ManageAvatarTransform>();
+            manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+            
+        }
         // Start is called before the first frame update
         void Start()
         {
+            IsFixTransform = true;
+
             //animator = avatar.GetComponent<Animator>();
             oldPosition = new Vector3(this.transform.localPosition.x, this.transform.localPosition.y, this.transform.localPosition.z);
             oldRotation = new Quaternion(this.transform.rotation.x, this.transform.rotation.y, this.transform.rotation.z, this.transform.rotation.w);
 
             SaveDefaultTransform();
 
-            ovrm = relatedAvatar.GetComponent<OperateLoadedVRM>();
+            //ovrm = relatedAvatar.GetComponent<OperateLoadedVRM>();
 
-            cnf = GameObject.Find("AnimateArea").GetComponent<ConfigSettingLabs>();
-
-            mat = relatedAvatar.GetComponent<ManageAvatarTransform>();
-            manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
         }
 
         // Update is called once per frame
@@ -80,6 +87,8 @@ namespace UserHandleSpace
             */
             Sequence seq = DOTween.Sequence();
 
+            if (!IsFixTransform) return;
+
             if (manim == null) return;
             if (manim.IsLimitedPelvis)
             {
@@ -90,36 +99,59 @@ namespace UserHandleSpace
                     GameObject ll = transform.parent.Find("LeftLowerLeg").gameObject;
                     GameObject rl = transform.parent.Find("RightLowerLeg").gameObject;
 
+                    Vector3 llnewpos = transform.parent.InverseTransformPoint(leftlowerleg.position);
+                    Vector3 rlnewpos = transform.parent.InverseTransformPoint(rightlowerleg.position);
+
                     bool isfire = false;
-                    if (this.transform.localPosition.y != oldPosition.y)
+                    if (this.transform.localPosition != oldPosition)
                     {
                         float pelvisY = oldPosition.y - this.transform.localPosition.y;
                         //if (ll != null) seq.Join(ll.transform.DOLocalMoveZ(pelvisY*-1f, 0.1f).SetRelative(true));
                         //if (rl != null) seq.Join(rl.transform.DOLocalMoveZ(pelvisY*-1f, 0.1f).SetRelative(true));
                         isfire = true;
                     }
-                    if (this.transform.localPosition.z != oldPosition.z)
+                    /*if (this.transform.localPosition.z != oldPosition.z)
                     {
                         float pelvisZ = oldPosition.z - this.transform.localPosition.z;
                         //if (ll != null) seq.Join(ll.transform.DOLocalMoveZ(pelvisZ  * -1f, 0.1f).SetRelative(true));
                         //if (rl != null) seq.Join(rl.transform.DOLocalMoveZ(pelvisZ  * -1f, 0.1f).SetRelative(true));
                         isfire = true;
-                    }
+                    }*/
                     if (isfire)
                     {
                         if (ll != null)
                         {
-                            seq.Join(ll.transform.DOMoveX(leftlowerleg.position.x, 0.01f));
-                            seq.Join(ll.transform.DOMoveY(leftlowerleg.position.y, 0.01f));
-                            seq.Join(ll.transform.DOMoveZ(leftlowerleg.position.z - cns_lowerleg_z, 0.01f));
-                            
+                            //seq.Join(ll.transform.DOMoveX(leftlowerleg.position.x, 0.01f));
+                            //seq.Join(ll.transform.DOMoveY(leftlowerleg.position.y, 0.01f));
+                            //seq.Join(ll.transform.DOMoveZ(leftlowerleg.position.z - cns_lowerleg_z, 0.01f));
+
+                            seq.Join(ll.transform.DOLocalMoveX(llnewpos.x, 0.01f));
+                            seq.Join(ll.transform.DOLocalMoveY(llnewpos.y, 0.01f));
+                            seq.Join(ll.transform.DOLocalMoveZ(llnewpos.z - cns_lowerleg_z, 0.01f));
+
                         }
                         if (rl != null)
                         {
-                            seq.Join(rl.transform.DOMoveX(rightlowerleg.position.x, 0.01f));
-                            seq.Join(rl.transform.DOMoveY(rightlowerleg.position.y, 0.01f));
-                            seq.Join(rl.transform.DOMoveZ(rightlowerleg.position.z - cns_lowerleg_z, 0.01f));
+                            //seq.Join(rl.transform.DOMoveX(rightlowerleg.position.x, 0.01f));
+                            //seq.Join(rl.transform.DOMoveY(rightlowerleg.position.y, 0.01f));
+                            //seq.Join(rl.transform.DOMoveZ(rightlowerleg.position.z - cns_lowerleg_z, 0.01f));
+
+                            seq.Join(rl.transform.DOLocalMoveX(rlnewpos.x, 0.01f));
+                            seq.Join(rl.transform.DOLocalMoveY(rlnewpos.y, 0.01f));
+                            seq.Join(rl.transform.DOLocalMoveZ(rlnewpos.z - cns_lowerleg_z, 0.01f));
                         }
+/*
+                        Transform neck = animator.GetBoneTransform(HumanBodyBones.Neck);
+                        GameObject chest = transform.parent.Find("Chest").gameObject;
+
+                        if ((neck != null) && (chest != null))
+                        {
+                            Vector3 necknewpos = transform.parent.InverseTransformPoint(neck.position);
+
+                            seq.Join(chest.transform.DOLocalMoveX(necknewpos.x, 0.01f));
+                            seq.Join(chest.transform.DOLocalMoveZ(necknewpos.z, 0.01f));
+                        }*/
+
                     }
                 }
                 
@@ -133,6 +165,8 @@ namespace UserHandleSpace
                 {
                     Transform leftlowerarm = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
                     GameObject ll = transform.parent.Find("LeftLowerArm").gameObject;
+
+                    Vector3 llnewpos = transform.parent.InverseTransformPoint(leftlowerarm.position);
 
                     bool isfire = false;
                     if (this.transform.localPosition.z != oldPosition.z)
@@ -149,17 +183,27 @@ namespace UserHandleSpace
                     }
                     if (isfire && (ll != null))
                     {
-                        seq.Join(ll.transform.DOMove(leftlowerarm.position, 0.1f));
-                        Vector3 newhandrot = leftlowerarm.rotation.eulerAngles;
-                        newhandrot.z = this.transform.rotation.z;
-                        seq.Join(this.transform.DORotate(newhandrot, 0.1f));
-                        
+                        //seq.Join(ll.transform.DOMove(new Vector3(leftlowerarm.position.x, leftlowerarm.position.y, leftlowerarm.position.z), 0.1f));
+                        //Vector3 newhandrot = leftlowerarm.localRotation.eulerAngles;
+                        //newhandrot.z = this.transform.localRotation.z;
+                        //seq.Join(ll.transform.DOLocalRotate(newhandrot, 0.1f));
+
+                        seq.Join(ll.transform.DOLocalMoveX(llnewpos.x, 0.01f));
+                        //seq.Join(ll.transform.DOLocalMoveY(llnewpos.y, 0.01f));
+                        seq.Join(ll.transform.DOLocalMoveZ(llnewpos.z + cns_lowerleg_z, 0.01f));
+
+                        //Vector3 ltar = new Vector3(ll.transform.position.x, transform.position.y, ll.transform.position.z);
+                        //Vector3 ltar2 = Quaternion.LookRotation(-ltar).eulerAngles;
+
+                        //transform.localRotation = Quaternion.Euler(ltar2);
                     }
                 }
                 else if (PartsName == "rightarm")
                 {
                     Transform rightlowerarm = animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
                     GameObject rl = transform.parent.Find("RightLowerArm").gameObject;
+
+                    Vector3 rlnewpos = transform.parent.InverseTransformPoint(rightlowerarm.position);
 
                     bool isfire = false;
                     if (this.transform.localPosition.z != oldPosition.z)
@@ -176,10 +220,14 @@ namespace UserHandleSpace
                     }
                     if (isfire && (rl != null))
                     {
-                        seq.Join(rl.transform.DOMove(rightlowerarm.position, 0.1f));
-                        Vector3 newhandrot = rightlowerarm.rotation.eulerAngles;
-                        newhandrot.z = this.transform.rotation.z;
-                        seq.Join(this.transform.DORotate(newhandrot, 0.1f));
+                        //seq.Join(rl.transform.DOMove(new Vector3(rightlowerarm.position.x, rightlowerarm.position.y, rightlowerarm.position.z), 0.1f));
+                        //Vector3 newhandrot = rightlowerarm.localRotation.eulerAngles;
+                        //newhandrot.z = this.transform.localRotation.z;
+                        //seq.Join(rl.transform.DOLocalRotate(newhandrot, 0.1f));
+
+                        seq.Join(rl.transform.DOLocalMoveX(rlnewpos.x, 0.01f));
+                        //seq.Join(rl.transform.DOLocalMoveY(rlnewpos.y, 0.01f));
+                        seq.Join(rl.transform.DOLocalMoveZ(rlnewpos.z + cns_lowerleg_z, 0.01f));
                     }
                 }
                 seq.Play();
@@ -200,6 +248,8 @@ namespace UserHandleSpace
                     Vector3 dist_lower2foot = dist_upper2lower + leftfoot.localPosition;
 
                     GameObject ll = transform.parent.Find("LeftLowerLeg").gameObject;
+                    UserHandleOperation uholl = ll.GetComponent<UserHandleOperation>();
+
                     Vector3 calcLeg = this.transform.localPosition - oldPosition;
 
                     Vector3 rrot = new Vector3(ll.transform.localRotation.eulerAngles.x, ll.transform.localRotation.eulerAngles.y, ll.transform.localRotation.eulerAngles.z);
@@ -207,57 +257,87 @@ namespace UserHandleSpace
                     rrot.x = transform.localPosition.z <= 0 ? leftlowerleg.localRotation.eulerAngles.x - 45f : leftlowerleg.localRotation.eulerAngles.x;
                     //if (transform.localPosition.z > 0) rrot.x = (rrot.x < 90f) ? rrot.x + 45f : rrot.x;
 
-                    //---original leg transform to operate
-                    //Transform referll = ll.transform; //leftlowerleg; //
+                    
+                    float legZ = oldPosition.z - this.transform.localPosition.z;
+                    float legY = oldPosition.y - this.transform.localPosition.y;
+                    float legX = oldPosition.x - this.transform.localPosition.x;
 
+                    Vector3 lowerlegRot = leftlowerleg.localRotation.eulerAngles;
+                    Vector3 upperlegRot = leftupperleg.localRotation.eulerAngles;
+
+                    Vector3 llnewpos = transform.parent.InverseTransformPoint(leftlowerleg.position);
+                    //llnewpos.x = ll.transform.localPosition.x;
+                    //llnewpos.y = ll.transform.localPosition.y;
+                    //llnewpos.z = ll.transform.localPosition.z;
 
                     //---Z-axis
                     if ((this.transform.localPosition.z != oldPosition.z) && (adjustZ != 0f))
                     {
-                        float legZ = oldPosition.z - this.transform.localPosition.z;
 
                         if (ll != null)
                         {
+                            //seq.Join(ll.transform.DOLocalMoveY(leftlowerleg.position.y, 0.01f));
+                            //seq.Join(ll.transform.DOLocalMoveZ(leftlowerleg.position.z - cns_lowerleg_z, 0.01f));
 
-                            //+seq.Join(ll.transform.DOLocalMoveZ(referll.localPosition.z-0.05f,0.1f)); 
-                            //ll.transform.DOLocalMoveZ(legZ * adjustZ * -1f, 0.1f).SetRelative(true); //
-                            seq.Join(ll.transform.DOMoveY(leftlowerleg.position.y, 0.01f));
-                            seq.Join(ll.transform.DOMoveZ(leftlowerleg.position.z - cns_lowerleg_z, 0.01f));
+                            //seq.Join(ll.transform.DOLocalMoveY(ll.transform.localPosition.y + legY, 0.01f));
+
+                            //---foot is front 
+                            seq.Join(ll.transform.DOLocalMoveY(llnewpos.y, 0.01f));
+                            seq.Join(ll.transform.DOLocalMoveZ(llnewpos.z - cns_lowerleg_z, 0.01f));
+
+
+
 
                             //float degree = Vector3.Angle(ll.transform.localPosition, transform.localPosition);
-                            if (cnf.enable_foot_autorotate) seq.Join(transform.DOLocalRotate(rrot, 0.1f));
+                            if (manim.cfg_enable_foot_autorotate) 
+                                seq.Join(transform.DOLocalRotate(rrot, 0.1f));
                         }
                     }
                     //---Y-axis
                     if ((this.transform.localPosition.y != oldPosition.y) && (adjustY != 0f))
                     {
-                        float legY = this.transform.localPosition.y - oldPosition.y;
 
                         if (ll != null)
                         {
-                            //Vector3 finallower = dist_upper2lower;
-                            //+seq.Join(ll.transform.DOLocalMoveY(legY * adjustY * 1f, 0.1f).SetRelative(true));
-                            //+seq.Join(ll.transform.DOLocalMoveZ(legY * adjustZ * -1f, 0.1f).SetRelative(true));
-                            //+seq.Join(ll.transform.DOLocalMoveY(finallower.y, 0.1f)); //referll.localPosition.y + calcLeg.y
-                            //+seq.Join(ll.transform.DOLocalMoveZ(finallower.z, 0.1f));
-                            seq.Join(ll.transform.DOMoveY(leftlowerleg.position.y, 0.01f));
-                            seq.Join(ll.transform.DOMoveZ(leftlowerleg.position.z - cns_lowerleg_z, 0.01f));
+                            //seq.Join(ll.transform.DOLocalMoveY(leftlowerleg.position.y, 0.01f));
+                            //seq.Join(ll.transform.DOLocalMoveZ(leftlowerleg.position.z - cns_lowerleg_z, 0.01f));
+
+                            //seq.Join(ll.transform.DOLocalMoveZ(ll.transform.localPosition.z + legZ - cns_lowerleg_z, 0.01f));
+
+                            seq.Join(ll.transform.DOLocalMoveY(llnewpos.y, 0.01f));
+                            seq.Join(ll.transform.DOLocalMoveZ(llnewpos.z - cns_lowerleg_z, 0.01f));
+
+
 
 
                             //float degree = Vector3.Angle(ll.transform.localPosition, transform.localPosition);
-                            if (cnf.enable_foot_autorotate) seq.Join(transform.DOLocalRotate(rrot, 0.1f));
+                            if (manim.cfg_enable_foot_autorotate)
+                                seq.Join(transform.DOLocalRotate(rrot, 0.1f));
                             //Debug.Log(degree);
                         }
                     }
                     //---X-axis
                     if ((this.transform.localPosition.x != oldPosition.x) && (adjustX != 0f))
                     {
-                        float legX = oldPosition.x - this.transform.localPosition.x;
                         if (ll != null)
                         {
-                            //+seq.Join(ll.transform.DOLocalMoveX(legX * adjustX * -1f, 0.1f).SetRelative(true));
-                            seq.Join(ll.transform.DOMoveX(leftlowerleg.position.x, 0.1f));
-                            if (cnf.enable_foot_autorotate) seq.Join(transform.DOLocalRotate(rrot, 0.1f));
+                            //seq.Join(ll.transform.DOMoveX(leftlowerleg.localPosition.x, 0.1f));
+
+                            if (legX > 0) llnewpos.x = ll.transform.localPosition.x - legX;
+                            else llnewpos.x = ll.transform.localPosition.x - legX;
+                            
+                            if (transform.localPosition.x == 0)
+                            {
+                                seq.Join(ll.transform.DOLocalMoveX(leftlowerleg.localPosition.x, 0.01f));
+                            }
+                            else
+                            {
+                                seq.Join(ll.transform.DOLocalMoveX(llnewpos.x, 0.01f));
+                            }
+
+
+                            if (manim.cfg_enable_foot_autorotate)
+                                seq.Join(transform.DOLocalRotate(rrot, 0.1f));
                         }
                     }
                 }
@@ -276,106 +356,161 @@ namespace UserHandleSpace
                     rrot.x = transform.localPosition.z <= 0 ? rightlowerleg.localRotation.eulerAngles.x - 45f : rightlowerleg.localRotation.eulerAngles.x;
                     //if (transform.localPosition.z > 0) rrot.x = (rrot.x < 90) ? rrot.x + 45f : rrot.x;
 
-                    //---original leg transform to operate
-                    //Transform referrl = rl.transform; //rightlowerleg
+                    float legZ = oldPosition.z - this.transform.localPosition.z;
+                    float legY = oldPosition.y - this.transform.localPosition.y;
+                    float legX = oldPosition.x - this.transform.localPosition.x;
+
+                    Vector3 llnewpos = transform.parent.InverseTransformPoint(rightlowerleg.position);
+                    //llnewpos.x = rl.transform.localPosition.x;
+                    //llnewpos.y = rl.transform.localPosition.y;
+                    //llnewpos.z = rl.transform.localPosition.z;
 
                     //---Z-axis 
                     if ((this.transform.localPosition.z != oldPosition.z) && (adjustZ != 0f))
                     {
-                        float legZ = oldPosition.z - this.transform.localPosition.z;
                         if (rl != null)
                         {
-                            //seq.Join(rl.transform.DOLocalMoveZ(referrl.localPosition.z - 0.05f, 0.1f));  //rl.transform.DOLocalMoveZ(legZ * adjustZ * -1f, 0.1f).SetRelative(true); //
-                            seq.Join(rl.transform.DOMoveY(rightlowerleg.position.y, 0.01f));
-                            seq.Join(rl.transform.DOMoveZ(rightlowerleg.position.z - cns_lowerleg_z, 0.01f));
+                            //---from VRM
+                            //seq.Join(rl.transform.DOLocalMoveY(rightlowerleg.position.y, 0.01f));
+                            //seq.Join(rl.transform.DOLocalMoveZ(rightlowerleg.position.z - cns_lowerleg_z, 0.01f));
 
-                            if (cnf.enable_foot_autorotate) seq.Join(transform.DOLocalRotate(rrot, 0.1f));
+                            //---during IK marker
+                            seq.Join(rl.transform.DOLocalMoveY(llnewpos.y, 0.01f));
+                            seq.Join(rl.transform.DOLocalMoveZ(llnewpos.z - cns_lowerleg_z, 0.01f));
+
+
+                            if (manim.cfg_enable_foot_autorotate) seq.Join(transform.DOLocalRotate(rrot, 0.1f));
                         }
                     }
                     //---Y-axis
                     if ((this.transform.localPosition.y != oldPosition.y) && (adjustY != 0f))
                     {
-                        float legY = oldPosition.y - this.transform.localPosition.y;
 
                         if (rl != null)
                         {
-                            //seq.Join(rl.transform.DOLocalMoveY(legY * adjustY * -1f, 0.1f).SetRelative(true));
-                            //seq.Join(rl.transform.DOLocalMoveZ(legY * adjustZ * 1f, 0.1f).SetRelative(true));
-                            //seq.Join(rl.transform.DOLocalMoveY(referrl.localPosition.y, 0.1f));
-                            //seq.Join(rl.transform.DOLocalMoveZ(referrl.localPosition.z - 0.05f, 0.1f));
-                            seq.Join(rl.transform.DOMoveY(rightlowerleg.transform.position.y, 0.01f));
-                            seq.Join(rl.transform.DOMoveZ(rightlowerleg.transform.position.z - cns_lowerleg_z, 0.01f));
+                            //seq.Join(rl.transform.DOLocalMoveY(rightlowerleg.transform.position.y, 0.01f));
+                            //seq.Join(rl.transform.DOLocalMoveZ(rightlowerleg.transform.position.z - cns_lowerleg_z, 0.01f));
+
+                            seq.Join(rl.transform.DOLocalMoveY(llnewpos.y, 0.01f));
+                            seq.Join(rl.transform.DOLocalMoveZ(llnewpos.z - cns_lowerleg_z, 0.01f));
+
 
                             //float degree = Vector3.Angle(rl.transform.localPosition, transform.localPosition);
-                            if (cnf.enable_foot_autorotate) seq.Join(transform.DOLocalRotate(rrot, 0.1f));
+                            if (manim.cfg_enable_foot_autorotate) seq.Join(transform.DOLocalRotate(rrot, 0.1f));
                         }
                     }
                     //---X-axis
                     if ((this.transform.localPosition.x != oldPosition.x) && (adjustX != 0f))
                     {
-                        float legX = oldPosition.x - this.transform.localPosition.x;
                         if (rl != null)
                         {
-                            //seq.Join(rl.transform.DOLocalMoveX(legX * adjustX * -1f, 0.1f).SetRelative(true));
-                            seq.Join(rl.transform.DOMoveX(rightlowerleg.position.x, 0.1f));
+                            //seq.Join(rl.transform.DOMoveX(rightlowerleg.localPosition.x, 0.1f));
 
-                            if (cnf.enable_foot_autorotate) seq.Join(transform.DOLocalRotate(rrot, 0.1f));
+                            if (transform.localPosition.x == 0)
+                            {
+                                seq.Join(rl.transform.DOLocalMoveX(rightlowerleg.localPosition.x, 0.01f));
+                            }
+                            else
+                            {
+                                seq.Join(rl.transform.DOLocalMoveX(llnewpos.x, 0.01f));
+                            }
+
+                            if (manim.cfg_enable_foot_autorotate) seq.Join(transform.DOLocalRotate(rrot, 0.1f));
                         }
                     }
                 }
                 seq.Play();
             }
             //2022.05.17 entrust the management from CCDIK
-            if (PartsName == "head")
+            if (PartsName == "head") //---direct moving instead of IK
             {
-                if ((this.transform.position != oldPosition) || (this.transform.rotation != oldRotation))
+                if ((this.transform.localPosition != oldPosition) || (this.transform.localRotation != oldRotation))
                 {
                     Transform neck = animator.GetBoneTransform(HumanBodyBones.Neck);
-                    seq.Join(neck.DORotate(transform.rotation.eulerAngles, 0.1f));
+                    Vector3 rot = transform.rotation.eulerAngles;
+                    //rot.x *= -1f;
+                    //rot.z *= -1f;
+                    seq.Join(neck.DORotate(rot, 0.1f));
                     //neck.DORotateQuaternion(Quaternion.LookRotation(transform.localPosition),0.1f);
                 }
 
             }
-            if (PartsName == "aim")
+            else if (PartsName == "aim")
             {
-                if ((this.transform.position != oldPosition) || (this.transform.rotation != oldRotation))
+                if (manim.IsLimitedAim)
+                {
+                    if ((this.transform.localPosition != oldPosition) || (this.transform.localRotation != oldRotation))
+                    {
+                        //Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
+                        //GameObject ikhead = transform.parent.Find("Head").gameObject;
+
+                        //Transform leftshoulder = animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
+                        //Transform rightshoulder = animator.GetBoneTransform(HumanBodyBones.RightShoulder);
+
+                        //UserGroundOperation ugo = transform.parent.GetComponent<UserGroundOperation>();
+                        //Transform ikleft = ugo.LeftShoulderIK;
+                        //Transform ikright = ugo.RightShoulderIK;
+
+                        Transform neck = animator.GetBoneTransform(HumanBodyBones.Neck);
+                        GameObject chest = transform.parent.Find("Chest").gameObject;
+
+                        if ((neck != null) && (chest != null))
+                        {
+                            Vector3 necknewpos = transform.parent.InverseTransformPoint(neck.position);
+
+                            //seq.Join(chest.transform.DOLocalMoveX(necknewpos.x, 0.01f));
+                            seq.Join(chest.transform.DOLocalMoveZ(necknewpos.z, 0.01f));
+                        }
+                    }
+                }
+            }
+            else if (PartsName == "lookat")
+            {
+                
+            }
+            else if (PartsName == "chest")
+            {
+                if (manim.IsLimitedChest)
                 {
                     Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
-                    GameObject ikhead = transform.parent.Find("Head").gameObject;
+                    Transform leftlowerarm = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
+                    Transform rightlowerarm = animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
+                    GameObject hd = transform.parent.Find("Head").gameObject;
+                    GameObject ll = transform.parent.Find("LeftLowerArm").gameObject;
+                    GameObject rl = transform.parent.Find("RightLowerArm").gameObject;
 
-                    //seq.Join(ikhead.transform.DOMoveX(head.transform.position.x, 0.1f));
-                    //seq.Join(ikhead.transform.DOMoveY(head.transform.position.y+0.1f, 0.1f));
-                    //seq.Join(ikhead.transform.DOMoveZ(head.transform.position.z, 0.1f));
+                    Vector3 hdnewpos = transform.parent.InverseTransformPoint(head.position);
+                    Vector3 llnewpos = transform.parent.InverseTransformPoint(leftlowerarm.position);
+                    Vector3 rlnewpos = transform.parent.InverseTransformPoint(rightlowerarm.position);
 
-                    Transform leftshoulder = animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
-                    Transform rightshoulder = animator.GetBoneTransform(HumanBodyBones.RightShoulder);
+                    if (this.transform.localPosition != oldPosition)
+                    {
+                        seq.Join(ll.transform.DOLocalMoveX(llnewpos.x, 0.01f));
+                        //seq.Join(ll.transform.DOLocalMoveY(llnewpos.y, 0.01f));
+                        seq.Join(ll.transform.DOLocalMoveZ(llnewpos.z + cns_lowerleg_z, 0.01f));
 
-                    UserGroundOperation ugo = transform.parent.GetComponent<UserGroundOperation>();
-                    Transform ikleft = ugo.LeftShoulderIK;
-                    Transform ikright = ugo.RightShoulderIK;
+                        seq.Join(rl.transform.DOLocalMoveX(rlnewpos.x, 0.01f));
+                        //seq.Join(rl.transform.DOLocalMoveY(rlnewpos.y, 0.01f));
+                        seq.Join(rl.transform.DOLocalMoveZ(rlnewpos.z + cns_lowerleg_z, 0.01f));
 
-                    /*
-                    seq.Join(ikleft.DOMoveX(leftshoulder.transform.position.x+0.09f, 0.1f));
-                    seq.Join(ikleft.DOMoveY(leftshoulder.transform.position.y, 0.1f));
-                    seq.Join(ikleft.DOMoveZ(leftshoulder.transform.position.z, 0.1f));
-                    seq.Join(ikright.DOMoveX(rightshoulder.transform.position.x-0.09f, 0.1f));
-                    seq.Join(ikright.DOMoveY(rightshoulder.transform.position.y, 0.1f));
-                    seq.Join(ikright.DOMoveZ(rightshoulder.transform.position.z, 0.1f));
-                    */
+                        seq.Join(hd.transform.DOLocalMoveX(hdnewpos.x, 0.01f));
+                        //seq.Join(hd.transform.DOLocalMoveY(hdnewpos.y, 0.01f));
+                        seq.Join(hd.transform.DOLocalMoveZ(hdnewpos.z, 0.01f));
+                    }
+
+                    seq.Play();
                 }
-
-
-            }
-            if (PartsName == "chest")
-            {
+                
 
             }
-            if (PartsName == "leftshoulder")
+            else if (PartsName == "leftshoulder") //---direct moving instead of IK
             {
-                if ((this.transform.position != oldPosition) || (this.transform.rotation != oldRotation))
+                if ((this.transform.localPosition != oldPosition) || (this.transform.localRotation != oldRotation))
                 {
                     Transform leftshoulder = animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
-                    seq.Join(leftshoulder.DORotate(transform.rotation.eulerAngles, 0.1f));
+                    Vector3 rot = transform.rotation.eulerAngles;
+                    //rot.z = rot.z * -1;
+                    seq.Join(leftshoulder.DORotate(rot, 0.1f));
                     //leftshoulder.rotation = Quaternion.Euler(leftshoulder.rotation.eulerAngles.x, leftshoulder.rotation.eulerAngles.y, transform.rotation.eulerAngles.z);
                     //leftshoulder.LookAt(transform);
                     //transform.position = leftshoulder.position;
@@ -383,12 +518,14 @@ namespace UserHandleSpace
                 }
 
             }
-            if (PartsName == "rightshoulder")
+            else if (PartsName == "rightshoulder") //---direct moving instead of IK
             {
-                if ((this.transform.position != oldPosition) || (this.transform.rotation != oldRotation)) 
+                if ((this.transform.localPosition != oldPosition) || (this.transform.localRotation != oldRotation)) 
                 {
                     Transform rightshoulder = animator.GetBoneTransform(HumanBodyBones.RightShoulder);
-                    seq.Join(rightshoulder.DORotate(transform.rotation.eulerAngles, 0.1f));
+                    Vector3 rot = transform.rotation.eulerAngles;
+                    //rot.z = rot.z * -1;
+                    seq.Join(rightshoulder.DORotate(rot, 0.1f));
                     //rightshoulder.rotation = Quaternion.Euler(rightshoulder.rotation.eulerAngles.x, rightshoulder.rotation.eulerAngles.y, transform.rotation.eulerAngles.z);
                     //rightshoulder.LookAt(transform);
                     //transform.position = rightshoulder.position;
@@ -477,6 +614,9 @@ namespace UserHandleSpace
         {
             relatedAvatar = avatar;
             animator = avatar.GetComponent<Animator>();
+            mat = relatedAvatar.GetComponent<ManageAvatarTransform>();
+            ovrm = relatedAvatar.GetComponent<OperateLoadedVRM>();
+
         }
     }
 }

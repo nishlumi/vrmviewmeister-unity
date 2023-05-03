@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.Networking;
 using DG.Tweening;
 using System.Linq;
@@ -22,8 +23,20 @@ namespace UserHandleSpace
     [Serializable]
     public class MaterialPropertiesBase
     {
+
+        /// <summary>
+        /// GameObject name : (0)~(n) when duplicated
+        /// </summary>
         public string name = "";
+
+        /// <summary>
+        /// Material name
+        /// </summary>
         public string matName = "";
+
+        /// <summary>
+        /// Shader name
+        /// </summary>
         public string shaderName = "";
         //---standard / VRM/MToon
         public Color color = Color.white;
@@ -60,11 +73,43 @@ namespace UserHandleSpace
         public Vector4 waveSpeed = new Vector4(1.2f, 1.375f, 1.1f, 1.5f);
         public Vector4 waveDirectionAB = new Vector4(0.3f, 0.85f, 0.85f, 0.25f);
         public Vector4 waveDirectionCD = new Vector4(0.1f, 0.9f, 0.5f, 0.5f);
+        //---PencilShader/PostSketchShader
+        public float outlinewidth = 0.1f;
+        public float strokedensity = 0.5f;
+        public float addbrightness = 1f;
+        public float multbrightness = 1f;
+        //---PencilShader/SketchShader
+        public float shadowbrightness = 1f;
+        //---RealToon/Version 5/Lite/Default
+        public float enableTexTransparent = 0f;
+        public float mainColorInAmbientLightOnly = 0f;
+        public int doubleSided = 0;
+        public float outlineZPosCam = 0f;
+        public float thresHold = 0.85f;
+        public float shadowHardness = 1f;
+        //---Custom/ComicShader
+        public float lineWidth = 0.01f;
+        public Color lineColor = new Color(0.1f, 0.1f, 0.1f, 1.0f);
+        public float tone1Threshold = 0.1f;
+        //---Custom/IceShader
+        public Color iceColor = new Color(1, 1, 1, 1);
+        public float transparency = 1.5f;
+        public float baseTransparency = 0.5f;
+        public float iceRoughness = 0.005f;
+        public float distortion = 1f;
+        //---Custom/PixelizeTexture
+        public float pixelSize = 0.01f;
+
     }
     [Serializable]
     public class MaterialProperties : MaterialPropertiesBase
     {
         public Texture realTexture = null;
+
+        public MaterialProperties Clone ()
+        {
+            return (MaterialProperties)MemberwiseClone();
+        }
     }
 
     //===============================================================================================================
@@ -523,7 +568,7 @@ namespace UserHandleSpace
         VRMIKProperty = 51,
         VRMBlink = 52,
 
-
+        AllProperties = 88,
         Stop = 99
     };
     public enum AF_TRANSLATETYPE
@@ -534,6 +579,7 @@ namespace UserHandleSpace
     };
     public enum ParseIKBoneType
     {
+        None = -1,
         IKParent = 0,
         EyeViewHandle,
         Head,
@@ -586,10 +632,19 @@ namespace UserHandleSpace
     [Serializable]
     public class AnimationTargetParts
     {
+
+        /// <summary>
+        /// target bone to animate
+        /// </summary>
         public ParseIKBoneType vrmBone;
         public HumanBodyBones vrmHumanBodyBone;
 
+
+        /// <summary>
+        /// animation type for target bone
+        /// </summary>
         public AF_MOVETYPE animationType;
+
         public Vector3 position;
         public Vector3 rotation;
         public Vector3 scale;
@@ -640,6 +695,11 @@ namespace UserHandleSpace
         public float spotAngle;
         public LightRenderMode lightRenderMode;
         public float shadowStrength;
+        public float halo;
+        public Color flareColor;
+        public int flareType;
+        public float flareBrightness;
+        public float flareFade;
 
         //---camera options
         public int cameraPlaying;
@@ -728,6 +788,7 @@ namespace UserHandleSpace
             matProp = new List<MaterialProperties>();
             lightType = LightType.Spot;
             viewport = Rect.zero;
+            halo = 0;
 
             effectValues = new List<float>();
             windDurationMin = 0.01f;
@@ -795,6 +856,35 @@ namespace UserHandleSpace
         }
     }
 
+    /// <summary>
+    /// motion parts for Transform.position etc
+    /// </summary>
+    public class AnimationTranslateTargetParts
+    {
+        public ParseIKBoneType vrmBone;
+        public AF_MOVETYPE animationType;
+        public List<Vector3> values;
+        public int jumpNum;
+        public float jumpPower;
+
+        public AnimationTranslateTargetParts()
+        {
+            jumpNum = 0;
+            jumpPower = 1f;
+            vrmBone = ParseIKBoneType.IKParent;
+            animationType = AF_MOVETYPE.Rest;
+            values = new List<Vector3>();
+        }
+        public AnimationTranslateTargetParts (ParseIKBoneType boneType, AF_MOVETYPE moveType)
+        {
+            jumpNum = 0;
+            jumpPower = 1f;
+            vrmBone = boneType;
+            animationType = moveType;
+            values = new List<Vector3>();
+        }
+    }
+
     //==============================================================
     //  AnimationFrame
     //==============================================================
@@ -845,11 +935,13 @@ namespace UserHandleSpace
 
         public UseBodyInfoType useBodyInfo;
         public new List<AnimationTargetParts> movingData = new List<AnimationTargetParts>();
+        public List<AnimationTranslateTargetParts> translateMovingData = new List<AnimationTranslateTargetParts>();
 
         public NativeAnimationFrame()
         {
             useBodyInfo = UseBodyInfoType.TimelineCharacter;
             movingData = new List<AnimationTargetParts>();
+            translateMovingData = new List<AnimationTranslateTargetParts>();
         }
         public new NativeAnimationFrame SCopy()
         {
@@ -857,6 +949,10 @@ namespace UserHandleSpace
             if (movingData != null)
             {
                 sc.movingData = new List<AnimationTargetParts>(movingData);
+            }
+            if (translateMovingData != null)
+            {
+                sc.translateMovingData = new List<AnimationTranslateTargetParts>(translateMovingData);
             }
             return sc;
         }
@@ -872,6 +968,34 @@ namespace UserHandleSpace
         public AnimationTargetParts FindMovingData(AF_MOVETYPE movetype, ParseIKBoneType bone = ParseIKBoneType.Unknown)
         {
             return movingData.Find(match =>
+            {
+                if (match.animationType == movetype)
+                {
+                    if (bone == ParseIKBoneType.Unknown) return true;
+
+                    if (match.vrmBone == bone) return true;
+                    return false;
+                }
+                return false;
+            });
+        }
+        public AnimationTranslateTargetParts FindTranslateMoving(AF_MOVETYPE movetype, ParseIKBoneType bone = ParseIKBoneType.Unknown)
+        {
+            return translateMovingData.Find(match =>
+            {
+                if (match.animationType == movetype)
+                {
+                    if (bone == ParseIKBoneType.Unknown) return true;
+
+                    if (match.vrmBone == bone) return true;
+                    return false;
+                }
+                return false;
+            });
+        }
+        public int FindIndexTranslateMoving(AF_MOVETYPE movetype, ParseIKBoneType bone = ParseIKBoneType.Unknown)
+        {
+            return translateMovingData.FindIndex(match =>
             {
                 if (match.animationType == movetype)
                 {
@@ -901,6 +1025,21 @@ namespace UserHandleSpace
                 movingData[index] = atp;
             }
         }
+        public List<AnimationTargetParts> FindListOfMovingData(AF_MOVETYPE movetype, ParseIKBoneType bone = ParseIKBoneType.Unknown)
+        {
+            return movingData.FindAll(match =>
+            {
+                if (match.animationType == movetype)
+                {
+                    if (bone == ParseIKBoneType.Unknown) return true;
+
+                    if (match.vrmBone == bone) return true;
+                    return false;
+                }
+                return false;
+            });
+        }
+        
     }
     //==============================================================
     //  AvatarAttachedNativeAnimationFrame, ConfirmedNativeAnimationFrame
@@ -913,12 +1052,16 @@ namespace UserHandleSpace
         public string role = "";
         public AF_TARGETTYPE type = AF_TARGETTYPE.Unknown;
         public AnimationFrame frame = null;
+        public int translateMoving = 0;
+        public List<int> MovingTypes = null;
         public AvatarAttachedNativeAnimationFrame(AnimationFrameActor actor)
         {
             id = actor.targetId;
             role = actor.targetRole;
             type = actor.targetType;
             frame = new AnimationFrame();
+            translateMoving = 0;
+            MovingTypes = new List<int>();
         }
     }
     [Serializable]
@@ -968,17 +1111,19 @@ namespace UserHandleSpace
             }
             if (bodyInfoList != null)
             {
-                for (int i = 0; i < sc.bodyInfoList.Count; i++)
+                sc.bodyInfoList = new List<Vector3>(bodyInfoList);
+                /*for (int i = 0; i < sc.bodyInfoList.Count; i++)
                 {
                     bodyInfoList.Add(new Vector3(sc.bodyInfoList[i].x, sc.bodyInfoList[i].y, sc.bodyInfoList[i].z));
-                }
+                }*/
             }
             if (blendShapeList != null)
             {
-                for (int i = 0; i < sc.blendShapeList.Count; i++)
+                sc.blendShapeList = new List<string>(blendShapeList);
+                /*for (int i = 0; i < sc.blendShapeList.Count; i++)
                 {
                     blendShapeList.Add(sc.blendShapeList[i]);
-                }
+                }*/
             }
             return sc;
         }
@@ -1058,14 +1203,17 @@ namespace UserHandleSpace
             enabled = naf.enabled;
             //bodyHeight = naf.bodyHeight;
             Array.Copy(naf.bodyHeight, bodyHeight, naf.bodyHeight.Length);
+            bodyInfoList.Clear();
             for (int i = 0; i < naf.bodyInfoList.Count; i++)
             {
                 bodyInfoList.Add(new Vector3(naf.bodyInfoList[i].x, naf.bodyInfoList[i].y, naf.bodyInfoList[i].z));
             }
+            blendShapeList.Clear();
             for (int i = 0; i < naf.blendShapeList.Count; i++)
             {
                 blendShapeList.Add(naf.blendShapeList[i]);
             }
+            gravityBoneList.Clear();
             for (int i = 0; i < naf.gravityBoneList.Count; i++)
             {
                 gravityBoneList.Add(naf.gravityBoneList[i]);
@@ -1084,24 +1232,27 @@ namespace UserHandleSpace
             }
             if (bodyInfoList != null)
             {
-                for (int i = 0; i < sc.bodyInfoList.Count; i++)
+                sc.bodyInfoList = new List<Vector3>(bodyInfoList);
+                /*for (int i = 0; i < sc.bodyInfoList.Count; i++)
                 {
                     bodyInfoList.Add(new Vector3 (sc.bodyInfoList[i].x, sc.bodyInfoList[i].y, sc.bodyInfoList[i].z) );
-                }
+                }*/
             }
             if (blendShapeList != null)
             {
-                for (int i = 0; i < sc.blendShapeList.Count; i++)
+                sc.blendShapeList = new List<string>(blendShapeList);
+                /*for (int i = 0; i < sc.blendShapeList.Count; i++)
                 {
                     blendShapeList.Add(sc.blendShapeList[i]);
-                }
+                }*/
             }
             if (gravityBoneList != null)
             {
-                for (int i = 0; i < sc.gravityBoneList.Count; i++)
+                sc.gravityBoneList = new List<string>(gravityBoneList);
+                /*for (int i = 0; i < sc.gravityBoneList.Count; i++)
                 {
                     gravityBoneList.Add(sc.gravityBoneList[i]);
-                }
+                }*/
             }
             return sc;
         }
@@ -1136,6 +1287,7 @@ namespace UserHandleSpace
             {
                 blendShapeList.Add(naf.blendShapeList[i]);
             }
+            gravityBoneList.Clear();
             for (int i = 0; i < naf.gravityBoneList.Count; i++)
             {
                 gravityBoneList.Add(naf.gravityBoneList[i]);
@@ -1148,6 +1300,14 @@ namespace UserHandleSpace
             if (sc.avatar != null)
             {
                 sc.avatar = avatar.SCopy();
+            }
+            if (sc.bodyInfoList != null)
+            {
+                sc.bodyInfoList = new List<Vector3>(avatar.bodyInfoList);
+                /*for (int i = 0; i < avatar.bodyInfoList.Count; i++)
+                {
+                    bodyInfoList.Add(new Vector3(avatar.bodyInfoList[i].x, avatar.bodyInfoList[i].y, avatar.bodyInfoList[i].z));
+                }*/
             }
             return sc;
         }
@@ -1226,10 +1386,11 @@ namespace UserHandleSpace
             }
             if (bodyInfoList != null)
             {
-                for (int i = 0; i < sc.bodyInfoList.Count; i++)
+                sc.bodyInfoList = new List<Vector3>(bodyInfoList);
+                /*for (int i = 0; i < sc.bodyInfoList.Count; i++)
                 {
                     bodyInfoList.Add(new Vector3 ( sc.bodyInfoList[i].x, sc.bodyInfoList[i].y, sc.bodyInfoList[i].z) );
-                }
+                }*/
             }
             return sc;
         }
@@ -1248,6 +1409,7 @@ namespace UserHandleSpace
             }
             if (bodyInfoList != null)
             {
+                bodyInfoList.Clear();
                 for (int i = 0; i < nav.bodyInfoList.Count; i++)
                 {
                     bodyInfoList.Add(new Vector3(nav.bodyInfoList[i].x, nav.bodyInfoList[i].y, nav.bodyInfoList[i].z));
@@ -1840,11 +2002,48 @@ namespace UserHandleSpace
         public int isCompileForLibrary = 0;
 
         public Ease ease = Ease.Linear;
+
+        //public ParseIKBoneType registerBone = ParseIKBoneType.None;
+        //public AF_MOVETYPE registerMove = AF_MOVETYPE.Rest;
+        public List<int> registerBoneTypes = new List<int>();
+        public List<int> registerMoveTypes = new List<int>();
+
+        /// <summary>
+        /// to append registration a motion to same key-frame
+        /// </summary>
+        public int isRegisterAppend = 0;
+        /// <summary>
+        /// Index to register "Translate" as child key
+        /// </summary>
+        public int addTranslateExecuteIndex = -1;
     }
+    public class AROOperator
+    {
+        public int FindMoveType(AnimationRegisterOptions aro, AF_MOVETYPE mtype)
+        {
+            int ret = aro.registerMoveTypes.FindIndex(m =>
+            {
+                if ((AF_MOVETYPE)m == mtype) return true;
+                return false;
+            });
+            return ret;
+        }
+        public int FindBoneType(AnimationRegisterOptions aro, ParseIKBoneType btype)
+        {
+            int ret = aro.registerBoneTypes.FindIndex(m =>
+            {
+                if ((ParseIKBoneType)m == btype) return true;
+                return false;
+            });
+            return ret;
+        }
+    }
+
     [Serializable]
     public class AnimationTransformRegisterOptions
     {
         public int index = -1;
+        public int childkey = -1;
         public string targetId = "";
         public string targetRole = "";
         public AF_TARGETTYPE targetType = AF_TARGETTYPE.Unknown;
@@ -1875,7 +2074,7 @@ namespace UserHandleSpace
         public int isCameraPreviewing = 0;
 
         /// <summary>
-        /// To build an animation as perform of DOTween.
+        /// To build an animation by DOTween. Zero is preview.
         /// </summary>
         public int isBuildDoTween = 0;
 
@@ -1893,6 +2092,12 @@ namespace UserHandleSpace
         /// To show IK-marker of an objects
         /// </summary>
         public int isShowIK = 0;
+
+
+        /// <summary>
+        /// Index to execute DOPath for "Translate"
+        /// </summary>
+        public int addTranslateExecuteIndex = -1;
 
         public int isLoop = 0;
 

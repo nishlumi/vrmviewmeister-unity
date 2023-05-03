@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using DG.Tweening;
-using VRM;
+using UniVRM10;
 
 namespace UserHandleSpace
 {
@@ -32,7 +32,7 @@ namespace UserHandleSpace
         private float bkup_fraquency;
 
         // Start is called before the first frame update
-        void Start()
+        override protected void Start()
         {
             manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
 
@@ -191,12 +191,28 @@ namespace UserHandleSpace
             {
                 if (cast.type == AF_TARGETTYPE.VRM)
                 {
+                    /*
                     VRMSpringBone[] vsbones = cast.avatar.transform.GetComponentsInChildren<VRMSpringBone>();
                     foreach (VRMSpringBone bone in vsbones)
                     {
                         bone.m_gravityPower = 0;
                         bone.m_gravityDir = new Vector3(0, -1, 0);
                     }
+                    */
+                    Vrm10Instance vinst = cast.avatar.GetComponent<Vrm10Instance>();
+                    if (vinst != null)
+                    {
+                        Vrm10InstanceSpringBone SpringBone = vinst.SpringBone;
+                        SpringBone.Springs.ForEach(spring =>
+                        {
+                            spring.Joints.ForEach(joi =>
+                            {
+                                joi.m_gravityPower = 0;
+                                joi.m_gravityDir = new Vector3(0, -1, 0);
+                            });
+                        });
+                    }
+                    
                 }
 
             }
@@ -213,77 +229,95 @@ namespace UserHandleSpace
             {
                 if (cast.type == AF_TARGETTYPE.VRM)
                 {
-                    VRMSpringBone[] vsbones = cast.avatar.transform.GetComponentsInChildren<VRMSpringBone>();
-                    foreach (VRMSpringBone bone in vsbones)
+                    //VRMSpringBone[] vsbones = cast.avatar.transform.GetComponentsInChildren<VRMSpringBone>();
+                    Vrm10Instance vinst = cast.avatar.GetComponent<Vrm10Instance>();
+                    if (vinst != null)
                     {
-                        bool ishit = false;
-                        foreach(string com in exWindBoneComment)
+                        Vrm10InstanceSpringBone SpringBone = vinst.SpringBone;
+
+                        ////foreach (VRMSpringBone bone in vsbones)
+                        foreach (Vrm10InstanceSpringBone.Spring spring in SpringBone.Springs)
                         {
-                            if (com == bone.m_comment)
+                            if (spring.Joints.Count > 0)
                             {
-                                ishit = true;
-                                break;
-                            }
-                        }
-                        if (!ishit)
-                        {
-                            foreach (string name in exWindBoneName)
-                            {
-                                if (bone.RootBones[0].gameObject.name.IndexOf(name) > -1)
+
+                                bool ishit = false;
+                                foreach (string com in exWindBoneComment)
                                 {
-                                    ishit = true;
-                                    break;
+                                    if (com == spring.Name)
+                                    {
+                                        ishit = true;
+                                        break;
+                                    }
+                                }
+                                if (!ishit)
+                                {
+                                    foreach (string name in exWindBoneName)
+                                    {
+                                        if (spring.Joints[0].gameObject.name.IndexOf(name) > -1)
+                                        {
+                                            ishit = true;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if (!ishit)
+                                {
+                                    /*
+                                     * VRM  x:0, y:-1, z:0
+                                     * Wind x:0, y:0,  z:0
+                                     * 
+                                     */
+
+                                    spring.Joints.ForEach(bone =>
+                                    {
+                                        bone.m_gravityPower = tmp_windpower;
+
+                                        //---Wind Y -> VRM X, Z
+                                        float forZ = 1f - (wind.transform.rotation.eulerAngles.y / 90f);
+
+                                        if (wind.transform.rotation.eulerAngles.y > 180f)
+                                        {
+                                            forZ = ((wind.transform.rotation.eulerAngles.y - 180f) / 90f) - 1f;
+                                        }
+
+                                        float rotX = wind.transform.rotation.eulerAngles.y - 90f;
+                                        if (rotX < 0) rotX *= -1;
+
+                                        float forX = 1f - (rotX / 90f);
+                                        if (rotX > 180f)
+                                        {
+                                            forX = ((rotX - 180f) / 90f) - 1f;
+                                        }
+
+                                        bone.m_gravityDir.x = forX;
+                                        bone.m_gravityDir.z = forZ;
+
+                                        //---Wind X -> VRM Y
+                                        float rotY = wind.transform.rotation.eulerAngles.x + 90f;
+                                        if (rotY > 360f)
+                                        {
+                                            rotY = (rotY - 90f) * -1f; //---effective > 270
+                                        }
+                                        if (rotY > 270f) rotY = 90f;  //---effective > 360
+
+                                        float forY = 1f - (rotY / 90f);
+                                        if (rotY > 180f)
+                                        {
+                                            forY = ((rotY - 180f) / 90f) - 1f;
+                                        }
+                                        bone.m_gravityDir.y = forY;
+                                    });
+                                    vinst.Runtime.ReconstructSpringBone();
                                 }
                             }
+
+
+
                         }
-                        
-                        if (!ishit)
-                        {
-                            /*
-                             * VRM  x:0, y:-1, z:0
-                             * Wind x:0, y:0,  z:0
-                             * 
-                             */
-                            bone.m_gravityPower = tmp_windpower;
-
-                            //---Wind Y -> VRM X, Z
-                            float forZ = 1f - (wind.transform.rotation.eulerAngles.y / 90f);
-
-                            if (wind.transform.rotation.eulerAngles.y > 180f)
-                            {
-                                forZ = ((wind.transform.rotation.eulerAngles.y - 180f) / 90f) - 1f;
-                            }
-
-                            float rotX = wind.transform.rotation.eulerAngles.y - 90f;
-                            if (rotX < 0) rotX *= -1;
-
-                            float forX = 1f - (rotX / 90f);
-                            if (rotX > 180f)
-                            {
-                                forX = ((rotX - 180f) / 90f) - 1f;
-                            }
-
-                            bone.m_gravityDir.x = forX;
-                            bone.m_gravityDir.z = forZ;
-
-                            //---Wind X -> VRM Y
-                            float rotY = wind.transform.rotation.eulerAngles.x + 90f;
-                            if (rotY > 360f)
-                            {
-                                rotY = (rotY - 90f) * -1f; //---effective > 270
-                            }
-                            if (rotY > 270f) rotY = 90f;  //---effective > 360
-
-                            float forY = 1f - (rotY / 90f);
-                            if (rotY > 180f)
-                            {
-                                forY = ((rotY - 180f) / 90f) - 1f;
-                            }
-                            bone.m_gravityDir.y = forY;
-                        }
-                        
-
                     }
+                    
                 }
                 
             }

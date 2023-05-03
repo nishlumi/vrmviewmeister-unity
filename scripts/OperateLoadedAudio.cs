@@ -35,8 +35,10 @@ namespace UserHandleSpace
         private bool playBeginFlag;
         private float seekTimePosition;
 
-        private void Awake()
+        override protected void Awake()
         {
+            base.Awake();
+
             userAudioList = new Dictionary<string, AudioClip>();
             audioSeekFlag = 0;
             audioStatFlag = 0;
@@ -47,8 +49,10 @@ namespace UserHandleSpace
             targetType = AF_TARGETTYPE.Audio;
         }
         // Start is called before the first frame update
-        void Start()
+        override protected void Start()
         {
+            base.Start();
+
             manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
             //mana.FirstAddFixedAvatar(gameObject.name, gameObject, gameObject, gameObject.name, AF_TARGETTYPE.Audio);
 
@@ -89,7 +93,10 @@ namespace UserHandleSpace
             }
             
         }
-
+        protected override void OnDestroy()
+        {
+            base.OnDestroy();
+        }
 
         /// <summary>
         /// To pack all properties for HTML-UI

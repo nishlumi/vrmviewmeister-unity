@@ -26,6 +26,7 @@ namespace UserHandleSpace
         public GameObject PostProcessingArea;
         public GameObject SystemViewArea;
         public GameObject FrontCamera;
+        public WipePostEffect WipeObject;
 
         public string[] ProcessNames = { "Bloom", "Chromatic", "ColorGrading", "DepthOfField", "Grain", "MotionBlur", "Vignette" };
 

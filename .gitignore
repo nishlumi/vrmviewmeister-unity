@@ -59,3 +59,5 @@ sysinfo.txt
 crashlytics-build.properties
 
 sync.ffs_db
+*.bak
+*.bak.meta

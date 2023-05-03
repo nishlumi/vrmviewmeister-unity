@@ -3,10 +3,69 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using UnityEngine.Networking;
 using DG.Tweening;
+using System.Linq;
+
+using System.IO;
+using TriLibCore;
+using TriLibCore.General;
+using TriLibCore.SFB;
+
 
 namespace UserHandleSpace
 {
+
+    //===============================================================================================================
+    //  Material and General class
+    //===============================================================================================================
+    [Serializable]
+    public class MaterialPropertiesBase
+    {
+        public string name = "";
+        public string matName = "";
+        public string shaderName = "";
+        //---standard / VRM/MToon
+        public Color color = Color.white;
+        public float blendmode = 0;
+        public int textureIsCamera = 0;
+        public string textureRole = "";
+        public string texturePath = "";
+        public Color emissioncolor = Color.white;
+        //---standard
+        public float metallic = 0;
+        public float glossiness = 0;
+        //---VRM/MToon
+        public float cullmode = 0;
+        public Color shadetexcolor = Color.white;
+        public float shadingtoony = 0;
+        public Color rimcolor = Color.white;
+        public float rimfresnel = 0;
+        public float srcblend = 0;
+        public float dstblend = 0;
+        public float cutoff = 0.5f;
+        public float shadingshift = 0f;
+        public float receiveshadow = 1f;
+        public float shadinggrade = 1f;
+        public float lightcolorattenuation = 0f;
+        //---FX/Water (Basic)
+        public float waveScale = 0.0703f;
+        //---FX/Water4
+        public float fresnelScale = 0.75f;
+        public Color reflectionColor = new Color(0.54f, 0.95f, 0.99f, 0.5f);
+        public Color specularColor = new Color(0.72f, 0.72f, 0.72f, 1f);
+        public Vector4 waveAmplitude = new Vector4(0.3f, 0.35f, 0.25f, 0.25f);
+        public Vector4 waveFrequency = new Vector4(1.3f, 1.35f, 1.25f, 1.25f);
+        public Vector4 waveSteepness = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+        public Vector4 waveSpeed = new Vector4(1.2f, 1.375f, 1.1f, 1.5f);
+        public Vector4 waveDirectionAB = new Vector4(0.3f, 0.85f, 0.85f, 0.25f);
+        public Vector4 waveDirectionCD = new Vector4(0.1f, 0.9f, 0.5f, 0.5f);
+    }
+    [Serializable]
+    public class MaterialProperties : MaterialPropertiesBase
+    {
+        public Texture realTexture = null;
+    }
 
     //===============================================================================================================
     //  Pose file class
@@ -58,6 +117,18 @@ namespace UserHandleSpace
         }
     }
     [Serializable]
+    public class BasicStringColorList
+    {
+        public string text;
+        public Color value;
+
+        public BasicStringColorList(string t, Color v)
+        {
+            text = t;
+            value = v;
+        }
+    }
+    [Serializable]
     public class BasicTransformInformation
     {
         public string id = "";
@@ -65,6 +136,22 @@ namespace UserHandleSpace
         public Vector3 position;
         public Vector3 rotation;
         public Vector3 scale;
+    }
+    [Serializable]
+    public class BasicNamedFloatList 
+    {
+        public string text;
+        public List<float> values;
+        public BasicNamedFloatList(string id, List<float> vs)
+        {
+            text = id;
+            values = new List<float>();
+            vs.ForEach(action =>
+            {
+                values.Add(action);
+            });
+
+        }
     }
     /*
      * "EyeViewHandle", "Head", "LookAt", "Aim", "Chest", "Pelvis", "LeftLowerArm", "LeftHand",
@@ -79,14 +166,16 @@ namespace UserHandleSpace
         Aim,
         Chest,
         Pelvis,
+        LeftShoulder,
         LeftLowerArm,
         LeftHand,
+        RightShoulder,
         RightLowerArm,
         RightHand,
         LeftLowerLeg,
         LeftLeg,
         RightLowerLeg,
-        RightLeg
+        RightLeg,
     };
     public enum RangeIKBoneType
     {
@@ -101,7 +190,11 @@ namespace UserHandleSpace
         LeftLower_LeftLeg,
         RightLower_RightLeg
     };
-
+    public enum KeyOperationMode
+    {
+        MoveCamera = 0,
+        MoveAvatar = 1
+    }
     [Serializable]
     public class AvatarTransformSaveClass
     {
@@ -157,16 +250,32 @@ namespace UserHandleSpace
     }
 
     [Serializable]
-    public class VRMGravityInfo
+    public class VRMGravityInfoBase
+    {
+        public int id = 0;
+        public float power = 0f;
+        public Vector3 dir = new Vector3(0, -1f, 0);
+
+        public VRMGravityInfoBase()
+        {
+
+        }
+        public VRMGravityInfoBase(int p_id, float p_power, float p_x, float p_y, float p_z)
+        {
+            id = p_id;
+            power = p_power;
+            dir = new Vector3(p_x, p_y, p_z);
+        }
+    }
+    [Serializable]
+    public class VRMGravityInfo : VRMGravityInfoBase
     {
         public string comment = "";
         public string rootBoneName = "";
-        public float power = 0f;
-        public Vector3 dir = new Vector3(0, -1f, 0);
         
         public VRMGravityInfo()
         {
-
+            
         }
         public VRMGravityInfo(string p_comment, string p_bonename, float p_power, float p_x, float p_y, float p_z)
         {
@@ -176,6 +285,170 @@ namespace UserHandleSpace
             dir = new Vector3(p_x,p_y,p_z);
         }
     }
+    [Serializable]
+    public class AvatarGravityClass
+    {
+        public List<VRMGravityInfo> list;
+        public AvatarGravityClass()
+        {
+            list = new List<VRMGravityInfo>();
+        }
+    }
+    [Serializable]
+    public class AvatarIKMappingClass
+    {
+        public IKBoneType parts;
+        public string name;
+        public AvatarIKMappingClass()
+        {
+            parts = IKBoneType.IKParent;
+            name = "self";
+        }
+
+    }
+
+    [Serializable]
+    public class AvatarPunchEffect
+    {
+        public int isEnable;
+        public AF_MOVETYPE translationType;
+        public Vector3 punch;
+        public int vibrato;
+        public float elasiticity;
+        public AvatarPunchEffect()
+        {
+            isEnable = 0;
+            translationType = AF_MOVETYPE.Translate;
+            punch = Vector3.zero;
+            vibrato = 10;
+            elasiticity = 1f;
+        }
+        public void Copy(AvatarPunchEffect src)
+        {
+            isEnable = src.isEnable;
+            translationType = src.translationType;
+            punch.x = src.punch.x;
+            punch.y = src.punch.y;
+            punch.z = src.punch.z;
+            vibrato = src.vibrato;
+            elasiticity = src.elasiticity;
+        }
+
+    }
+
+    [Serializable]
+    public class AvatarShakeEffect
+    {
+        public int isEnable;
+        public AF_MOVETYPE translationType;
+        public float strength;
+        public int vibrato;
+        public int randomness;
+        public int fadeOut;
+        public AvatarShakeEffect()
+        {
+            isEnable = 0;
+            translationType = AF_MOVETYPE.Translate;
+            strength = 1f;
+            vibrato = 10;
+            randomness = 90;
+            fadeOut = 1;
+        }
+        public void Copy(AvatarShakeEffect src)
+        {
+            isEnable = src.isEnable;
+            translationType = src.translationType;
+            strength = src.strength;
+            vibrato = src.vibrato;
+            randomness = src.randomness;
+            fadeOut = src.fadeOut;
+        }
+    }
+
+    [Serializable]
+    public class AvatarFingerInHand
+    {
+        public List<Vector3> Thumbs;
+        public List<Vector3> Index;
+        public List<Vector3> Middle;
+        public List<Vector3> Ring;
+        public List<Vector3> Little;
+        public AvatarFingerInHand()
+        {
+            Thumbs = new List<Vector3>();
+            Index = new List<Vector3>();
+            Middle = new List<Vector3>();
+            Ring = new List<Vector3>();
+            Little = new List<Vector3>();
+        }
+        public void Clear()
+        {
+            Thumbs.Clear();
+            Index.Clear();
+            Middle.Clear();
+            Ring.Clear();
+            Little.Clear();
+        }
+        public void Copy(AvatarFingerInHand src)
+        {
+            Clear();
+            src.Thumbs.ForEach(item =>
+            {
+                Thumbs.Add(item);
+            });
+            src.Index.ForEach(item =>
+            {
+                Index.Add(item);
+            });
+            src.Middle.ForEach(item =>
+            {
+                Middle.Add(item);
+            });
+            src.Ring.ForEach(item =>
+            {
+                Ring.Add(item);
+            });
+            src.Little.ForEach(item =>
+            {
+                Little.Add(item);
+            });
+        }
+    }
+    [Serializable]
+    public class AvatarFingerForHPC
+    {
+        public List<float> Thumbs;
+        public List<float> Index;
+        public List<float> Middle;
+        public List<float> Ring;
+        public List<float> Little;
+        public AvatarFingerForHPC()
+        {
+            Thumbs = new List<float>();
+            Index = new List<float>();
+            Middle = new List<float>();
+            Ring = new List<float>();
+            Little = new List<float>();
+        }
+        public void Clear()
+        {
+            Thumbs.Clear();
+            Index.Clear();
+            Middle.Clear();
+            Ring.Clear();
+            Little.Clear();
+        }
+        public void Copy(AvatarFingerForHPC src)
+        {
+            Thumbs = src.Thumbs.FindAll(item => { return true; });
+            Index = src.Index.FindAll(item => { return true; });
+            Middle = src.Middle.FindAll(item => { return true; });
+            Ring = src.Ring.FindAll(item => { return true; });
+            Little = src.Little.FindAll(item => { return true; });
+
+        }
+    }
+
 
     //===============================================================================================================
     //  Motion file class
@@ -212,7 +485,7 @@ namespace UserHandleSpace
         AnimSeek,
         AnimProperty,
 
-        OtherObjectTexture,
+        ObjectTexture,
 
         Light = 20,
         LightProperty,
@@ -232,22 +505,32 @@ namespace UserHandleSpace
 
         Stage,
         StageProperty,
+        SkyProperty,
 
         Equipment,
 
         AnimPause,
 
         //---effect
-        Shake1 = 40,
-        LineShake,
+        Punch = 40,
+        Shake,
         Jump,
         Coloring,
+        Collider,
 
         //---vrm
         GravityProperty = 50,
+        VRMIKProperty = 51,
+        VRMBlink = 52,
 
 
         Stop = 99
+    };
+    public enum AF_TRANSLATETYPE
+    {
+        Normal = 0,
+        Punch,
+        Shake,
     };
     public enum ParseIKBoneType
     {
@@ -258,8 +541,10 @@ namespace UserHandleSpace
         Aim,
         Chest,
         Pelvis,
+        LeftShoulder,
         LeftLowerArm,
         LeftHand,
+        RightShoulder,
         RightLowerArm,
         RightHand,
         LeftLowerLeg,
@@ -287,7 +572,17 @@ namespace UserHandleSpace
         Seeking,
         Pause
     }
-    
+    public enum UserPrimitiveType
+    {
+        Sphere = 0,
+        Capsule = 1,
+        Cylinder = 2,
+        Cube = 3,
+        Plane = 4,
+        Quad = 5,
+        WaterLevel = 6
+    }
+
     [Serializable]
     public class AnimationTargetParts
     {
@@ -298,15 +593,28 @@ namespace UserHandleSpace
         public Vector3 position;
         public Vector3 rotation;
         public Vector3 scale;
+        public AvatarPunchEffect effectPunch;
+        public AvatarShakeEffect effectShake;
+        public int jumpNum;
+        public float jumpPower;
 
         //---vrm options
         public int isHandPose;
         public List<float> handpose;
+        public AvatarFingerForHPC fingerpose;
         public int isBlendShape;
         public List<BasicStringFloatList> blendshapes;
         public int equipType;
         public List<AvatarEquipSaveClass> equipDestinations;
-        public List<VRMGravityInfo> gravityList;
+        public AvatarGravityClass gravity;
+        public string viewHandle;
+        public List<AvatarIKMappingClass> handleList;
+        public int isblink;
+        public float interval;
+        public float openingSeconds;
+        public float closeSeconds;
+        public float closingTime;
+        public int headLock;
 
 
         //---vrm and other object
@@ -314,11 +622,14 @@ namespace UserHandleSpace
         public float animSpeed;
         public float animSeek;
         public int animLoop;
+        public string animName;
+        public MaterialProperties vmatProp;
 
         //---other object
         public string renderTextureId;
         //public int isEquip;
         //public string equippedRoleName;
+        public List<MaterialProperties> matProp;
 
 
         //---light options
@@ -336,7 +647,8 @@ namespace UserHandleSpace
         public float fov;
         public float depth;
         public Rect viewport;
-        public Vector3 renderTex;
+        public int renderFlag;
+        public Vector2 renderTex;
 
         //---text options
         public string text = "";
@@ -357,6 +669,9 @@ namespace UserHandleSpace
 
         //---effect
         public string effectGenre;
+        public int isVRMCollider;
+        public float VRMColliderSize;
+        public List<string> VRMColliderTarget;
 
         //---system effect
         public string effectName = "";
@@ -366,6 +681,18 @@ namespace UserHandleSpace
         public int stageType;
         public Vector4 wavespeed;
         public float wavescale;
+        public float windDurationMin;
+        public float windDurationMax;
+        public float windPower;
+        public float windFrequency;
+        public float userStageMetallic;
+        public float userStageGlossiness;
+        public Color userStageEmissionColor;
+        public CameraClearFlags skyType;
+        public Color skyColor;
+        public string skyShaderName;
+        public List<BasicStringFloatList> skyShaderFloat;
+        public List<BasicStringColorList> skyShaderColor;
 
 
         public AnimationTargetParts()
@@ -373,19 +700,54 @@ namespace UserHandleSpace
             vrmBone = ParseIKBoneType.IKParent;
             vrmHumanBodyBone = HumanBodyBones.Hips;
             animationType = AF_MOVETYPE.Rest;
+            effectPunch = new AvatarPunchEffect();
+            effectShake = new AvatarShakeEffect();
+            jumpNum = 0;
+            jumpPower = 1f;
             isHandPose = 0;
+            fingerpose = new AvatarFingerForHPC();
             isBlendShape = 0;
             equipType = 0;
             equipDestinations = new List<AvatarEquipSaveClass>();
+            isblink = 0;
+            interval = 5.0f;
+            openingSeconds = 0.03f;
+            closingTime = 0.06f;
+            closeSeconds = 0.1f;
+            closingTime = 0f;
+            headLock = 1;
             animPlaying = 0;
             animLoop = 0;
+            animSeek = 0;
+            animSpeed = 1.0f;
+            animName = "";
             handpose = new List<float>();
             blendshapes = new List<BasicStringFloatList>();
+            viewHandle = "self";
+            handleList = new List<AvatarIKMappingClass>();
+            matProp = new List<MaterialProperties>();
+            lightType = LightType.Spot;
+            viewport = Rect.zero;
+
             effectValues = new List<float>();
-            renderTex = new Vector3();
+            windDurationMin = 0.01f;
+            windDurationMax = 0.02f;
+            windPower = 0;
+            windFrequency = 0.01f;
+            skyColor = ColorUtility.TryParseHtmlString("#314D79",out skyColor) ? skyColor : Color.blue;
+            skyType = CameraClearFlags.SolidColor;
+            skyShaderFloat = new List<BasicStringFloatList>();
+            skyShaderColor = new List<BasicStringColorList>();
+            wavespeed = Vector4.zero;
+
+            renderTex = new Vector2();
             //isEquip = 0;
             //equippedRoleName = "";
-            gravityList = new List<VRMGravityInfo>();
+            gravity = new AvatarGravityClass();
+            isVRMCollider = 0;
+            VRMColliderSize = 0.1f;
+            VRMColliderTarget = new List<string>();
+            vmatProp = new MaterialProperties();
 
         }
         public AnimationTargetParts SCopy()
@@ -406,6 +768,27 @@ namespace UserHandleSpace
             if (sc.equipDestinations != null)
             {
                 sc.equipDestinations = new List<AvatarEquipSaveClass>(equipDestinations);
+            }
+            if (sc.gravity != null)
+            {
+                sc.gravity = new AvatarGravityClass();
+                sc.gravity.list = new List<VRMGravityInfo>(gravity.list);
+            }
+            if (sc.handleList != null)
+            {
+                sc.handleList = new List<AvatarIKMappingClass>(handleList);
+            }
+            if (sc.matProp != null)
+            {
+                sc.matProp = new List<MaterialProperties>(matProp);
+            }
+            if (sc.skyShaderFloat != null)
+            {
+                sc.skyShaderFloat = new List<BasicStringFloatList>(skyShaderFloat);
+            }
+            if (sc.skyShaderColor != null)
+            {
+                sc.skyShaderColor = new List<BasicStringColorList>(skyShaderColor);
             }
 
             return sc;
@@ -486,6 +869,21 @@ namespace UserHandleSpace
             ease = af.ease;
 
         }
+        public AnimationTargetParts FindMovingData(AF_MOVETYPE movetype, ParseIKBoneType bone = ParseIKBoneType.Unknown)
+        {
+            return movingData.Find(match =>
+            {
+                if (match.animationType == movetype)
+                {
+                    if (bone == ParseIKBoneType.Unknown) return true;
+
+                    if (match.vrmBone == bone) return true;
+                    return false;
+                }
+                return false;
+            });
+
+        }
     }
     //==============================================================
     //  AvatarAttachedNativeAnimationFrame, ConfirmedNativeAnimationFrame
@@ -497,12 +895,13 @@ namespace UserHandleSpace
         public string id = "";
         public string role = "";
         public AF_TARGETTYPE type = AF_TARGETTYPE.Unknown;
-        public NativeAnimationFrame frame = null;
+        public AnimationFrame frame = null;
         public AvatarAttachedNativeAnimationFrame(AnimationFrameActor actor)
         {
             id = actor.targetId;
             role = actor.targetRole;
             type = actor.targetType;
+            frame = new AnimationFrame();
         }
     }
     [Serializable]
@@ -519,6 +918,7 @@ namespace UserHandleSpace
     {
         //public AnimationAvatar cast;
         //public AnimationFrameActor timeline;
+        public int version = 1;
 
         public AF_TARGETTYPE targetType = AF_TARGETTYPE.Unknown;
         public int compiled = 0;
@@ -573,6 +973,7 @@ namespace UserHandleSpace
         public int finalizeIndex;
         public string key;
         public float duration;
+        public Ease ease;
 
         public List<string> movingData = new List<string>();
 
@@ -582,6 +983,7 @@ namespace UserHandleSpace
             finalizeIndex = 0;
             key = "";
             duration = 0.1f;
+            ease = Ease.Linear;
         }
         public AnimationSingleFrame SCopy()
         {
@@ -616,6 +1018,7 @@ namespace UserHandleSpace
         public float[] bodyHeight = new float[3];
         public List<Vector3> bodyInfoList;
         public List<string> blendShapeList;
+        public List<string> gravityBoneList;
 
         public List<AnimationFrame> frames;
         
@@ -626,6 +1029,7 @@ namespace UserHandleSpace
         {
             bodyInfoList = new List<Vector3>();
             blendShapeList = new List<string>();
+            gravityBoneList = new List<string>();
             frames = new List<AnimationFrame>();
             frameIndexMarker = 0;
         }
@@ -644,6 +1048,10 @@ namespace UserHandleSpace
             for (int i = 0; i < naf.blendShapeList.Count; i++)
             {
                 blendShapeList.Add(naf.blendShapeList[i]);
+            }
+            for (int i = 0; i < naf.gravityBoneList.Count; i++)
+            {
+                gravityBoneList.Add(naf.gravityBoneList[i]);
             }
             frameIndexMarker = naf.frameIndexMarker;
         }
@@ -669,6 +1077,13 @@ namespace UserHandleSpace
                 for (int i = 0; i < sc.blendShapeList.Count; i++)
                 {
                     blendShapeList.Add(sc.blendShapeList[i]);
+                }
+            }
+            if (gravityBoneList != null)
+            {
+                for (int i = 0; i < sc.gravityBoneList.Count; i++)
+                {
+                    gravityBoneList.Add(sc.gravityBoneList[i]);
                 }
             }
             return sc;
@@ -703,6 +1118,10 @@ namespace UserHandleSpace
             for (int i = 0; i < naf.blendShapeList.Count; i++)
             {
                 blendShapeList.Add(naf.blendShapeList[i]);
+            }
+            for (int i = 0; i < naf.gravityBoneList.Count; i++)
+            {
+                gravityBoneList.Add(naf.gravityBoneList[i]);
             }
             frameIndexMarker = naf.frameIndexMarker;
         }
@@ -773,9 +1192,12 @@ namespace UserHandleSpace
         public string roleName = "";
         public string roleTitle = "";
         public string avatarId = "";
+        public string avatarTitle = "";
         public AF_TARGETTYPE type = AF_TARGETTYPE.Unknown;
         public float[] bodyHeight = new float[3];
         public List<Vector3> bodyInfoList = new List<Vector3>();
+        public string path = "";
+        public string ext = "";
 
         public AnimationAvatar SCopy()
         {
@@ -799,7 +1221,10 @@ namespace UserHandleSpace
             roleName = nav.roleName;
             roleTitle = nav.roleTitle;
             avatarId = nav.avatarId;
+            avatarTitle = nav.avatarTitle;
             type = nav.type;
+            path = nav.path;
+            ext = nav.ext;
             if (bodyHeight != null)
             {
                 Array.Copy(nav.bodyHeight, bodyHeight, nav.bodyHeight.Length);
@@ -847,6 +1272,442 @@ namespace UserHandleSpace
             return (AnimationProjectMetaInformation)MemberwiseClone();
         }
     }
+    [Serializable]
+    public class AnimationProjectFixedProperties
+    {
+        
+    }
+    //==============================================================
+    //  AnimationProjectOneMaterial
+    //==============================================================
+    [Serializable]
+    public enum OneMaterialType
+    {
+        Texture = 0,
+        Shader,
+        unknown = 9,
+    }
+    [Serializable]
+    public enum OneMaterialFrom
+    {
+        app = 0,
+        project
+    }
+    [Serializable]
+    public class AP_OneMaterial : IDisposable
+    {
+        public string group = "";
+        public string name = "";
+        public string path = "";
+        public OneMaterialType materialType = OneMaterialType.unknown;
+        public Vector2 size;
+
+        public void Dispose()
+        {
+
+        }
+    }
+    public class NativeAP_OneMaterial : AP_OneMaterial
+    {
+        public int refCount = 0;
+        private UnityEngine.Object effectiveObject;
+
+        public UnityEngine.Object data
+        {
+            get 
+            {
+                return effectiveObject;
+            }
+        }
+        public new void Dispose()
+        {
+            UnityEngine.Object.Destroy(effectiveObject);
+        }
+        public NativeAP_OneMaterial()
+        {
+            effectiveObject = null;
+            size = new Vector2();
+        }
+        public NativeAP_OneMaterial(string material_name, string uri, OneMaterialType matType)
+        {
+            group = "";
+            name = material_name;
+            path = uri;
+            materialType = matType;
+            size = new Vector2();
+            effectiveObject = null;
+            //StartCoroutine(Open(uri));
+        }
+
+        /// <summary>
+        /// Open material file from HTML-URI
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <returns></returns>
+        public IEnumerator Open(string uri)
+        {
+            path = uri;
+            using (UnityWebRequest www = UnityWebRequest.Get(uri))
+            {
+                yield return www.SendWebRequest();
+                //if (www.isNetworkError || www.isHttpError)
+                if (www.result == UnityWebRequest.Result.ConnectionError)
+                {
+                    Debug.Log(www.error);
+                    yield break;
+                }
+                else
+                {
+                    Texture2D tex = new Texture2D(1, 1);
+                    tex.LoadImage(www.downloadHandler.data);
+                    effectiveObject = tex;
+                    size.x = tex.width;
+                    size.y = tex.height;
+
+                    yield return null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Open material file from saved URI
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerator Open()
+        {
+            using (UnityWebRequest www = UnityWebRequest.Get(path))
+            {
+                yield return www.SendWebRequest();
+                //if (www.isNetworkError || www.isHttpError)
+                if (www.result == UnityWebRequest.Result.ConnectionError)
+                {
+                    Debug.Log(www.error);
+                    yield break;
+                }
+                else
+                {
+                    Texture2D tex = new Texture2D(1, 1);
+                    tex.LoadImage(www.downloadHandler.data);
+                    effectiveObject = tex;
+                    size.x = tex.width;
+                    size.y = tex.height;
+
+                    yield return null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Open material file from Native file dialog
+        /// </summary>
+        public void OpenFile()
+        {
+            string[] ext = new string[2];
+            ext[0] = "jpg";
+            ext[1] = "png";
+
+            ExtensionFilter[] exts = new ExtensionFilter[] {
+                new ExtensionFilter("JPEG File", "jpg"),
+                new ExtensionFilter("PNG File", "png"),
+                new ExtensionFilter("Image File", ext),
+            };
+            IList<ItemWithStream> paths = StandaloneFileBrowser.OpenFilePanel("Please select an image file.", "", exts, false);
+            for (int i = 0; i < paths.Count; i++)
+            {
+                Stream stm = paths[i].OpenStream();
+                path = paths[i].Name;
+
+                byte[] byt = new byte[stm.Length];
+                stm.Read(byt, 0, (int)stm.Length);
+                Texture2D tex = new Texture2D(1, 1);
+                tex.LoadImage(byt);
+
+                effectiveObject = tex;
+                size.x = tex.width;
+                size.y = tex.height;
+            }
+        }
+
+        /// <summary>
+        /// Set an object directly
+        /// </summary>
+        /// <param name="obj"></param>
+        public void SetObject(UnityEngine.Object obj)
+        {
+            effectiveObject = obj;
+        }
+
+        /// <summary>
+        /// To get reference of the texture
+        /// </summary>
+        /// <returns></returns>
+        public Texture2D ReferTexture2D()
+        {
+            if (effectiveObject == null) return null;
+
+            refCount++;
+            return (Texture2D)effectiveObject;
+        }
+
+        /// <summary>
+        /// Unreference from an object
+        /// </summary>
+        /// <returns></returns>
+        public int UnRefer()
+        {
+            if (effectiveObject == null) return 0;
+
+            refCount--;
+            return refCount;
+        }
+    }
+
+    //==============================================================
+    //  AnimationProjectMaterialPackage
+    //==============================================================
+
+    [Serializable]
+    public class AnimationProjectMaterialPackage : IDisposable
+    {
+        public List<AP_OneMaterial> materials = new List<AP_OneMaterial>();
+
+        public void Dispose()
+        {
+            materials.ForEach(item => {
+                item.Dispose();
+                item = null;
+            });
+            materials.Clear();
+        }
+        public void SetFromNative(NativeAnimationProjectMaterialPackage pkg)
+        {
+            foreach( NativeAP_OneMaterial naom in pkg.materials)
+            {
+                AP_OneMaterial aom = new AP_OneMaterial();
+                aom.name = naom.name;
+                aom.group = naom.group;
+                //---do not save path made by URL.createObjectURL()
+                aom.path = (naom.path.IndexOf("blob:") > -1) ? "" :  naom.path;
+                aom.materialType = naom.materialType;
+                aom.size = new Vector2(naom.size.x, naom.size.y);
+                materials.Add(aom);
+            }
+        }
+    }
+    public class NativeAnimationProjectMaterialPackage : AnimationProjectMaterialPackage 
+    {
+        public new List<NativeAP_OneMaterial> materials = new List<NativeAP_OneMaterial>();
+        //public Dictionary<string, AssetBundle> bundles = new Dictionary<string, AssetBundle>();
+
+        public new void Dispose()
+        {
+            materials.ForEach(item => {
+                item.Dispose();
+                item = null;
+            });
+            materials.Clear();
+
+            /*
+            Dictionary<string, AssetBundle>.Enumerator de_bundle =  bundles.GetEnumerator();
+            while (de_bundle.MoveNext())
+            {
+                de_bundle.Current.Value.Unload(true);
+            }
+            bundles.Clear();
+            */
+        }
+        public void SetFromRaw(AnimationProjectMaterialPackage pkg)
+        {
+            foreach (AP_OneMaterial aom in pkg.materials)
+            {
+                NativeAP_OneMaterial naom = new NativeAP_OneMaterial();
+                naom.name = aom.name;
+                naom.group = aom.group;
+                naom.path = aom.path;
+                naom.materialType = aom.materialType;
+                naom.size = new Vector2(aom.size.x, aom.size.y);
+                materials.Add(naom);
+            }
+        }
+        /*
+        public IEnumerator OpenBundle(string name, string uri)
+        {
+            using (UnityWebRequest www = UnityWebRequestAssetBundle.GetAssetBundle(uri))
+            {
+                yield return www.SendWebRequest();
+                //if (www.isNetworkError || www.isHttpError)
+                if (www.result == UnityWebRequest.Result.ConnectionError)
+                {
+                    Debug.Log(www.error);
+                    yield break;
+                }
+                else
+                {
+                    AssetBundle bnd = DownloadHandlerAssetBundle.GetContent(www);
+                    bundles[name] = bnd;
+                    
+                    yield return null;
+                }
+            }
+        }
+        public void CloseBundle(string name)
+        {
+            if (bundles.ContainsKey(name))
+            {
+                bundles[name].Unload(true);
+                bundles.Remove(name);
+            }
+        }
+        public Texture FindTextureFromBundle(string path)
+        {
+            Texture tex = null;
+
+            Dictionary<string, AssetBundle>.Enumerator de_bundle = bundles.GetEnumerator();
+            while (de_bundle.MoveNext())
+            {
+                AssetBundle bnd = de_bundle.Current.Value;
+                if (bnd.Contains(path))
+                {
+                    tex = bnd.LoadAsset<Texture>(path);
+                    break;
+                }
+            }
+
+            return tex;
+        }
+        public Shader FindShaderFromBundle(string path)
+        {
+            Shader tex = null;
+
+            Dictionary<string, AssetBundle>.Enumerator de_bundle = bundles.GetEnumerator();
+            while (de_bundle.MoveNext())
+            {
+                AssetBundle bnd = de_bundle.Current.Value;
+                if (bnd.Contains(path))
+                {
+                    tex = bnd.LoadAsset<Shader>(path);
+                    break;
+                }
+            }
+
+            return tex;
+        }
+        */
+
+
+        /// <summary>
+        /// Get the object, search by group & name
+        /// </summary>
+        /// <param name="name">material name</param>
+        /// <param name="group">material group (optional)</param>
+        /// <returns></returns>
+        public NativeAP_OneMaterial FindTexture(string name, string group = "")
+        {
+            return materials.Find(item =>
+            {
+                if ((item.materialType == OneMaterialType.Texture) && (item.name == name))
+                {
+                    if (group == "")
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        if (item.group == group) return true;
+                        return false;
+                    }
+
+                }
+                return false;
+            });
+        }
+        /// <summary>
+        /// Nullize parameter's object, if obj found in this list.
+        /// </summary>
+        /// <param name="obj"></param>
+        public int UnRefer(UnityEngine.Object obj)
+        {
+            NativeAP_OneMaterial nap = materials.Find(item =>
+            {
+                if (item.data == obj) return true;
+                return false;
+            });
+            int ret = -1;
+            if (nap != null)
+            {
+                nap.UnRefer();
+                obj = null;
+                ret = nap.refCount;
+            }
+            return ret;
+        }
+        public int UnRefer(OneMaterialType type, string name, string group = "")
+        {
+            NativeAP_OneMaterial nap = materials.Find(item =>
+            {
+                if ((item.materialType == type) && (item.name == name))
+                {
+                    if (item.group == "")
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        if (item.group == group) return true;
+                        return false;
+                    }
+                    
+                }
+                return false;
+            });
+            int ret = -1;
+            if (nap != null)
+            {
+                nap.UnRefer();
+                ret = nap.refCount;
+            }
+            return ret;
+        }
+        public int RemoveTexture(string name, string group = "")
+        {
+            NativeAP_OneMaterial nap = materials.Find(item =>
+            {
+                //Debug.Log(item.name + "-" + item.group + "-ref=" + item.refCount.ToString());
+                if ((item.materialType == OneMaterialType.Texture) && (item.name == name))
+                {
+                    if(item.group == "")
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        if (item.group == group) return true;
+                        return false;
+                    }
+                }
+                return false;
+            });
+            int ret = -1;
+            //Debug.Log(name + "=>");
+            if (nap != null)
+            {
+                //Debug.Log("nap: " + nap.name + "=" + nap.refCount.ToString());
+                if (nap.refCount <= 0)
+                {
+                    //Debug.Log("Dispose!");
+                    nap.Dispose();
+                    materials.Remove(nap);
+                    ret = 0;
+                }
+                else
+                {
+                    ret = nap.refCount;
+                }
+            }
+            return ret;
+        }
+    }
+
     //==============================================================
     //  AnimationProject
     //==============================================================
@@ -862,21 +1723,25 @@ namespace UserHandleSpace
         public int fps;
         public float baseDuration;
         public AnimationProjectMetaInformation meta;
+        public AnimationProjectFixedProperties fixedProp;
+        public AnimationProjectMaterialPackage materialManager;
         public bool isSharing;
         public bool isReadOnly;
         public bool isNew;
         public bool isOpenAndEdit;
 
-        public AnimationProject()
+        public AnimationProject(int frameCount)
         {
             mkey = 0;
-            version = 1;
+            version = 0;
             casts = new List<AnimationAvatar>();
             timeline = new AnimationMotionTimeline();
-            timelineFrameLength = 60;
+            timelineFrameLength = frameCount;
             fps = 60;
             baseDuration = (float)fps / 6000f;
             meta = new AnimationProjectMetaInformation();
+            fixedProp = new AnimationProjectFixedProperties();
+            materialManager = new AnimationProjectMaterialPackage();
             isSharing = false;
             isReadOnly = false;
             isNew = true;
@@ -895,10 +1760,15 @@ namespace UserHandleSpace
 
         public new NativeAnimationMotionTimeline timeline;
 
-        public NativeAnimationProject()
+        public new NativeAnimationProjectMaterialPackage materialManager;
+
+        public NativeAnimationProject(int frameCount) : base(frameCount)
         {
+            
             casts = new List<NativeAnimationAvatar>();
             timeline = new NativeAnimationMotionTimeline();
+
+            materialManager = new NativeAnimationProjectMaterialPackage();
         }
         public new NativeAnimationProject SCopy()
         {
@@ -906,6 +1776,27 @@ namespace UserHandleSpace
         }
     }
 
+    [Serializable]
+    public class OpennigAnimationProject
+    {
+        public List<UserVRMSpace.BasicObjectInformation> castInfo;
+        public AnimationProject project;
+        public OpennigAnimationProject()
+        {
+            castInfo = new List<UserVRMSpace.BasicObjectInformation>();
+            project = null;
+        }
+    }
+    public class OpeningNativeAnimationAvatar
+    {
+        public NativeAnimationAvatar cast;
+        public UserVRMSpace.BasicObjectInformation baseInfo;
+        public OpeningNativeAnimationAvatar ()
+        {
+            cast = null;
+            baseInfo = null;
+        }
+    }
     //==============================================================
     //  Animation other option class
     //==============================================================
@@ -916,6 +1807,7 @@ namespace UserHandleSpace
         public int index = -1;
         public float duration = 0.1f;
         public string targetId = "";
+        public string targetRole = "";
         public AF_TARGETTYPE targetType = AF_TARGETTYPE.Unknown;
         public int isTransformOnly = 0;
         public int isHandOnly = 0;
@@ -928,7 +1820,7 @@ namespace UserHandleSpace
         /// <summary>
         /// To compile an animation as an external using.(futurely as library)
         /// </summary>
-        public int isCompileAnimation = 0;
+        public int isCompileForLibrary = 0;
 
         public Ease ease = Ease.Linear;
     }
@@ -941,6 +1833,10 @@ namespace UserHandleSpace
         public string targetId = "";
         public string targetRole = "";
         public AF_TARGETTYPE targetType = AF_TARGETTYPE.Unknown;
+
+        /// <summary>
+        /// To use DoTween for performing an animation(1 - use, 0 - not use(manual transform))
+        /// </summary>
         public int isExecuteForDOTween = 0;
         public int isSystemEffectOnly = 0;
         public int isCameraPreviewing = 0;
@@ -979,4 +1875,149 @@ namespace UserHandleSpace
         public int keyFrame = -1;
         public bool isCut = false;
     }
+
+    public class PreviewFrameReturner
+    {
+        public Sequence seq = null;
+        public int index = 0;
+        public float currentDuration = 0f;
+        public float backupDuration = 0f;
+    }
+
+
+
+    //==============================================================
+    //  key operation  class
+    //==============================================================
+    public class AvatarKeyOperator
+    {
+        public float movespeed;
+        public float transspeed;
+        public Space IsGlobalLocal;
+        private short opemode = 0; //0 - translate, 1 - rotation
+        public AvatarKeyOperator(float config_movespeed, float config_transspeed)
+        {
+            movespeed = config_movespeed;
+            transspeed = config_transspeed;
+            IsGlobalLocal = Space.World;
+        }
+        public void SetSpeed(float speed, float trans_speed)
+        {
+            movespeed = speed;
+            transspeed = trans_speed;
+        }
+        public void CallKeyOperation(GameObject ik, TMPro.TextMeshProUGUI textgui)
+        {
+            if (Input.GetKey(KeyCode.W))
+            { //to front
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    ik.transform.Rotate(Vector3.right * movespeed, IsGlobalLocal);
+                }
+                else
+                {
+                    if (opemode == 0) ik.transform.Translate(Vector3.forward * transspeed, IsGlobalLocal);
+                    else if (opemode == 1) ik.transform.Rotate(Vector3.right * movespeed, IsGlobalLocal);
+
+                }
+                
+                
+            }
+            if (Input.GetKey(KeyCode.S))
+            { //to back
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    ik.transform.Rotate(Vector3.left * movespeed, IsGlobalLocal);
+                }
+                else
+                {
+                    if (opemode == 0) ik.transform.Translate(Vector3.back * transspeed, IsGlobalLocal);
+                    else if (opemode == 1) ik.transform.Rotate(Vector3.left * movespeed, IsGlobalLocal);
+
+                }
+            }
+            if (Input.GetKey(KeyCode.A))
+            { //to left
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    
+                    ik.transform.Rotate(Vector3.down * movespeed, IsGlobalLocal);
+                }
+                else
+                {
+                    if (opemode == 0) ik.transform.Translate(Vector3.left * transspeed, IsGlobalLocal);
+                    else if (opemode == 1) ik.transform.Rotate(Vector3.forward * movespeed, IsGlobalLocal);
+
+                }
+            }
+            if (Input.GetKey(KeyCode.D))
+            { //to right
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    
+                    ik.transform.Rotate(Vector3.up * movespeed, IsGlobalLocal);
+                }
+                else
+                {
+                    if (opemode == 0) ik.transform.Translate(Vector3.right * transspeed, IsGlobalLocal);
+                    else if (opemode == 1) ik.transform.Rotate(Vector3.back * movespeed, IsGlobalLocal);
+
+                }
+            }
+            if (Input.GetKey(KeyCode.F))
+            { //to up
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    ik.transform.Rotate(Vector3.forward * movespeed, IsGlobalLocal);
+                    
+                }
+                else
+                {
+                    if (opemode == 0) ik.transform.Translate(Vector3.up * transspeed, IsGlobalLocal);
+                    else if (opemode == 1) ik.transform.Rotate(Vector3.up * movespeed, IsGlobalLocal);
+
+                }
+            }
+            if (Input.GetKey(KeyCode.V))
+            { //to down
+                if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                {
+                    ik.transform.Rotate(Vector3.back * movespeed, IsGlobalLocal);
+                }
+                else
+                {
+                    if (opemode == 0) ik.transform.Translate(Vector3.down * transspeed, IsGlobalLocal);
+                    else if (opemode == 1) ik.transform.Rotate(Vector3.down * movespeed, IsGlobalLocal);
+
+                }
+            }
+            if (Input.GetKey(KeyCode.Q))
+            { //rotation  mode
+                //opemode = 1;
+                ik.transform.rotation = Quaternion.Euler(Vector3.zero);
+            }
+            if (Input.GetKey(KeyCode.E))
+            { //translate mode
+                //opemode = 0;
+            }
+            if (Input.GetKey(KeyCode.B))
+            {
+
+            }
+            if (Input.GetKeyDown(KeyCode.G))
+            {
+                if (IsGlobalLocal == Space.Self)
+                {
+                    IsGlobalLocal = Space.World;
+                    textgui.text = "G";
+                }
+                else if (IsGlobalLocal == Space.World)
+                {
+                    IsGlobalLocal = Space.Self;
+                    textgui.text = "L";
+                }
+            }
+        }
+    }
+
 }

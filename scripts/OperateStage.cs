@@ -192,9 +192,35 @@ namespace UserHandleSpace
         {
             SelectStage((int)StageKind.Default);
             GetCameraOperation().SetDefaultSky();
-            GetSystemDirectionalLight().SetDefault();
-            GetSystemDirectionalLight().SetRotation(defaultSystemLightRotation);
+            OperateLoadedLight oll = GetSystemDirectionalLight();
+            
+            oll.SetDefault();
+            oll.SetRotation(defaultSystemLightRotation);
             GetWindzone().SetDefault();
+        }
+        private void SetLayerRecursive(GameObject self, int layer)
+        {
+            self.layer = layer;
+            foreach (Transform tra in self.transform)
+            {
+                SetLayerRecursive(tra.gameObject, layer);
+            }
+        }
+        public void SetVisibleAvatar(int flag)
+        {
+            const string TARGET_SHOWLAYER = "Stage";
+            const string TARGET_HIDDENLAYER = "HiddenPlayer";
+
+            if (flag == 0)
+            { //---avatar hide!
+                //gameObject.layer = LayerMask.NameToLayer(TARGET_HIDDENLAYER);
+                SetLayerRecursive(ActiveStage, LayerMask.NameToLayer(TARGET_HIDDENLAYER));
+            }
+            else
+            { //---avatar show!
+                //gameObject.layer = LayerMask.NameToLayer(TARGET_SHOWLAYER);
+                SetLayerRecursive(ActiveStage, LayerMask.NameToLayer(TARGET_SHOWLAYER));
+            }
         }
 
         //----------------------------------------------------------------------------------------
@@ -680,7 +706,8 @@ namespace UserHandleSpace
                 }
             }
         }
-        public void SetTextureToUserStage(StageKind skind, string param)
+       
+        public void SetTextureToUserStage(string param)
         {
             string[] prm = param.Split(',');
             if (ActiveStageType == StageKind.User)

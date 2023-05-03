@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UserHandleSpace;
 using DG.Tweening;
-using VRM;
+using UniVRM10;
 
 using System.IO;
 
@@ -208,7 +208,8 @@ public class ownscr_RoleEdit : MonoBehaviour
                     
                     if (targetType.text == "Player")
                     {
-                        string title = av.GetComponent<VRMMeta>().Meta.Title;
+                        //string title = av.GetComponent<VRMMeta>().Meta.Title;
+                        string title = av.GetComponent<Vrm10Instance>().Vrm.Meta.Name;
                         if (title != "")
                         {
                             dp.options.Add(new Dropdown.OptionData(title));

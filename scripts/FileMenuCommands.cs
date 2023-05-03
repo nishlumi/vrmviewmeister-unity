@@ -11,7 +11,8 @@ using UnityEngine.Networking;
 using UnityEngine.UI;
 using RootMotion.FinalIK;
 using UniGLTF;
-using VRM;
+using UniGLTF.Extensions.VRMC_vrm;
+using UniVRM10;
 using VRMShaders;
 
 using UserHandleSpace;
@@ -44,6 +45,12 @@ namespace UserVRMSpace
         public AnimationTargetParts motion = new AnimationTargetParts();
     }
 
+    public enum BasicUssageLicense
+    {
+        Disallow,
+        Allow
+    };
+
     [Serializable]
     public class VRMObjectInformation : BasicObjectInformation
     {
@@ -66,17 +73,21 @@ namespace UserVRMSpace
 
         public Texture2D Thumbnail;
 
-        public AllowedUser AllowedUser;
+        //old: AllowedUser
+        public AvatarPermissionType AllowedUser;
 
+        //old: UssageLicense: AllowExcessivelyViolentUsage
         public int ViolentUssage;
 
+        //old: AllowExcessivelySexualUsage
         public int SexualUssage;
 
-        public int CommercialUssage;
+        //old: CommercialUsageType
+        public CommercialUsageType CommercialUssage;
 
         public string OtherPermissionUrl;
 
-        public LicenseType LicenseType;
+        public int LicenseType;
 
         public string OtherLicenseUrl;
 
@@ -85,7 +96,7 @@ namespace UserVRMSpace
 
         public int AntiSocialUssage;
 
-        public string useCreditNotation;
+        public int useCreditNotation;
 
         public int AllowRedistribution;
 
@@ -220,8 +231,9 @@ namespace UserVRMSpace
         private Vector3 thead_position;
         private Vector3 thead_size;
 
-        private VRMImporterContext pendingContext;
-        private VRMMetaObject pendingVRMmeta;
+        //private VRMImporterContext pendingContext;
+        //private VRMMetaObject pendingVRMmeta;
+        private VRM10ObjectMeta pendingVRMmeta;
         private RuntimeGltfInstance pendingInstance;
 
         private NativeAnimationAvatar lastLoadedAvatar;
@@ -263,7 +275,7 @@ namespace UserVRMSpace
         }
         private void OnDestroy()
         {
-            if (pendingContext != null) return;
+            //if (pendingContext != null) return;
         }
         // Update is called once per frame
         void Update()
@@ -597,17 +609,47 @@ namespace UserVRMSpace
                 return new ImmediateCaller();
             }
         }
-        static IMaterialDescriptorGenerator GetVrmMaterialGenerator(bool useUrp, VRM.glTF_VRM_extensions vrm)
+        static IMaterialDescriptorGenerator GetVrmMaterialGenerator(bool useUrp)
         {
-            if (useUrp)
+            if(useUrp)
             {
-                return new VRM.VRMUrpMaterialDescriptorGenerator(vrm);
+                return new UrpVrm10MaterialDescriptorGenerator();
             }
             else
             {
-                return new VRM.VRMMaterialDescriptorGenerator(vrm);
+                return new BuiltInVrm10MaterialDescriptorGenerator();
             }
         }
+        public async Task<RuntimeGltfInstance> PreviewLoad10x_VRM(byte[] data)
+        {
+            RuntimeGltfInstance ret = null;
+            Vrm10Instance vinst = await Vrm10.LoadBytesAsync(data,
+                canLoadVrm0X: true,
+                showMeshes: false,
+                awaitCaller: GetIAwaitCaller(false),
+                materialGenerator: GetVrmMaterialGenerator(false)
+            );
+            if (vinst != null)
+            {
+                pendingInstance = vinst.GetComponent<RuntimeGltfInstance>();
+                pendingVRMmeta = vinst.Vrm.Meta;
+                ret = pendingInstance;
+            }
+            else
+            {
+                var gltfModel = await GltfUtility.LoadBytesAsync("",data,
+                    awaitCaller: GetIAwaitCaller(false)
+                );
+                if (gltfModel == null)
+                {
+                    throw new Exception("Failed to load the file as glTF format.");
+                }
+                pendingInstance = gltfModel;
+                ret = pendingInstance;
+            }
+            return ret;
+        }
+        /*
         public async Task<RuntimeGltfInstance> PreviewLoad09x_VRM(byte[] data)
         {
             RuntimeGltfInstance ret = null;
@@ -624,7 +666,7 @@ namespace UserVRMSpace
                 ret = pendingInstance;
             }
             return ret;
-        }
+        }*/
         /*
         public async void PreviewLoad08x_VRM(byte[] data)
         {
@@ -658,7 +700,8 @@ namespace UserVRMSpace
         {
             //PreviewLoad066_VRM(data);
             //PreviewLoad08x_VRM(data);
-            RuntimeGltfInstance vinst = await PreviewLoad09x_VRM(data);
+            //await PreviewLoad09x_VRM(data);
+            RuntimeGltfInstance vinst = await PreviewLoad10x_VRM(data);
 
             if (vinst == null)
             {
@@ -687,6 +730,9 @@ namespace UserVRMSpace
                     mat_b = meshcnt[0];
                     //---Irregular VRM (ex: Abiss Horizon, etc)
                     mat_b.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
+
+                    //---if face not found, mat_b equal to mat_f
+                    mat_f = meshcnt[0];
                 }
                 else
                 {
@@ -701,7 +747,7 @@ namespace UserVRMSpace
                     */
                 }
 
-
+                Bounds maxbounds = mat.CalculateAllBounds(meshcnt);
 
                 //--- load thumbnail
 
@@ -742,40 +788,41 @@ namespace UserVRMSpace
                 SkinnedMeshRenderer mat_f_mesh = mat_f.GetComponent<SkinnedMeshRenderer>();
 
                 //hei = mat_b_mesh.bounds.size.y;
-                hei = mat_f_mesh.bounds.max.y;
+                //hei = mat_f_mesh.bounds.max.y;
+                hei = maxbounds.size.y;
 
                 hei = System.Math.Round(hei, 2, System.MidpointRounding.AwayFromZero);
                 string strHeight = (hei * 100).ToString() + " cm";
-                byte[] incolor = pendingVRMmeta.Thumbnail.EncodeToPNG();
-
-                VRMObjectInformation vrmoi = new VRMObjectInformation();
-
-                vrmoi.Title = pendingVRMmeta.Title;
-                vrmoi.Author = pendingVRMmeta.Author;
-                vrmoi.Version = pendingVRMmeta.Version;
-                vrmoi.ContactInformation = pendingVRMmeta.ContactInformation;
-                vrmoi.ExporterVersion = pendingVRMmeta.ExporterVersion;
-                vrmoi.Reference = pendingVRMmeta.Reference;
-                vrmoi.Thumbnail = pendingVRMmeta.Thumbnail;
-                vrmoi.LicenseType = pendingVRMmeta.LicenseType;
-                vrmoi.OtherLicenseUrl = pendingVRMmeta.OtherLicenseUrl;
-                vrmoi.AllowedUser = pendingVRMmeta.AllowedUser;
-                vrmoi.ViolentUssage = (int)pendingVRMmeta.ViolentUssage;
-                vrmoi.SexualUssage = (int)pendingVRMmeta.SexualUssage;
-                vrmoi.CommercialUssage = (int)pendingVRMmeta.CommercialUssage;
-                //---for 1.x
-                if (pendingVRMmeta.LicenseType == LicenseType.Redistribution_Prohibited)
+                byte[] incolor = new byte[] { };
+                if (pendingVRMmeta.Thumbnail == null)
                 {
-                    vrmoi.AllowRedistribution = 0;
+                    Debug.LogWarning("thumbnail is null.");
                 }
                 else
                 {
-                    vrmoi.AllowRedistribution = 1;
+                    incolor = pendingVRMmeta.Thumbnail.EncodeToPNG();
                 }
-                vrmoi.PoliticalUssage = 0;
-                vrmoi.AntiSocialUssage = 0;
-                vrmoi.useCreditNotation = "undefined";
-                vrmoi.AllowModification = 0;
+
+                VRMObjectInformation vrmoi = new VRMObjectInformation();
+
+                vrmoi.Title = pendingVRMmeta.Name;
+                vrmoi.Author = string.Join("\t", pendingVRMmeta.Authors);
+                vrmoi.Version = pendingVRMmeta.Version;
+                vrmoi.ContactInformation = pendingVRMmeta.ContactInformation;
+                vrmoi.ExporterVersion = ""; // pendingVRMmeta.ExporterVersion;
+                vrmoi.Reference = string.Join("\t", pendingVRMmeta.References);
+                vrmoi.Thumbnail = pendingVRMmeta.Thumbnail;
+                //vrmoi.LicenseType = pendingVRMmeta.LicenseType;
+                vrmoi.OtherLicenseUrl = pendingVRMmeta.OtherLicenseUrl;
+                vrmoi.AllowedUser = pendingVRMmeta.AvatarPermission;
+                vrmoi.ViolentUssage = pendingVRMmeta.ViolentUsage ? (int)BasicUssageLicense.Allow : (int)BasicUssageLicense.Disallow;
+                vrmoi.SexualUssage = pendingVRMmeta.SexualUsage ? (int)BasicUssageLicense.Allow : (int)BasicUssageLicense.Disallow;
+                vrmoi.CommercialUssage = pendingVRMmeta.CommercialUsage;
+                vrmoi.PoliticalUssage = pendingVRMmeta.PoliticalOrReligiousUsage ? (int)BasicUssageLicense.Allow : (int)BasicUssageLicense.Disallow;
+                vrmoi.AntiSocialUssage = pendingVRMmeta.AntisocialOrHateUsage ? (int)BasicUssageLicense.Allow : (int)BasicUssageLicense.Disallow;
+                vrmoi.AllowModification = pendingVRMmeta.Modification == ModificationType.prohibited ? (int)BasicUssageLicense.Allow : (int)BasicUssageLicense.Disallow;
+                vrmoi.AllowRedistribution = pendingVRMmeta.Redistribution ? (int)BasicUssageLicense.Allow : (int)BasicUssageLicense.Disallow;
+                vrmoi.useCreditNotation = pendingVRMmeta.CreditNotation == CreditNotationType.unnecessary ? (int)BasicUssageLicense.Allow : (int)BasicUssageLicense.Disallow;
 
                 vrmoi.id = pendingInstance.gameObject.name;
                 vrmoi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.VRM);
@@ -806,7 +853,7 @@ namespace UserVRMSpace
                 //---return VRM Meta information to WebGL
 #if !UNITY_EDITOR && UNITY_WEBGL
             //Debug.Log("incolor="+incolor.Length);
-            if (isBackHTML) sendVRMInfo(incolor, incolor.Length, "VRM", json, pendingVRMmeta.LicenseType.ToString(), strHeight, blendShapeList);
+            if (isBackHTML) sendVRMInfo(incolor, incolor.Length, "VRM", json, "0", strHeight, blendShapeList);
 #endif
 
                 //ScriptableObject.Destroy(vrmoi);
@@ -855,16 +902,23 @@ namespace UserVRMSpace
         /// <returns></returns>
         public IEnumerator Body_AcceptLoadVRM(bool isBackHTML)
         {
-            
-            GameObject contextRoot = pendingInstance.gameObject;
+            bool save_IsLimitedArms = managa.IsLimitedArms;
+            bool save_IsLimitedLegs = managa.IsLimitedLegs;
+            bool save_IsLimitedPelvis = managa.IsLimitedPelvis;
 
+            managa.IsLimitedPelvis = false;
+            managa.IsLimitedLegs = false;
+            managa.IsLimitedArms = false;
+
+            GameObject contextRoot = pendingInstance.gameObject;
+            
             //---------------------------------------------------------------------------------------------------
             //---old UniVRM
-            VRMImporterContext context = pendingContext;
+            //VRMImporterContext context = pendingContext;
 
             contextRoot.transform.SetParent(ParentObject.transform, true);
             contextRoot.transform.position = new Vector3(0f, 0f, 0f);
-            contextRoot.transform.rotation = Quaternion.Euler(new Vector3(0f, 180f, 0f));
+            contextRoot.transform.rotation = Quaternion.Euler(new Vector3(0f, 0f, 0f));
 
             //context.EnableUpdateWhenOffscreen();
             pendingInstance.EnableUpdateWhenOffscreen();
@@ -894,22 +948,27 @@ namespace UserVRMSpace
 
                 mat_b = mat.GetBodyMesh();
                 mat_b_mesh = mat_b.GetComponent<SkinnedMeshRenderer>();
+                //GameObject mat_h = mat.GetHairMesh();
+                //if (mat_f != null) mat_f.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
+                //if (mat_b != null) mat_b.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
+                //if (mat_h != null) mat_h.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
 
-
-                //hei = mat_f_mesh.bounds.max.y;
-                hei = mat.GetMaximumHeightRenderer(meshcnt);
+                hei = mat_f_mesh.bounds.max.y;
             }
 
+
+
             //context.ShowMeshes();
-            pendingInstance.ShowMeshes();
+            //olvrm.SetContext(context);
+            //pendingInstance.ShowMeshes();
 
 
             yield return null;
 
-            contextRoot.AddComponent<Blinker>();
+            contextRoot.AddComponent<UniVRM10.VRM10Viewer.VRM10Blinker>();
             Animator conanime = contextRoot.GetComponent<Animator>();
 
-            GameObject ikworld = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
+            GameObject ikworld = managa.ikArea; 
 
             //Transform thead = conanime.GetBoneTransform(HumanBodyBones.Head);
             //Transform tfoot = conanime.GetBoneTransform(HumanBodyBones.RightFoot);
@@ -935,23 +994,27 @@ namespace UserVRMSpace
             Rigidbody rbd = contextRoot.AddComponent<Rigidbody>();
             rbd.isKinematic = true;
 
+            Vrm10Instance vinst = contextRoot.GetComponent<Vrm10Instance>();
             OperateLoadedVRM olvrm = contextRoot.AddComponent<OperateLoadedVRM>();
+            
             olvrm.SaveDefaultColliderPosition(bc.center);
-            //olvrm.SetContext(context);
-            olvrm.Title = contextRoot.GetComponent<VRMMeta>().Meta.Title;
+            olvrm.Title = pendingVRMmeta.Name; // contextRoot.GetComponent<VRMMeta>().Meta.Title;
+            //olvrm.SetVisibleAvatar(0);
 
             olvrm.SetActiveFace();
-            olvrm.InitializeBlendShapeList();
+
             olvrm.ListGravityInfo();
             olvrm.RegisterUserMaterial();
-            olvrm.ListProxyBlendShape();
+            //olvrm.ListProxyBlendShape();
 
             bool useFullBodyIK = false; // configLab.GetIntVal("use_fullbody_bipedik") == 1 ? true : false;
             bool useVVMIK = false;
 
             //---set up IK
 
-            VRMLookAtHead vlook = contextRoot.GetComponent<VRMLookAtHead>();
+            //VRMLookAtHead vlook = contextRoot.GetComponent<VRMLookAtHead>();
+            VRM10LookTarget vlook = contextRoot.GetComponent<VRM10LookTarget>();
+            vinst.LookAtTargetType = VRM10ObjectLookAt.LookAtTargetTypes.CalcYawPitchToGaze;
 
             //---for VRIK
             /*
@@ -963,11 +1026,13 @@ namespace UserVRMSpace
             */
 
             GameObject ikparent;
+            BipedIK bik = null;
             //---for FullBodyBiped IK
             if (useFullBodyIK)
             {
                 ikparent = ikworld.GetComponent<OperateLoadedObj>().CreateFullBodyIKHandle(contextRoot);
-                vlook.Target = ikparent.transform.GetChild(0);
+                //vlook.Target = ikparent.transform.GetChild(0);
+                vinst.Gaze = ikparent.transform.Find("EyeViewHandle");
                 ikparent.GetComponent<UserGroundOperation>().relatedAvatar = contextRoot;
 
                 FullBodyBipedIK fullik = contextRoot.AddComponent<FullBodyBipedIK>();
@@ -977,7 +1042,7 @@ namespace UserVRMSpace
                 LookAtIK laik = contextRoot.AddComponent<LookAtIK>();
                 CCDIK cik = contextRoot.AddComponent<CCDIK>();
 
-                SetupFullBodyIK(ikparent, conanime, fullik, laik, cik, bodyBounds);
+                StartCoroutine(SetupFullBodyIK(ikparent, conanime, fullik, laik, cik, bodyBounds));
 
             }
             else
@@ -986,7 +1051,8 @@ namespace UserVRMSpace
                 {
                     //---for VVM IK
                     ikparent = ikworld.GetComponent<OperateLoadedObj>().CreateVVMIKHandle(contextRoot);
-                    vlook.Target = ikparent.transform.GetChild(0);
+                    //vlook.Target = ikparent.transform.GetChild(0);
+                	vinst.Gaze = ikparent.transform.Find("EyeViewHandle");
                     ikparent.GetComponent<UserGroundOperation>().relatedAvatar = contextRoot;
 
                     RuntimeAnimatorController ruanim = Instantiate<RuntimeAnimatorController>((RuntimeAnimatorController)Resources.Load("vvmik_anicon"));
@@ -999,10 +1065,11 @@ namespace UserVRMSpace
                 {
                     //---for Biped IK
                     ikparent = ikworld.GetComponent<OperateLoadedObj>().CreateBipedIKHandle(contextRoot);
-                    vlook.Target = ikparent.transform.GetChild(0);
+                    //vlook.Target = ikparent.transform.GetChild(0);
+                	vinst.Gaze = ikparent.transform.Find("EyeViewHandle");
                     ikparent.GetComponent<UserGroundOperation>().relatedAvatar = contextRoot;
 
-                    BipedIK bik = contextRoot.AddComponent<BipedIK>();
+                    bik = contextRoot.AddComponent<BipedIK>();
                     RootMotion.BipedReferences biref = new RootMotion.BipedReferences();
                     RootMotion.BipedReferences.AutoDetectReferences(ref biref, bik.transform, RootMotion.BipedReferences.AutoDetectParams.Default);
 
@@ -1015,13 +1082,13 @@ namespace UserVRMSpace
 
 
                     //---set null for VRM Look At Head (Not use LookAt of BipedIK)
-                    SetupBipedIK(ikparent, conanime, bik, cik, bodyBounds);
+                    StartCoroutine(SetupBipedIK(ikparent, conanime, bik, cik, bodyBounds));
                 }
                 
 
             }
             //---material
-
+            contextRoot.AddComponent<VVMMotionRecorder>();
 
             //---for hand IK
             SetupHand(contextRoot, conanime);
@@ -1029,8 +1096,7 @@ namespace UserVRMSpace
             //olvrm.SetHandFingerMode("2");
 
 
-
-            contextRoot.transform.rotation = Quaternion.Euler(new Vector3(0f, 0f, 0f));
+            //contextRoot.transform.rotation = Quaternion.Euler(new Vector3(0f, 180f, 0f));
             OperateActiveVRM ovrm = ikworld.GetComponent<OperateActiveVRM>();
             //ovrm.ActivateAvatar(contextRoot.name,false);
             ovrm.EnableTransactionHandle(null, ikparent);
@@ -1047,9 +1113,20 @@ namespace UserVRMSpace
             NativeAnimationAvatar tmpnav = new NativeAnimationAvatar();
             tmpnav.avatar = contextRoot;
             tmpnav.avatarId = contextRoot.name;
-            tmpnav.avatarTitle = pendingVRMmeta.Title;
+            tmpnav.avatarTitle = pendingVRMmeta.Name;
             tmpnav.ikparent = ikparent;
-            openingNative.cast = tmpnav;           
+            openingNative.cast = tmpnav;
+          
+            StartCoroutine(olvrm.SetupAdditionalExpression());
+            olvrm.InitializeBlendShapeList();
+
+            yield return null;
+
+            if (bik != null)
+            {
+                bik.solvers.leftHand.bendGoal.Translate(new Vector3(0, 0, 0.1f));
+                bik.solvers.rightHand.bendGoal.Translate(new Vector3(0, 0, 0.1f));
+            }
 
             bool isOverwrite = false; // n - new, o - overwrite
             //mana.FirstAddAvatar(context.Root.name, context.Root, ikparent, "VRM", AF_TARGETTYPE.VRM, calcBodyInfo);
@@ -1063,9 +1140,28 @@ namespace UserVRMSpace
 #endif
                 lastLoadedAvatar = nav;
             }
+            pendingInstance.ShowMeshes();
 
-            pendingContext = null;
+            //pendingContext = null;
 
+            //contextRoot.AddComponent<BVHRecorder>();
+            mat.GenerateBvhBoneInformation(conanime);
+
+            yield return null;
+            managa.IsLimitedArms = save_IsLimitedArms;
+            managa.IsLimitedLegs = save_IsLimitedLegs;
+            managa.IsLimitedPelvis = save_IsLimitedPelvis;
+            /*
+            HumanPoseHandler hph = new HumanPoseHandler(conanime.avatar, conanime.transform);
+            HumanPose hp = new HumanPose();
+            hph.GetHumanPose(ref hp);
+            for (int i = 0; i < hp.muscles.Length; i++)
+            {
+                Debug.Log(HumanTrait.MuscleName[i] + "=" + hp.muscles[i].ToString());
+            }
+            */
+
+            
 
         }
 
@@ -1332,8 +1428,12 @@ namespace UserVRMSpace
             if (cnt == 0)
             {
                 BoxCollider tmpbc;
-                if (!oth.TryGetComponent<BoxCollider>(out tmpbc))
-                {
+                SphereCollider tmpsc;
+                CapsuleCollider tmpccc;
+                if (
+                    (!oth.TryGetComponent<BoxCollider>(out tmpbc)) && (!oth.TryGetComponent<SphereCollider>(out tmpsc)) && (!oth.TryGetComponent<CapsuleCollider>(out tmpccc))
+                )
+                { //---if any collider not found, forcely add BoxCollider
                     oth.AddComponent<BoxCollider>();
                 }
                 /*
@@ -2656,7 +2756,7 @@ namespace UserVRMSpace
                 stm.Read(byt, 0, (int)stm.Length);
                 StartCoroutine(DownloadUIImage_body(byt));
                 Debug.Log(paths[i]);*/
-                OpenBGM(paths[i].Name+","+ paths[i].Name);
+                OpenBGM(paths[i].Name+"\t"+ paths[i].Name);
             }
         }
         public void OpenBGM(string url)
@@ -2669,9 +2769,9 @@ namespace UserVRMSpace
         }
         public IEnumerator LoadAudiouri(string url, string BoxName)
         {
-            string[] prm = url.Split(',');
+            string[] prm = url.Split('\t');
             string ext = System.IO.Path.GetExtension(prm[1]);
-            //Debug.Log("name=>" + prm[1] + ",  extention=>" + ext);
+            Debug.Log("name=>" + prm[1] + ",  extention=>" + ext);
             AudioType okaudiotype = AudioType.UNKNOWN;
             if (ext.ToLower().IndexOf("wav") > -1)
             {

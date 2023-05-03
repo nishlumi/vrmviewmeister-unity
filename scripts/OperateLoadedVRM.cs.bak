@@ -6,6 +6,7 @@ using UnityEngine;
 using UserHandleSpace;
 using RootMotion.FinalIK;
 using VRM;
+using UniVRM10;
 using DG.Tweening;
 
 
@@ -32,7 +33,7 @@ namespace UserHandleSpace
          *  Variables only...
          */
         //public GameObject relatedHandleParent;
-        private VRMImporterContext context;
+        //private VRMImporterContext context;
         private Bounds bodyInfoTPose;
         private List<Vector3> bodyinfoList;
         private SkinnedMeshRenderer BSFace;
@@ -47,7 +48,8 @@ namespace UserHandleSpace
         public AvatarGravityClass gravityList;
         public List<AvatarIKMappingClass> ikMappingList;
 
-        private Blinker blink;
+        private Vrm10Instance vrminstance;
+        private UniVRM10.VRM10Viewer.VRM10Blinker blink;
         public MaterialProperties userSharedProperties;
 
         private ManageAnimation manim;
@@ -73,7 +75,7 @@ namespace UserHandleSpace
 
 
             SaveDefaultTransform(true, true);
-            SetActiveFace();
+            BSMeshs = new List<SkinnedMeshRenderer>();
 
             targetType = AF_TARGETTYPE.VRM;
 
@@ -87,6 +89,7 @@ namespace UserHandleSpace
 
             LeftFingerBkup = new AvatarFingerInHand();
             RightFingerBkup = new AvatarFingerInHand();
+            vrminstance = GetComponent<Vrm10Instance>();
 
         }
         void Start() 
@@ -94,7 +97,7 @@ namespace UserHandleSpace
             
             manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
 
-            blink = GetComponent<Blinker>();
+            blink = GetComponent<UniVRM10.VRM10Viewer.VRM10Blinker>();
             /*blendShapeList.Clear();
             
             List<string> lst = ListAvatarBlendShape();
@@ -129,7 +132,11 @@ namespace UserHandleSpace
 
             }
             //}
-
+            if (vrminstance != null)
+            {
+                //vrminstance.Runtime.Process();
+                //BSMeshs.ForEach(action => actio);
+            }
 
         }
         private void LateUpdate()
@@ -174,6 +181,7 @@ namespace UserHandleSpace
                 }
             }
         }
+        /*
         public VRMImporterContext GetContext()
         {
             return context;
@@ -182,6 +190,7 @@ namespace UserHandleSpace
         {
             context = cont;
         }
+        */
         public Bounds GetTPoseBodyInfo()
         {
             return bodyInfoTPose;
@@ -357,8 +366,9 @@ namespace UserHandleSpace
         /// </summary>
         public void ListGravityInfo()
         {
-            VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
             gravityList.list.Clear();
+            /*
+            VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
             for (int i = 0; i < bones.Length; i++)
             {
                 VRMGravityInfo vgi = new VRMGravityInfo();
@@ -369,6 +379,24 @@ namespace UserHandleSpace
                 vgi.dir.y = bones[i].m_gravityDir.y;
                 vgi.dir.z = bones[i].m_gravityDir.z;
                 gravityList.list.Add(vgi);
+            }
+            */
+            //1.x
+            List<Vrm10InstanceSpringBone.Spring> springs = vrminstance.SpringBone.Springs;
+            for (int spi = 0; spi < springs.Count; spi++)
+            {
+                if (springs[spi].Joints.Count > 0)
+                {
+                    //---0.xとの互換性のため、Jointsの0番目のみ取得し、後続のJointsにもその値を反映するようにする。
+                    VRM10SpringBoneJoint bone = springs[spi].Joints[0];
+                    VRMGravityInfo vgi = new VRMGravityInfo();
+                    vgi.comment = springs[spi].Name;
+                    vgi.power = bone.m_gravityPower;
+                    vgi.dir.x = bone.m_gravityDir.x;
+                    vgi.dir.y = bone.m_gravityDir.y;
+                    vgi.dir.z = bone.m_gravityDir.z;
+                    gravityList.list.Add(vgi);
+                }
             }
         }
         public void ListGravityInfoFromOuter()
@@ -385,12 +413,12 @@ namespace UserHandleSpace
         /// </summary>
         /// <param name="param">csv-string: 0 - comment, 1 - root bone[0] name</param>
         /// <returns></returns>
-        public VRMGravityInfo GetGravityInfo(string param)
+        public AvatarGravityClass GetGravityInfo(string param)
         {
             VRMGravityInfo ret = null;
 
             string[] arr = param.Split(',');
-
+            /*
             VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
             for (int i = 0; i < bones.Length; i++)
             {
@@ -412,12 +440,36 @@ namespace UserHandleSpace
                     }
                 }
             }
+            */
+            //---1.x
+            AvatarGravityClass vgilist = new AvatarGravityClass();
+            List<Vrm10InstanceSpringBone.Spring> springs = vrminstance.SpringBone.Springs;
+            springs.ForEach(item =>
+            {
+                VRMGravityInfo vgi = new VRMGravityInfo();
+                if ((item.Name == arr[0]) && (item.Joints[0].gameObject.name == arr[1]))
+                {
+                    ret = gravityList.list.Find(match =>
+                    {
+                        if ((match.comment == arr[0]) && (match.rootBoneName == arr[1])) return true;
+                        return false;
+                    });
+                    if (ret != null)
+                    {
+                        ret.power = item.Joints[0].m_gravityPower;
+                        ret.dir.x = item.Joints[0].m_gravityDir.x;
+                        ret.dir.y = item.Joints[0].m_gravityDir.y;
+                        ret.dir.z = item.Joints[0].m_gravityDir.z;
+                        vgilist.list.Add(ret);
+                    }
+                }
+            });
 
-            return ret;
+            return vgilist;
         }
         public void GetGravityInfoFromOuter(string param)
         {
-            VRMGravityInfo ret = GetGravityInfo(param);
+            AvatarGravityClass ret = GetGravityInfo(param);
             string js = "";
             if (ret != null) js = JsonUtility.ToJson(ret);
 #if !UNITY_EDITOR && UNITY_WEBGL
@@ -438,7 +490,7 @@ namespace UserHandleSpace
             if (arr.Length > 2)
             {
                 float val = float.TryParse(arr[2], out val) ? val : 0f;
-
+                /*
                 VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
                 for (int i = 0; i < bones.Length; i++)
                 {
@@ -453,12 +505,29 @@ namespace UserHandleSpace
                         break;
                     }
                 }
+                */
+                //---1.x
+                List<Vrm10InstanceSpringBone.Spring> springs = vrminstance.SpringBone.Springs;
+                springs.ForEach(item =>
+                {
+                    string bonecomment = item.Name == null ? "" : item.Name;
+                    if ((bonecomment == arr[0]) && (item.Joints[0].gameObject.name == arr[1]))
+                    {
+                        //Debug.Log(";[" + arr[0] + "," + arr[1] + ":" + bones[i].m_comment + "," + bones[i].RootBones[0].gameObject.name + "]");
+                        item.Joints.ForEach(bone =>
+                        {
+                            bone.m_gravityPower = val;
+                        });
+                        AvatarGravityClass ags = GetGravityInfo(arr[0] + "," + arr[1]);
+                        if (ags.list.Count > 0) ags.list.ForEach(gs => gs.power = val);
+                    }
+                });
             }
             
         }
         public void SetAnimationGravityPower(string comment, string bonename, Sequence seq, float val_power, float duration)
         {
-
+            /*
             VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
             for (int i = 0; i < bones.Length; i++)
             {
@@ -468,7 +537,21 @@ namespace UserHandleSpace
                     break;
                 }
             }
-            
+            */
+            //---1.x
+            List<Vrm10InstanceSpringBone.Spring> springs = vrminstance.SpringBone.Springs;
+            springs.ForEach(item =>
+            {
+                string bonecomment = item.Name == null ? "" : item.Name;
+                if ((bonecomment == comment) && (item.Joints[0].gameObject.name == bonename))
+                {
+                    item.Joints.ForEach(bone =>
+                    {
+                        seq.Join(DOTween.To(() => bone.m_gravityPower, x => bone.m_gravityPower = x, val_power, duration));
+                    });
+                    
+                }
+            });
         }
 
         /// <summary>
@@ -485,7 +568,8 @@ namespace UserHandleSpace
                 float x = float.TryParse(arr[2], out x) ? x : 0f;
                 float y = float.TryParse(arr[3], out y) ? y : 0f;
                 float z = float.TryParse(arr[4], out z) ? z : 0f;
-
+                SetGravityDir(arr[0], arr[1], x, y, z);
+                /*
                 VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
                 for (int i = 0; i < bones.Length; i++)
                 {
@@ -505,11 +589,13 @@ namespace UserHandleSpace
                         break;
                     }
                 }
+                */
             }
 
         }
         public void SetGravityDir(string comment, string bonename, float x, float y, float z)
         {
+            /*
             VRMSpringBone[] bones = transform.GetComponentsInChildren<VRMSpringBone>();
             for (int i = 0; i < bones.Length; i++)
             {
@@ -528,6 +614,34 @@ namespace UserHandleSpace
                     
                     break;
                 }
+            }*/
+            //---1.x
+            List<Vrm10InstanceSpringBone.Spring> springs = vrminstance.SpringBone.Springs;
+            Vrm10InstanceSpringBone.Spring ret = springs.Find(item =>
+            {
+                string bonecomment = item.Name == null ? "" : item.Name;
+                if ((bonecomment == comment) && (item.Joints[0].gameObject.name == bonename))
+                {
+                    
+                    return true;
+                }
+                return false;
+            });
+            if (ret != null)
+            {
+                ret.Joints.ForEach(bone =>
+                {
+                    bone.m_gravityDir.x = x;
+                    bone.m_gravityDir.y = y;
+                    bone.m_gravityDir.z = z;
+                });
+                AvatarGravityClass ags = GetGravityInfo(comment + "," + bonename);
+                ags.list.ForEach(vgi =>
+                {
+                    vgi.dir.x = x;
+                    vgi.dir.y = y;
+                    vgi.dir.z = z;
+                });
             }
         }
 
@@ -1012,11 +1126,12 @@ namespace UserHandleSpace
         }
         public SkinnedMeshRenderer SetActiveFace()
         {
-            int cnt = transform.childCount;
+            SkinnedMeshRenderer[] skns = transform.GetComponentsInChildren<SkinnedMeshRenderer>();
+            int cnt = skns.Length;
             SkinnedMeshRenderer mesh = null;
             for (int i = 0; i < cnt; i++)
             {
-                mesh = transform.GetChild(i).GetComponent<SkinnedMeshRenderer>();
+                mesh = skns[i];
                 if (mesh != null)
                 {
                     if (mesh.sharedMesh.blendShapeCount > 0)
@@ -1094,7 +1209,7 @@ namespace UserHandleSpace
         public List<BasicStringFloatList> ListProxyBlendShape()
         {
             List<BasicStringFloatList> ret = new List<BasicStringFloatList>();
-            
+            /*
             VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
 
             IEnumerable<KeyValuePair<BlendShapeKey, float>> bsk = prox.GetValues();
@@ -1104,8 +1219,15 @@ namespace UserHandleSpace
                 KeyValuePair<BlendShapeKey, float> bs = bslist.Current;
                 BasicStringFloatList bsf = new BasicStringFloatList(PREFIX_PROXY + bs.Key.Name, bs.Value);
                 ret.Add(bsf);
-            }            
-            
+            }
+            */
+            //---1.x
+            IReadOnlyList<ExpressionKey> eklist = vrminstance.Runtime.Expression.ExpressionKeys;
+            for (int i = 0; i < eklist.Count; i++)
+            {
+                BasicStringFloatList bsf = new BasicStringFloatList(PREFIX_PROXY + eklist[i].Name, vrminstance.Runtime.Expression.GetWeight(eklist[i]));
+                ret.Add(bsf);
+            }
 
             return ret;
         }
@@ -1219,7 +1341,7 @@ namespace UserHandleSpace
         }
         public float getProxyBlendShape(string param)
         {
-            VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
+            //VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
 
             float ret = 0f;
             List<BasicStringFloatList> lst = ListProxyBlendShape();
@@ -1227,7 +1349,7 @@ namespace UserHandleSpace
             {
                 if (lst[i].text == param)
                 {
-
+                    /*
                     BlendShapeClip bsclip = prox.BlendShapeAvatar.Clips.Find(cl =>
                     {
                         if (cl.Key.Name == param.Replace(PREFIX_PROXY, ""))
@@ -1240,10 +1362,19 @@ namespace UserHandleSpace
                     if (bsclip != null)
                     {
                         ret = prox.GetValue(bsclip.Key);
+                    }*/
+                    //---1.x
+                    for (int e = 0; e < vrminstance.Runtime.Expression.ExpressionKeys.Count; e++)
+                    {
+                        if (vrminstance.Runtime.Expression.ExpressionKeys[e].Name == param.Replace(PREFIX_PROXY, ""))
+                        {
+                            ret = vrminstance.Runtime.Expression.GetWeight(vrminstance.Runtime.Expression.ExpressionKeys[i]);
+                        }
                     }
                     break;
                 }
             }
+            
 
             return ret;
         }
@@ -1254,6 +1385,7 @@ namespace UserHandleSpace
             ReceiveFloatVal(ret);
 #endif
         }
+        /*
         public BlendShapeKey getProxyBlendShapeKey(string param)
         {
             VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
@@ -1275,6 +1407,20 @@ namespace UserHandleSpace
 
             return ret;
         }
+        */
+        public ExpressionKey getVrm10ExpressionKey(string param)
+        {
+            ExpressionKey ret = new ExpressionKey(ExpressionPreset.custom,"d%d"); //null代わりのダミーキー
+
+            for (int e = 0; e < vrminstance.Runtime.Expression.ExpressionKeys.Count; e++)
+            {
+                if (vrminstance.Runtime.Expression.ExpressionKeys[e].Name == param.Replace(PREFIX_PROXY, ""))
+                {
+                    ret = vrminstance.Runtime.Expression.ExpressionKeys[e];
+                }
+            }
+            return ret;
+        }
         //------ setting blendshape ----------------------==========================
         public void changeAvatarBlendShape(string param)
         {
@@ -1293,20 +1439,23 @@ namespace UserHandleSpace
             string shapename = prm[0];
             float value = float.TryParse(prm[1], out value) ? value : 0f;
 
+            changeAvatarBlendShapeByName(shapename, value);
+
             /*int index = getAvatarBlendShapeIndex(shapename);
             if (index > -1)
             {
                 BSFace.SetBlendShapeWeight(index, value);
             }*/
             //---1.x
-            foreach (SkinnedMeshRenderer mesh in BSMeshs)
+            /*foreach (SkinnedMeshRenderer mesh in BSMeshs)
             {
                 int index = getAvatarBlendShapeIndex(mesh, shapename);
                 if (index > -1)
                 {
                     mesh.SetBlendShapeWeight(index, value);
+                    vrminstance.Runtime.Process();
                 }
-            }
+            }*/
         }
         public void changeAvatarBlendShapeByName(string shapename, float value)
         {
@@ -1322,6 +1471,8 @@ namespace UserHandleSpace
                 if (index > -1)
                 {
                     mesh.SetBlendShapeWeight(index, value);
+                    //vrminstance.Runtime.Process();
+                    
                 }
             }
         }
@@ -1332,19 +1483,24 @@ namespace UserHandleSpace
         /// <param name="param">equal separated string: [0] - key name, [1] - float value(already 0.xxf) </param>
         public void changeProxyBlendShapeByName(string param)
         {
-            VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
+            //VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
 
             string[] prm = param.Split(',');
             string shapename = prm[0];
             float value = float.TryParse(prm[1], out value) ? value : 0f;
 
-            BlendShapeKey bskey = getProxyBlendShapeKey(shapename);
+            //BlendShapeKey bskey = getProxyBlendShapeKey(shapename);
+            ExpressionKey bskey = getVrm10ExpressionKey(shapename);
             if (bskey.Name != "d%d")
             {
-                prox.AccumulateValue(bskey, value);
-                prox.Apply();
+                //prox.AccumulateValue(bskey, value);
+                //prox.Apply();
+
+                //---1.x
+                changeProxyBlendShapeByName(bskey, value);
             }
         }
+        /*
         public void changeProxyBlendShapeByName(BlendShapeKey shape, float value)
         {
             VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
@@ -1352,6 +1508,11 @@ namespace UserHandleSpace
             prox.AccumulateValue(shape, value);
             prox.Apply();
 
+        }
+        */
+        public void changeProxyBlendShapeByName(ExpressionKey shape, float value)
+        {
+            vrminstance.Runtime.Expression.SetWeight(shape, value);
         }
         //---For animation
         public Sequence AnimationBlendShape(Sequence seq, string shapename, float value, float duration)
@@ -1384,7 +1545,7 @@ namespace UserHandleSpace
         {
             return blink.enabled ? 1 : 0;
         }
-        public Blinker BlinkEye
+        public UniVRM10.VRM10Viewer.VRM10Blinker BlinkEye
         {
             get
             {
@@ -1739,8 +1900,10 @@ namespace UserHandleSpace
             BipedIK bik = gameObject.GetComponent<BipedIK>();
             if (parts == IKBoneType.EyeViewHandle)
             {
-                VRMLookAtHead vlook = gameObject.GetComponent<VRMLookAtHead>();
-                js = vlook.Target.gameObject.name;
+                //VRMLookAtHead vlook = gameObject.GetComponent<VRMLookAtHead>();
+                //js = vlook.Target.gameObject.name;
+                vrminstance.LookAtTargetType = VRM10ObjectLookAt.LookAtTargetTypes.CalcYawPitchToGaze;
+                js = vrminstance.Gaze.gameObject.name;
             }
             else if (parts == IKBoneType.LookAt)
             {
@@ -1857,8 +2020,9 @@ namespace UserHandleSpace
 
             if (parts == IKBoneType.EyeViewHandle)
             {
-                VRMLookAtHead vlook = gameObject.GetComponent<VRMLookAtHead>();
-                vlook.Target = target;
+                //VRMLookAtHead vlook = gameObject.GetComponent<VRMLookAtHead>();
+                //vlook.Target = target;
+                vrminstance.Gaze = target;
             }
             else if (parts == IKBoneType.LookAt)
             {

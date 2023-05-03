@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Networking;
-using VRM;
+using UniVRM10;
 using UserVRMSpace;
 using System.Linq;
 
@@ -83,9 +83,15 @@ namespace UserHandleSpace
         public bool IsLimitedPelvis;
         public bool IsLimitedArms;
         public bool IsLimitedLegs;
+        public bool IsLimitedChest;
+        public bool IsLimitedAim;
+        public bool IsRecordingOtherMotion;
         public bool OldIsLimitedPelvis;
         public bool OldIsLimitedArms;
         public bool OldIsLimitedLegs;
+        public bool OldIsLimitedChest;
+        public bool OldIsLimitedAim;
+        
         private int isOldLoop = 0;
         private int oldPreviewMarker;
         private int currentMarker;
@@ -100,7 +106,7 @@ namespace UserHandleSpace
         public float cfg_dist_cam2view;
         public float cfg_keymove_speed_rot;
         public float cfg_keymove_speed_trans;
-
+        public bool cfg_enable_foot_autorotate;
 
         protected NativeAnimationAvatar SingleMotionTargetRole = null;
 
@@ -131,9 +137,14 @@ namespace UserHandleSpace
             IsLimitedPelvis = true;
             IsLimitedArms = true;
             IsLimitedLegs = true;
+            IsLimitedChest = true;
+            IsLimitedAim = true;
             OldIsLimitedPelvis = true;
             OldIsLimitedArms = true;
             OldIsLimitedLegs = true;
+            OldIsLimitedChest = true;
+            OldIsLimitedAim = true;
+            IsRecordingOtherMotion = false;
             currentMarker = 1;
             seqInIndex = 1;
             currentSeq = null;
@@ -146,6 +157,7 @@ namespace UserHandleSpace
             cfg_dist_cam2view = 2.5f;
             cfg_keymove_speed_rot = 0.1f;
             cfg_keymove_speed_trans = cfg_keymove_speed_rot / 10f;
+            cfg_enable_foot_autorotate = false;
 
             ChangeFullIKType(false);
         }
@@ -275,18 +287,25 @@ namespace UserHandleSpace
         public void SetValFromOuter(string param)
         {
             string[] prm = param.Split(',');
-            configLab.SetValFromOuter(param);
+            
             if (prm[1] == "distance_camera_viewpoint")
             {
+                configLab.SetValFromOuter(param);
                 cfg_dist_cam2view = configLab.GetFloatVal("distance_camera_viewpoint", 2.5f);
             }
             else if (prm[1] == "camera_keymove_speed")
             {
+                configLab.SetValFromOuter(param);
                 cfg_keymove_speed_trans = configLab.GetFloatVal("camera_keymove_speed", 0.01f);  //cfg_keymove_speed_rot / 10;
             }
             else if (prm[1] == "camera_keyrotate_speed")
             {
+                configLab.SetValFromOuter(param);
                 cfg_keymove_speed_rot = configLab.GetFloatVal("camera_keyrotate_speed", 0.1f);
+            }
+            else if (prm[1] == "enable_foot_autorotate")
+            {
+                cfg_enable_foot_autorotate =  prm[2] == "1" ? true : false;
             }
         }
         //===========================================================================================================================
@@ -334,6 +353,18 @@ namespace UserHandleSpace
                 currentSeq = null;
             }
         }
+        public void SetRecordingOtherMotion(int flag)
+        {
+            if (flag == 1)
+            {
+                IsRecordingOtherMotion = true;
+
+            }
+            else
+            {
+                IsRecordingOtherMotion = false;
+            }
+        }
         public void SetBoneLimited(int flag)
         {
             if (flag == 1)
@@ -350,7 +381,7 @@ namespace UserHandleSpace
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="param">[0] - p = pelvis, a = arms, l = legs, [1] - 1 = true, 0 = false</param>
+        /// <param name="param">[0] - p = pelvis, a = arms, l = legs, c = chest, m = aim, [1] - 1 = true, 0 = false</param>
         public void SetLimitedBones(string param)
         {
             string[] js = param.Split(',');
@@ -365,6 +396,14 @@ namespace UserHandleSpace
             else if (js[0] == "l")
             {
                 IsLimitedLegs = js[1] == "1" ? true : false;
+            }
+            else if (js[0] == "c")
+            {
+                IsLimitedChest = js[1] == "1" ? true : false;
+            }
+            else if (js[0] == "m")
+            {
+                IsLimitedAim = js[1] == "1" ? true : false;
             }
         }
         public void SetHingeLimited(int flag)
@@ -409,16 +448,45 @@ namespace UserHandleSpace
             {
                 flag = IsLimitedLegs ? 1 : 0;
             }
+            else if (param == "c")
+            {
+                flag = IsLimitedChest ? 1 : 0;
+            }
+            else if (param == "m")
+            {
+                flag = IsLimitedAim ? 1 : 0;
+            }
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveIntVal(flag);
 #endif
+        }
+        public void Reload2DObject(string param)
+        {
+            string[] prm = param.Split(',');
+            int x = int.TryParse(prm[0], out x) ? x : 0;
+            int y = int.TryParse(prm[1], out y) ? y : 0;
+
+            currentProject.timeline.characters.ForEach(chara =>
+            {
+                if (chara.avatar.type == AF_TARGETTYPE.Text)
+                {
+                    OperateLoadedText olt = chara.avatar.avatar.GetComponent<OperateLoadedText>();
+                    olt.ReloadPosition(x, y);
+                }
+                if (chara.avatar.type == AF_TARGETTYPE.UImage)
+                {
+                    OperateLoadedUImage olt = chara.avatar.avatar.GetComponent<OperateLoadedUImage>();
+                    olt.ReloadPosition(x, y);
+                }
+            });
         }
         private string TrimBlendShapeName(string bsname)
         {
             string[] spr = bsname.Split('.');
             //is ***.***_**_**_... => [***] [***_**_**_]
             //is NOT ***_**_**_=> [***_**_**_]
-            string bs = spr[spr.Length - 1].Replace("M_F00_000_00_", "");
+            // string bs = spr[spr.Length - 1].Replace("M_F00_000_00_", "");
+            string bs = bsname.Replace("M_F00_000_00_", "");
             bs = bs.Replace("M_A00_000_00_", "");
 
             return bs;
@@ -537,6 +605,12 @@ namespace UserHandleSpace
             ReceiveStringVal(ret);
 #endif
         }
+
+        /// <summary>
+        /// Get target cast(AnimationAvatar) by avatar ID (gameObject.name)
+        /// </summary>
+        /// <param name="avatarId"></param>
+        /// <returns></returns>
         public NativeAnimationAvatar GetCastByAvatar(string avatarId)
         {
             NativeAnimationAvatar ret = currentProject.casts.Find(match =>
@@ -950,10 +1024,10 @@ namespace UserHandleSpace
             for (int i = 0; i < cnt; i++)
             {
                 GameObject child = AvatarArea.transform.GetChild(i).gameObject;
-                VRMMeta vmeta = null;
+                Vrm10Instance vmeta = null;
                 if (child.TryGetComponent(out vmeta))
                 {
-                    if (vmeta.Meta.Title == roleTitle)
+                    if (vmeta.Vrm.Meta.Name == roleTitle)
                     {
                         ret.avatar = child;
                         ret.ikparent = ret.avatar.GetComponent<OperateLoadedVRM>().relatedHandleParent;
@@ -1350,11 +1424,11 @@ namespace UserHandleSpace
             isOverWrite = false;
             if ((currentProject != null) && (currentProject.isSharing || currentProject.isReadOnly)) return (NativeAnimationAvatar)null;
 
-            VRMMeta vmeta = avatar.GetComponent<VRMMeta>();
+            Vrm10Instance vmeta = avatar.GetComponent<Vrm10Instance>();
             string rtitle = "";
             if (vmeta != null)
             {
-                rtitle = vmeta.Meta.Title != null ? vmeta.Meta.Title : "";
+                rtitle = vmeta.Vrm.Meta.Name != null ? vmeta.Vrm.Meta.Name : "";
             }
 
             bool isExists = false;
@@ -1598,8 +1672,6 @@ namespace UserHandleSpace
                     avatar.path = tmpav.path;
                     avatar.ext = tmpav.ext;
 
-
-
                     //---update bodyInfoList current avatar body info.
                     /*
                     if ((!currentProject.isSharing && !currentProject.isReadOnly) && (avatar.type == AF_TARGETTYPE.VRM))
@@ -1623,7 +1695,7 @@ namespace UserHandleSpace
 
                     //---apply height difference with absorb to this role(frame actor) (VRM only)
                     //------height: old:avatar --> new:tmpav
-                    Array.Copy(tmpav.bodyHeight, avatar.bodyHeight, tmpav.bodyHeight.Length);
+                    //Array.Copy(tmpav.bodyHeight, avatar.bodyHeight, tmpav.bodyHeight.Length);
                     NativeAnimationFrameActor naf = GetFrameActorFromRole(avatar.roleName, avatar.type);
                     CalculateAllFrameForCurrent(avatar, naf);
                     //------update also the height of frame actor (NECCESARY): this avatar height --> frame actor height ( 1:1 )
@@ -2070,6 +2142,7 @@ namespace UserHandleSpace
             {
                 NativeAnimationFrame naframe = destination.frames[i];
 
+                //---search ParseIKBone(Type) from movingData
                 for (int m = 0; m < naframe.movingData.Count; m++)
                 {
                     AnimationTargetParts movedata = naframe.movingData[m];
@@ -2080,7 +2153,29 @@ namespace UserHandleSpace
                     )
                     {
                         // change motion difference: new:nav --> old:destination 
-                        Vector3 newpos = CalculateDifferenceByHeight(nav.bodyHeight, destination.bodyHeight, movedata.position, movedata.vrmBone, 1, 1, 0);
+                        float[] curact = { nav.bodyHeight[0], nav.bodyInfoList[(int)movedata.vrmBone].y, nav.bodyInfoList[(int)movedata.vrmBone].z };
+                        float[] dstact = { destination.bodyHeight[0], destination.bodyInfoList[(int)movedata.vrmBone].y, destination.bodyInfoList[(int)movedata.vrmBone].z };
+                        if (movedata.vrmBone == ParseIKBoneType.EyeViewHandle)
+                        { //EyeViewHandle, y-axis is multiply VRM bound Y
+                            curact[1] = nav.bodyHeight[1];
+                            dstact[1] = destination.bodyHeight[1];
+                        }
+                        if ((movedata.vrmBone == ParseIKBoneType.LookAt) || (movedata.vrmBone == ParseIKBoneType.Aim))
+                        { //Aim and LookAt, z-axis is fixed base value * VRM bound Z
+                            curact[2] = 0.5f * nav.bodyHeight[2];
+                            dstact[2] = 0.5f * destination.bodyHeight[2];
+                        }
+                        else
+                        {
+                            curact[2] = 1;
+                            dstact[2] = 1;
+                        }
+                        for (int c = 0; c < curact.Length; c++) curact[c] = MathF.Round(curact[c], 6);
+                        for (int c = 0; c < dstact.Length; c++) dstact[c] = MathF.Round(dstact[c], 6);
+                        //---not by whole height, but a height of EACH PARTS !!
+                        //Vector3 newpos = CalculateDifferenceByHeight(nav.bodyHeight, destination.bodyHeight, movedata.position, movedata.vrmBone, 1, 1, 0);
+                        Vector3 newpos = CalculateDifferenceByHeight(curact, dstact, movedata.position, movedata.vrmBone, 1, 1, 1);
+
 
                         destination.frames[i].movingData[m].position = newpos;
                     }
@@ -2249,6 +2344,40 @@ namespace UserHandleSpace
             ReceiveFloatVal(ret);
 #endif
         }
+        public void GetRegisteredBonesFromOuter(string param)
+        {
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
+
+            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
+
+            List<string> retarr = new List<string>();
+            
+            curframe.translateMovingData.ForEach(m =>
+            {
+                retarr.Add(m.vrmBone.ToString());
+            });
+            int ishitprop = curframe.movingData.FindIndex(m =>
+            {
+                if ((m.animationType != AF_MOVETYPE.Translate) && (m.animationType != AF_MOVETYPE.Rotate) && (m.animationType != AF_MOVETYPE.Scale) &&
+                    (m.animationType != AF_MOVETYPE.Punch) && (m.animationType != AF_MOVETYPE.Shake)
+                )
+                {
+                    return true;
+                }
+                return false;
+            });
+            if (ishitprop > -1)
+            {
+                retarr.Add("props");
+            }
+
+            string js = string.Join(",",retarr);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(js);
+#endif
+        }
 
         /// <summary>
         /// To check wheather specified int value exist in the actor frames.
@@ -2319,32 +2448,35 @@ namespace UserHandleSpace
             {
                 Debug.Log(curframe.index);
 
+                for (int i = 0; i < curframe.translateMovingData.Count; i++)
+                {
+                    AnimationTranslateTargetParts attp = curframe.translateMovingData[i];
+                    if (attp.vrmBone == ParseIKBoneType.IKParent)
+                    {
+                        for (int j = 0; j < attp.values.Count; j++)
+                        {
+                            Vector3 v = attp.values[j];
+                            if (atro.isAbsolutePosition == 1)
+                            {
+                                v.x = atro.posx;
+                                v.y = atro.posy;
+                                v.z = atro.posz;
+                            }
+                            else
+                            {
+                                v.x += atro.posx;
+                                v.y += atro.posy;
+                                v.z += atro.posz;
+                            }
+                            attp.values[j] = v;
+                        }
+                    }
+                }
                 foreach (AnimationTargetParts atp in curframe.movingData)
                 {
                     if (atp.vrmBone == ParseIKBoneType.IKParent)
                     {
-                        if (atp.animationType == AF_MOVETYPE.Translate)
-                        {
-                            //Debug.Log("atp_translate.position before=>" + atp.position.x.ToString() + "," + atp.position.y.ToString() + "," + atp.position.z.ToString());
-
-                            if (atro.isAbsolutePosition == 1)
-                            {
-                                atp.position.x = atro.posx;
-                                atp.position.y = atro.posy;
-                                atp.position.z = atro.posz;
-                            }
-                            else
-                            {
-                                atp.position.x += atro.posx;
-                                atp.position.y += atro.posy;
-                                atp.position.z += atro.posz;
-                            }
-                            //Debug.Log("atp_translate.position after=>" + atp.position.x.ToString() + "," + atp.position.y.ToString() + "," + atp.position.z.ToString());
-
-
-                            //curframe.SetMovingData(AF_MOVETYPE.Translate, ParseIKBoneType.IKParent, atp_translate);
-                        }
-                        else if (atp.animationType == AF_MOVETYPE.Rotate)
+                        if (atp.animationType == AF_MOVETYPE.Rotate)
                         {
                             if (atro.isAbsoluteRotation == 1)
                             {
@@ -2380,19 +2512,19 @@ namespace UserHandleSpace
         }
 
 
-        //===========================================================================================================================
+        //=================================================================================================================================================================
         //  Play functions
-        //===========================================================================================================================
+        //=================================================================================================================================================================
 
         /// <summary>
         /// Parse body of Animation Process. (apply ease at end)
         /// </summary>
-        /// <param name="animateFlow"></param>
+        /// <param name="keyFrameSeq"></param>
         /// <param name="targetObject"></param>
         /// <param name="frame"></param>
         /// <param name="aro"></param>
-        /// <returns></returns>
-        private Sequence ProcessBody_forFrame(Sequence animateFlow, NativeAnimationFrameActor targetObject, NativeAnimationFrame frame, AnimationParsingOptions aro)
+        /// <returns>One key-frame's sequence</returns>
+        private Sequence ProcessBody_forFrame(Sequence keyFrameSeq, NativeAnimationFrameActor targetObject, NativeAnimationFrame frame, AnimationParsingOptions aro)
         {
             bool IsExecTargetCheck = ((targetObject.avatar.avatar != null) && (targetObject.avatar.ikparent != null));
             if ((targetObject.targetType == AF_TARGETTYPE.Text) || (targetObject.targetType == AF_TARGETTYPE.UImage))
@@ -2409,70 +2541,81 @@ namespace UserHandleSpace
                     }
                     return false;
                 });*/
-                animateFlow.SetEase(frame.ease);
+                keyFrameSeq.SetEase(frame.ease);
 
+                
                 //---moving data loop for 1 avatar
                 //for (int i = frame.movingData.Count - 1; i >= 0; i--)
+
+                //---loop of translateMovingData
+                for (int i = 0; i < frame.translateMovingData.Count; i++)
+                {
+                    AnimationTranslateTargetParts transdata = frame.translateMovingData[i];
+                    //---execute for Translate
+                    keyFrameSeq = ParseForTranslateCommon(keyFrameSeq, frame, transdata, targetObject, null, aro);
+                }
+                
+
+                //---loop of movingData
                 for (int i = 0; i < frame.movingData.Count; i++)
                 {
                     AnimationTargetParts movedata = frame.movingData[i];
 
                     if (targetObject.targetType == AF_TARGETTYPE.SystemEffect)
                     {
-                        animateFlow = ParseForSystemEffect(animateFlow, frame, movedata, targetObject, aro);
+                        keyFrameSeq = ParseForSystemEffect(keyFrameSeq, frame, movedata, targetObject, aro);
                     }
                     else
                     {
-
-                        animateFlow = ParseForCommon(animateFlow, frame, movedata, targetObject, null, aro);
-
+                        //---execute for Rotate, Scale, Jump, Shake
+                        keyFrameSeq = ParseForCommon(keyFrameSeq, frame, movedata, targetObject, null, aro);
 
                         if (targetObject.targetType == AF_TARGETTYPE.VRM)
                         {
-                            animateFlow = ParseForVRM(animateFlow, frame, movedata, targetObject, aro);
+                            keyFrameSeq = ParseForVRM(keyFrameSeq, frame, movedata, targetObject, aro);
                         }
                         else if (targetObject.targetType == AF_TARGETTYPE.OtherObject)
                         {
-                            animateFlow = ParseForOtherObject(animateFlow, frame, movedata, targetObject, aro);
+                            keyFrameSeq = ParseForOtherObject(keyFrameSeq, frame, movedata, targetObject, aro);
                         }
                         else if (targetObject.targetType == AF_TARGETTYPE.Light)
                         {
-                            animateFlow = ParseForLight(animateFlow, frame, movedata, targetObject, aro);
+                            keyFrameSeq = ParseForLight(keyFrameSeq, frame, movedata, targetObject, aro);
                         }
                         else if (targetObject.targetType == AF_TARGETTYPE.Camera)
                         {
-                            animateFlow = ParseForCamera(animateFlow, frame, movedata, targetObject, aro);
+                            keyFrameSeq = ParseForCamera(keyFrameSeq, frame, movedata, targetObject, aro);
                         }
                         else if (targetObject.targetType == AF_TARGETTYPE.Text)
                         {
-                            animateFlow = ParseForText(animateFlow, frame, movedata, targetObject, aro);
+                            keyFrameSeq = ParseForText(keyFrameSeq, frame, movedata, targetObject, aro);
                         }
                         else if (targetObject.targetType == AF_TARGETTYPE.Image)
                         {
-                            animateFlow = ParseForImage(animateFlow, frame, movedata, targetObject, aro);
+                            keyFrameSeq = ParseForImage(keyFrameSeq, frame, movedata, targetObject, aro);
                         }
                         else if (targetObject.targetType == AF_TARGETTYPE.UImage)
                         {
-                            animateFlow = ParseForUImage(animateFlow, frame, movedata, targetObject, aro);
+                            keyFrameSeq = ParseForUImage(keyFrameSeq, frame, movedata, targetObject, aro);
                         }
                         else if (targetObject.targetType == AF_TARGETTYPE.Audio)
                         {
-                            animateFlow = ParseForAudio(animateFlow, frame, movedata, targetObject, aro);
+                            keyFrameSeq = ParseForAudio(keyFrameSeq, frame, movedata, targetObject, aro);
                         }
                         else if (targetObject.targetType == AF_TARGETTYPE.Effect)
                         {
-                            animateFlow = ParseForEffect(animateFlow, frame, movedata, targetObject, aro);
+                            keyFrameSeq = ParseForEffect(keyFrameSeq, frame, movedata, targetObject, aro);
                         }
                         else if (targetObject.targetType == AF_TARGETTYPE.Stage)
                         {
-                            animateFlow = ParseForStage(animateFlow, frame, movedata, targetObject, aro);
+                            keyFrameSeq = ParseForStage(keyFrameSeq, frame, movedata, targetObject, aro);
                         }
                     }
 
                 }
 
             }
-            return animateFlow;
+            return keyFrameSeq;
         }
         /// <summary>
         /// Calculate indicated frame duration between 2 keyframes.
@@ -2645,6 +2788,12 @@ namespace UserHandleSpace
 
                 if (frame != null)
                 {
+                    /*
+                     * frame: direct hit OR nearly hit (min / max) keyframe
+                     * TODO:
+                     *   ボーン単位で直接ヒット OR 最も近いキーフレームのボーンを先行して取得に変える ≒ MMD
+                     *   -> 
+                     */
                     aro.index = targetFrameIndex;
                     Sequence nseq = DOTween.Sequence();
                     ProcessBody_forFrame(nseq, actor, frame, aro);
@@ -2769,9 +2918,13 @@ namespace UserHandleSpace
             OldIsLimitedPelvis = IsLimitedPelvis;
             OldIsLimitedArms = IsLimitedArms;
             OldIsLimitedLegs = IsLimitedLegs;
+            OldIsLimitedChest = IsLimitedChest;
+            OldIsLimitedAim = IsLimitedAim;
             IsLimitedPelvis = false;
             IsLimitedArms = false;
             IsLimitedLegs = false;
+            IsLimitedChest = false;
+            IsLimitedAim = false;
         }
         public void FinishPreviewMarker()
         {
@@ -2812,6 +2965,8 @@ namespace UserHandleSpace
             IsLimitedPelvis = OldIsLimitedPelvis;
             IsLimitedArms = OldIsLimitedArms;
             IsLimitedLegs = OldIsLimitedLegs;
+            IsLimitedChest = OldIsLimitedChest;
+            IsLimitedAim = OldIsLimitedAim;
         }
         public void BackupPreviewMarker()
         {
@@ -2962,7 +3117,7 @@ namespace UserHandleSpace
                             if (currentPlayingOptions.isCompileAnimation == 1)
                             {
                                 OperateLoadedVRM olvrm = actor.avatar.avatar.GetComponent<OperateLoadedVRM>();
-                                olvrm.EnableIKOperationMode(false);
+                                StartCoroutine(olvrm.EnableIKOperationMode(false));
                             }
 
                         }
@@ -3006,6 +3161,14 @@ namespace UserHandleSpace
                                 OperateLoadedVRM olvrm = actor.avatar.GetComponent<OperateLoadedVRM>();
                                 olvrm.ListGravityInfo();
 
+                                if (!IsRecordingOtherMotion)
+                                {
+                                    ManageAvatarTransform mat = actor.avatar.GetComponent<ManageAvatarTransform>();
+                                    if (mat != null)
+                                    {
+                                        //mat.EndRecordBVH();
+                                    }
+                                }
                                 
                             }
                             
@@ -3018,6 +3181,11 @@ namespace UserHandleSpace
                     //StopAllTimeline();
                     IsPause = false;
                     IsPlaying = false;
+                    if (IsRecordingOtherMotion)
+                    {
+                        IsRecordingOtherMotion = false;
+                    }
+
                     /*
                     IsBoneLimited = true;
                     
@@ -3025,6 +3193,8 @@ namespace UserHandleSpace
                     IsLimitedArms = OldIsLimitedArms;
                     IsLimitedLegs = OldIsLimitedLegs;
                     */
+                    //---recover IsLimited-flags
+                    FinishPreviewMarker2();
 
                     //Debug.Log("An animation finished.");
 #if !UNITY_EDITOR && UNITY_WEBGL
@@ -3065,9 +3235,15 @@ namespace UserHandleSpace
                 foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
                 {
                     actor.frameIndexMarker = 0;
+
+                    if (actor.avatar.type == AF_TARGETTYPE.VRM)
+                    {
+                        ClearGenerateAnimationFrame(actor.avatar);
+                    }
                     
                 }
 
+                IsRecordingOtherMotion = true;
 
                 //---Build for full animation ----//
                 BuildPlayTimelineRoutine2();
@@ -3129,6 +3305,7 @@ namespace UserHandleSpace
                 IsLimitedPelvis = OldIsLimitedPelvis;
                 IsLimitedArms = OldIsLimitedArms;
                 IsLimitedLegs = OldIsLimitedLegs;
+                IsLimitedChest = OldIsLimitedChest;
             }
             else
             {
@@ -3140,6 +3317,7 @@ namespace UserHandleSpace
                     IsLimitedPelvis = OldIsLimitedPelvis;
                     IsLimitedArms = OldIsLimitedArms;
                     IsLimitedLegs = OldIsLimitedLegs;
+                    IsLimitedChest = OldIsLimitedChest;
                 }
             }
             
@@ -3150,7 +3328,7 @@ namespace UserHandleSpace
         }
 
         /// <summary>
-        /// To play routine animation of while version
+        /// To play routine animation of while version (NOT USE)
         /// </summary>
         /// <returns></returns>
         public void BuildPlayTimelineRoutine()
@@ -3167,8 +3345,12 @@ namespace UserHandleSpace
                 currentMarker++;
             }
         }
+
+        /// <summary>
+        /// To play routine animation of NEW VERSION
+        /// </summary>
         public void BuildPlayTimelineRoutine2()
-        { //---loop is character -> frame   TEST!!
+        { //---loop is character -> frame   
             foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
             {
                 //==================================================
@@ -3216,7 +3398,26 @@ namespace UserHandleSpace
                 {
                     actorSeq.OnComplete(cb_endfunc);
                 }
+
+                //---for BVH and other motion settings---
+                //   First playing, start record as other motion data.
+                if (IsRecordingOtherMotion)
+                {
+                    if (actor.targetType == AF_TARGETTYPE.VRM)
+                    {
+                        ManageAvatarTransform mat = actor.avatar.avatar.GetComponent<ManageAvatarTransform>();
+                        if (mat != null)
+                        {
+                            //mat.RegenerateBVH(currentProject);
+                            //mat.ExportForBVH();
+                            //mat.StartRecordBVH();
+                        }
+                    }
+                }
                 
+                
+
+
                 currentSeq.Join(PlayEachTimeline(actorSeq, actor));
             }
         }
@@ -3323,7 +3524,7 @@ namespace UserHandleSpace
         /// </summary>
         /// <param name="actorSeq"></param>
         /// <param name="actor"></param>
-        /// <returns></returns>
+        /// <returns>Actor's timeline sequence</returns>
         public Sequence PlayEachTimeline(Sequence actorSeq, NativeAnimationFrameActor actor)
         {
             List<float> durationList = new List<float>();
@@ -3338,6 +3539,26 @@ namespace UserHandleSpace
             TweenCallback cb_end = () =>
             {
                 //Debug.Log(actor.avatar.roleTitle + " keyframe " + actor.frameIndexMarker + "finish");
+
+                //---First playing, start record as other motion data.
+                if (IsRecordingOtherMotion)
+                {
+                    if (actor.targetType == AF_TARGETTYPE.VRM)
+                    {
+                        //---necessary transform is done.
+                        SetGeneralAnimationFrame(actor.avatar, actor.frames[actor.frameIndexMarker].index, actor.frames[actor.frameIndexMarker]);
+                        /*
+                        ManageAvatarTransform mat = actor.avatar.avatar.GetComponent<ManageAvatarTransform>();
+                        if (mat != null)
+                        {
+                            mat.ExportMotionForBVH();
+                            
+                        }
+                        */
+                    }
+                }
+                
+                
             };
 
             //---this loop is internal key-frame  in the character.
@@ -3352,14 +3573,14 @@ namespace UserHandleSpace
                             //=======================================
                             //  Tween sequence for Key-frame
                             //---non-DOTween functions of each frame
-                            Sequence seq = DOTween.Sequence();
-                            seq.SetAutoKill(false);
-                            seq.SetLink(gameObject);
+                            Sequence keyFrameSeq = DOTween.Sequence();
+                            keyFrameSeq.SetAutoKill(false);
+                            keyFrameSeq.SetLink(gameObject);
 
                             //seq.OnPlay(cb_start);
                             //seq.OnRewind(cb_start);
-                            seq.OnStepComplete(cb_end);
-                            seq.AppendCallback(cb_start);
+                            keyFrameSeq.OnStepComplete(cb_end);
+                            keyFrameSeq.AppendCallback(cb_start);
 
                             //---if compiled animation, disable IK marker.
                             actor.compiled = currentPlayingOptions.isCompileAnimation;
@@ -3376,7 +3597,8 @@ namespace UserHandleSpace
                             NativeAnimationFrame avatarFrame = actor.frames[actor.frameIndexMarker];
                             durationList.Add(avatarFrame.duration);
 
-                            actorSeq.Append(ProcessBody_forFrame(seq, actor, avatarFrame, currentPlayingOptions));
+                            //TODO: effectively...Append or Join ???
+                            actorSeq.Append(ProcessBody_forFrame(keyFrameSeq, actor, avatarFrame, currentPlayingOptions));
                         }
 
 
@@ -3442,60 +3664,99 @@ namespace UserHandleSpace
         /// <param name="param">csv string - [0] avatar id, [1] avatar type, [2] destination frame index</param>
         public void PasteFrame(string param)
         {
-            if ((clipboard.targetRoleName == "") || (clipboard.keyFrame < 0)) return;
+            string[] retarr = new string[4] {"","","","-1" };
+            string ret = "";
+            bool issuccess = true;
 
-            NativeAnimationFrameActor nactor = GetFrameActorFromRole(clipboard.targetRoleName, clipboard.targetType);
-
-            string[] prm = param.Split(',');
-            string role = prm[0];
-            int tmpi = int.TryParse(prm[1], out tmpi) ? tmpi : -1;
-            if (tmpi == -1)
+            if ((clipboard.targetRoleName == "") || (clipboard.keyFrame < 0))
             {
-                return;
+                issuccess = false;
+                retarr[0] = "null";
+                //ret = "null,,";
             }
-            AF_TARGETTYPE type = (AF_TARGETTYPE)tmpi;
-            int newindex = int.TryParse(prm[2], out newindex) ? newindex : -1;
 
-            if (role != nactor.targetRole) return;
-
-            //---remove current paste destination
-            int overwriteIndex = GetFrameIndex(nactor, newindex);
-            if (overwriteIndex > -1) nactor.frames.RemoveAt(overwriteIndex);
-
-
-            //---newly add clipboard key-index data
-            int findex = GetFrameIndex(nactor, clipboard.keyFrame);
-            if (clipboard.isCut)
+            if (issuccess)
             {
-                nactor.frames[findex].index = newindex;
+                NativeAnimationFrameActor nactor = GetFrameActorFromRole(clipboard.targetRoleName, clipboard.targetType);
 
-                SortActorFrames(nactor);
-                adjustNearMaxFrameIndex(nactor, nactor.frames[findex]);
-
-            }
-            else
-            {
-                NativeAnimationFrame nframe = nactor.frames[findex].SCopy();
-                nframe.index = newindex;
-                if ((overwriteIndex == -1) || (nactor.frames.Count <= overwriteIndex))
+                string[] prm = param.Split(',');
+                string role = prm[0];
+                
+                int tmpi = int.TryParse(prm[1], out tmpi) ? tmpi : -1;
+                if (tmpi == -1)
                 {
-                    nactor.frames.Add(nframe);
+                    issuccess = false;
+                    //ret = "null,,";
+                    retarr[0] = "null";
                 }
-                else
+
+                if (issuccess)
                 {
-                    nactor.frames.Insert(overwriteIndex, nframe);
+                    AF_TARGETTYPE type = (AF_TARGETTYPE)tmpi;
+                    int newindex = int.TryParse(prm[2], out newindex) ? newindex : -1;
+
+                    if (role != nactor.targetRole)
+                    {
+                        issuccess = false;
+                        //ret = "null,,";
+                        retarr[0] = "null";
+                    }
+
+                    if (issuccess)
+                    {
+                        //---remove current paste destination
+                        int overwriteIndex = GetFrameIndex(nactor, newindex);
+                        if (overwriteIndex > -1) nactor.frames.RemoveAt(overwriteIndex);
+
+
+                        //---newly add clipboard key-index data
+                        int findex = GetFrameIndex(nactor, clipboard.keyFrame);
+                        if (clipboard.isCut)
+                        {
+                            nactor.frames[findex].index = newindex;
+
+                            SortActorFrames(nactor);
+                            adjustNearMaxFrameIndex(nactor, nactor.frames[findex]);
+
+                            retarr[3] = nactor.frames[findex].translateMovingData[0].values.Count.ToString();
+                        }
+                        else
+                        {
+                            NativeAnimationFrame nframe = nactor.frames[findex].SCopy();
+                            nframe.index = newindex;
+                            if ((overwriteIndex == -1) || (nactor.frames.Count <= overwriteIndex))
+                            {
+                                nactor.frames.Add(nframe);
+                                retarr[3] = nactor.frames[nactor.frames.Count - 1].translateMovingData[0].values.Count.ToString();
+                            }
+                            else
+                            {
+                                nactor.frames.Insert(overwriteIndex, nframe);
+                                retarr[3] = nactor.frames[overwriteIndex].translateMovingData[0].values.Count.ToString();
+                            }
+
+
+                            SortActorFrames(nactor);
+                            adjustNearMaxFrameIndex(nactor, nframe);
+                        }
+
+                        //---To adjust all frame duration and finalIndex of the actor
+                        AdjustAllFrame(nactor, currentProject.baseDuration, false, true);
+
+
+                        //ret = param;
+                        retarr[0] = prm[0];
+                        retarr[1] = prm[1];
+                        retarr[2] = prm[2];
+                    }
+                    
                 }
                 
-
-                SortActorFrames(nactor);
-                adjustNearMaxFrameIndex(nactor, nframe);
             }
 
-            //---To adjust all frame duration and finalIndex of the actor
-            AdjustAllFrame(nactor, currentProject.baseDuration, false, true);
-
+            ret = string.Join(",", retarr);
 #if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveStringVal(param);
+            ReceiveStringVal(ret);
 #endif
 
         }

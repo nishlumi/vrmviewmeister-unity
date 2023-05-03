@@ -1170,6 +1170,7 @@ namespace UserHandleSpace
         //  Preset Face
 
 
+/*
         /// <summary>
         /// Get all preset face.
         /// </summary>
@@ -1178,15 +1179,7 @@ namespace UserHandleSpace
         {
             List<string> ret = new List<string>();
             VRMBlendShapeProxy bs = ActiveAvatar.GetComponent<VRMBlendShapeProxy>();
-            /*for (int i = 0; i < bs.BlendShapeAvatar.Clips.Count; i++)
-            {
-                string ln = (bs.BlendShapeAvatar.Clips[i].BlendShapeName);
-                if (bs.BlendShapeAvatar.Clips[i].Values.Length > 0)
-                {
-                    ln += "," + bs.BlendShapeAvatar.Clips[i].Values[0];
-                    ret.Add(ln);
-                }
-            }*/
+            
             //VRMBlendShapeProxy bs = ActiveAvatar.GetComponent<VRMBlendShapeProxy>();
             IEnumerable<KeyValuePair<BlendShapeKey, float>> bskey = bs.GetValues();
             IEnumerator<KeyValuePair<BlendShapeKey, float>> bselist = bskey.GetEnumerator();
@@ -1278,6 +1271,7 @@ namespace UserHandleSpace
             bs.AccumulateValue(key, value);
             bs.Apply();
         }
+*/
         private IEnumerator _ShowAvatar360()
         {
             /*

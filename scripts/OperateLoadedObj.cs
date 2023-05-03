@@ -34,6 +34,8 @@ namespace UserHandleSpace
 
         private ConfigSettingLabs conf;
 
+        public List<Shader> shaders = new List<Shader>();
+
         // Start is called before the first frame update
         void Start()
         {
@@ -513,6 +515,7 @@ namespace UserHandleSpace
             {
                 ovrm.ShowHandleBody(false, ikparent);
             }
+            Quaternion CmnRotation = Quaternion.Euler(new Vector3(0, 180f, 0));
 
             avatar_olvrm.relatedHandleParent = ikparent;
 
@@ -530,7 +533,7 @@ namespace UserHandleSpace
             GameObject copyhead = (GameObject)Resources.Load("IKHandleSphereHead");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject head = Instantiate(copyhead, copyhead.transform.position, Quaternion.identity, ikparent.transform);
             head.name = "Head";// + avatar.name;
-            head.transform.rotation = new Quaternion(0f, 180f, 0f, 0f);
+            head.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
             head.tag = "IKHandle";
             head.GetComponent<UserHandleOperation>().PartsName = "head";
             head.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
@@ -545,6 +548,7 @@ namespace UserHandleSpace
             neck.GetComponent<UserLookAtOperation>().SetRelatedAvatar(avatar, HumanBodyBones.Neck);
             neck.transform.position = animator.GetBoneTransform(HumanBodyBones.Neck).transform.position;*/
 
+            /*
             GameObject copyaim = (GameObject)Resources.Load("IKHandleSphereChest");
             GameObject aim = Instantiate(copyaim, copyaim.transform.position, Quaternion.identity, ikparent.transform);
             aim.name = "Aim";
@@ -552,35 +556,51 @@ namespace UserHandleSpace
             aim.GetComponent<UserHandleOperation>().PartsName = "aim";
             aim.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
             aim.transform.position = animator.GetBoneTransform(HumanBodyBones.Neck).transform.position;
-            
+            */
+            GameObject copylookat = (GameObject)Resources.Load("IKHandleSphereHead");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            GameObject lookat = Instantiate(copylookat, copylookat.transform.position, Quaternion.identity, ikparent.transform);
+            lookat.name = "LookAt";// + avatar.name;
+            lookat.transform.rotation = CmnRotation;
+            lookat.tag = "IKHandle";
+            lookat.GetComponent<UserHandleOperation>().PartsName = "lookat";
+            lookat.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
+            Vector3 lookatpos = animator.GetBoneTransform(HumanBodyBones.Head).transform.position;
+            lookat.transform.position = new Vector3(lookatpos.x, lookatpos.y, -1f);
+            lookat.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
-            GameObject copypelvis = (GameObject)Resources.Load("IKHandleSpherePelvis");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            GameObject pelvis = Instantiate(copypelvis, copypelvis.transform.position, Quaternion.identity, ikparent.transform);
-            pelvis.name = "Chest";// + avatar.name;
+
+            GameObject copychest = (GameObject)Resources.Load("IKHandleSpherePelvis");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            GameObject chest = Instantiate(copychest, copychest.transform.position, Quaternion.identity, ikparent.transform);
+            chest.name = "Chest";// + avatar.name;
             Vector3 vrot = new Vector3(0f, 180f, 0f);
-            Quaternion rot = Quaternion.Euler(vrot);
-            pelvis.transform.rotation = rot;
-            pelvis.tag = "IKHandle";
-            pelvis.GetComponent<UserHandleOperation>().PartsName = "chest";
-            pelvis.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            pelvis.transform.position = animator.GetBoneTransform(HumanBodyBones.Spine).transform.position;
-
+            Quaternion rot = CmnRotation;
+            chest.transform.rotation = rot;
+            chest.tag = "IKHandle";
+            chest.GetComponent<UserHandleOperation>().PartsName = "chest";
+            chest.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
+            chest.transform.position = animator.GetBoneTransform(HumanBodyBones.Spine).transform.position;
 
 
             //---Hand, Arm
-            GameObject copyleftshoulder = (GameObject)Resources.Load("IKHandleSphereLeft");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            GameObject copyleftshoulder = (GameObject)Resources.Load("IKHandleTriangleLeft");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject leftshoulder = Instantiate(copyleftshoulder, copyleftshoulder.transform.position, Quaternion.identity, ikparent.transform);
             leftshoulder.name = "LeftShoulder";// + avatar.name;
-            leftshoulder.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            leftshoulder.transform.rotation = CmnRotation; // Quaternion.Euler(0f, 180f, 0f);
             leftshoulder.tag = "IKHandle";
-            leftshoulder.GetComponent<UserHandleOperation>().PartsName = "leftshoulder";
-            leftshoulder.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            leftshoulder.transform.position = animator.GetBoneTransform(HumanBodyBones.LeftShoulder).transform.position;
+            UserHandleOperation uho_lshould = leftshoulder.GetComponent<UserHandleOperation>();
+            uho_lshould.PartsName = "leftshoulder";
+            uho_lshould.SetRelatedAvatar(avatar);
+            leftshoulder.transform.position = new Vector3(
+                animator.GetBoneTransform(HumanBodyBones.LeftShoulder).position.x + 0.09f,
+                animator.GetBoneTransform(HumanBodyBones.LeftShoulder).position.y,
+                animator.GetBoneTransform(HumanBodyBones.LeftShoulder).position.z
+            );
+            uho_lshould.SaveDefaultTransform();
 
             GameObject copyleftlowerarm = (GameObject)Resources.Load("IKHandleSphereLeft");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject leftlowerarm = Instantiate(copyleftlowerarm, copyleftlowerarm.transform.position, Quaternion.identity, ikparent.transform);
             leftlowerarm.name = "LeftLowerArm";// + avatar.name;
-            leftlowerarm.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            leftlowerarm.transform.rotation = CmnRotation; //Quaternion.Euler(0f, 180f, 0f);
             leftlowerarm.tag = "IKHandle";
             leftlowerarm.GetComponent<UserHandleOperation>().PartsName = "leftlowerarm";
             leftlowerarm.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
@@ -589,7 +609,7 @@ namespace UserHandleSpace
             GameObject copylefthand = (GameObject)Resources.Load("IKHandleSphereLeft");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject lefthand = Instantiate(copylefthand, copylefthand.transform.position, Quaternion.identity, ikparent.transform);
             lefthand.name = "LeftHand";// + avatar.name;
-            lefthand.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            lefthand.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
             lefthand.tag = "IKHandle";
             lefthand.GetComponent<UserHandleOperation>().PartsName = "leftarm";
             lefthand.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
@@ -597,19 +617,25 @@ namespace UserHandleSpace
 
 
 
-            GameObject copyrightshoulder = (GameObject)Resources.Load("IKHandleSphereRight");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            GameObject copyrightshoulder = (GameObject)Resources.Load("IKHandleTriangleRight");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject rightshoulder = Instantiate(copyrightshoulder, copyrightshoulder.transform.position, Quaternion.identity, ikparent.transform);
             rightshoulder.name = "RightShoulder";// + avatar.name;
-            rightshoulder.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            rightshoulder.transform.rotation = CmnRotation; //Quaternion.Euler(0f, 180f, 0f);
             rightshoulder.tag = "IKHandle";
-            rightshoulder.GetComponent<UserHandleOperation>().PartsName = "rightshoulder";
-            rightshoulder.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            rightshoulder.transform.position = animator.GetBoneTransform(HumanBodyBones.RightShoulder).transform.position;
+            UserHandleOperation uho_rsho = rightshoulder.GetComponent<UserHandleOperation>();
+            uho_rsho.PartsName = "rightshoulder";
+            uho_rsho.SetRelatedAvatar(avatar);
+            rightshoulder.transform.position = new Vector3(
+                animator.GetBoneTransform(HumanBodyBones.RightShoulder).position.x - 0.09f,
+                animator.GetBoneTransform(HumanBodyBones.RightShoulder).position.y,
+                animator.GetBoneTransform(HumanBodyBones.RightShoulder).position.z
+            );
+            uho_rsho.SaveDefaultTransform();
 
             GameObject copyrightlowerarm = (GameObject)Resources.Load("IKHandleSphereRight");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject rightlowerarm = Instantiate(copyrightlowerarm, copyrightlowerarm.transform.position, Quaternion.identity, ikparent.transform);
             rightlowerarm.name = "RightLowerArm";// + avatar.name;
-            rightlowerarm.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            rightlowerarm.transform.rotation = CmnRotation; //Quaternion.Euler(0f, 180f, 0f);
             rightlowerarm.tag = "IKHandle";
             rightlowerarm.GetComponent<UserHandleOperation>().PartsName = "rightlowerarm";
             rightlowerarm.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
@@ -618,11 +644,27 @@ namespace UserHandleSpace
             GameObject copyrighthand = (GameObject)Resources.Load("IKHandleSphereRight");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject righthand = Instantiate(copyrighthand, copyrighthand.transform.position, Quaternion.identity, ikparent.transform);
             righthand.name = "RightHand";// + avatar.name;
-            righthand.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            righthand.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
             righthand.tag = "IKHandle";
             righthand.GetComponent<UserHandleOperation>().PartsName = "rightarm";
             righthand.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
             righthand.transform.position = animator.GetBoneTransform(HumanBodyBones.RightHand).transform.position;
+
+
+            //---new: upperchest
+            GameObject copyupperchest = (GameObject)Resources.Load("IKHandleSphereChest");
+            GameObject upperchest = Instantiate(copyupperchest, copyupperchest.transform.position, Quaternion.identity, ikparent.transform);
+            upperchest.name = "UpperChest";
+            upperchest.tag = "IKHandle";
+            upperchest.GetComponent<UserHandleOperation>().PartsName = "upperchest";
+            upperchest.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
+            if (animator.GetBoneTransform(HumanBodyBones.Neck) != null) upperchest.transform.position = animator.GetBoneTransform(HumanBodyBones.Neck).transform.position;
+            else if (animator.GetBoneTransform(HumanBodyBones.UpperChest) != null) upperchest.transform.position = animator.GetBoneTransform(HumanBodyBones.UpperChest).transform.position;
+            //### LeftSholuder + RightShoulder = Upper Chest
+            leftshoulder.layer = 10;
+            rightshoulder.layer = 10;
+            leftshoulder.transform.SetParent(upperchest.transform);
+            rightshoulder.transform.SetParent(upperchest.transform);
 
 
 
@@ -630,7 +672,7 @@ namespace UserHandleSpace
             GameObject copyleftupperleg = (GameObject)Resources.Load("IKHandleSphereLeft");
             GameObject leftupperleg = Instantiate(copyleftupperleg, copyleftupperleg.transform.position, Quaternion.identity, ikparent.transform);
             leftupperleg.name = "LeftUpperLeg"; // + avatar.name;
-            leftupperleg.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            leftupperleg.transform.rotation = CmnRotation; //Quaternion.Euler(0f, 180f, 0f);
             leftupperleg.tag = "IKHandle";
             leftupperleg.GetComponent<UserHandleOperation>().PartsName = "leftupperleg";
             leftupperleg.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
@@ -639,7 +681,7 @@ namespace UserHandleSpace
             GameObject copyleftlowerleg = (GameObject)Resources.Load("IKHandleSphereLeft");
             GameObject leftlowerleg = Instantiate(copyleftlowerleg, copyleftlowerleg.transform.position, Quaternion.identity, ikparent.transform);
             leftlowerleg.name = "LeftLowerLeg"; // + avatar.name;
-            leftlowerleg.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            leftlowerleg.transform.rotation = CmnRotation; //Quaternion.Euler(0f, 180f, 0f);
             leftlowerleg.tag = "IKHandle";
             leftlowerleg.GetComponent<UserHandleOperation>().PartsName = "leftlowerleg";
             leftlowerleg.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
@@ -648,7 +690,7 @@ namespace UserHandleSpace
             GameObject copyleftleg = (GameObject)Resources.Load("IKHandleSphereLeft");
             GameObject leftleg = Instantiate(copyleftleg, copyleftleg.transform.position, Quaternion.identity, ikparent.transform);
             leftleg.name = "LeftLeg"; // + avatar.name;
-            leftleg.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            leftleg.transform.rotation = CmnRotation; //Quaternion.Euler(0f, 180f, 0f);
             leftleg.tag = "IKHandle";
             leftleg.GetComponent<UserHandleOperation>().PartsName = "leftleg";
             leftleg.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
@@ -660,7 +702,7 @@ namespace UserHandleSpace
             GameObject copyrightupperleg = (GameObject)Resources.Load("IKHandleSphereRight");
             GameObject rightupperleg = Instantiate(copyrightupperleg, copyrightupperleg.transform.position, Quaternion.identity, ikparent.transform);
             rightupperleg.name = "RightUpperLeg"; // + avatar.name;
-            rightupperleg.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            rightupperleg.transform.rotation = CmnRotation; //Quaternion.Euler(0f, 180f, 0f);
             rightupperleg.tag = "IKHandle";
             rightupperleg.GetComponent<UserHandleOperation>().PartsName = "rightupperleg";
             rightupperleg.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
@@ -669,7 +711,7 @@ namespace UserHandleSpace
             GameObject copyrightlowerleg = (GameObject)Resources.Load("IKHandleSphereRight");
             GameObject rightlowerleg = Instantiate(copyrightlowerleg, copyrightlowerleg.transform.position, Quaternion.identity, ikparent.transform);
             rightlowerleg.name = "RightLowerLeg"; // + avatar.name;
-            rightlowerleg.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            rightlowerleg.transform.rotation = CmnRotation; //Quaternion.Euler(0f, 180f, 0f);
             rightlowerleg.tag = "IKHandle";
             rightlowerleg.GetComponent<UserHandleOperation>().PartsName = "rightlowerleg";
             rightlowerleg.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
@@ -678,12 +720,29 @@ namespace UserHandleSpace
             GameObject copyrightleg = (GameObject)Resources.Load("IKHandleSphereRight");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject rightleg = Instantiate(copyrightleg, copyrightleg.transform.position, Quaternion.identity, ikparent.transform);
             rightleg.name = "RightLeg";// + avatar.name;
-            rightleg.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            rightleg.transform.rotation = CmnRotation; //Quaternion.Euler(0f, 180f, 0f);
             rightleg.tag = "IKHandle";
             rightleg.GetComponent<UserHandleOperation>().PartsName = "rightleg";
             rightleg.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
             rightleg.transform.position = animator.GetBoneTransform(HumanBodyBones.RightFoot).transform.position;
             //rightleg.transform.SetParent(ikparent.transform);
+
+            //---new: Pelvis
+            GameObject copypelvis = (GameObject)Resources.Load("IKHandleSpherePelvis");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            GameObject pelvis = Instantiate(copypelvis, copypelvis.transform.position, Quaternion.identity, ikparent.transform);
+            pelvis.name = "Pelvis";
+            pelvis.tag = "IKHandle";
+            UserHandleOperation uho_pelvis = pelvis.GetComponent<UserHandleOperation>();
+            uho_pelvis.PartsName = "pelvis";
+            uho_pelvis.SetRelatedAvatar(avatar);
+            pelvis.transform.position = animator.GetBoneTransform(HumanBodyBones.Hips).transform.position;
+            uho_pelvis.SaveDefaultTransform();
+            //### LeftUpperLeg + RightUpperLeg = Pelvis
+            leftupperleg.layer = 10;
+            rightupperleg.layer = 10;
+            leftupperleg.transform.SetParent(pelvis.transform);
+            rightupperleg.transform.SetParent(pelvis.transform);
+            pelvis.transform.rotation = CmnRotation; //Quaternion.Euler(0f, 0f, 0f);
 
             return ikparent;
 
@@ -699,7 +758,7 @@ namespace UserHandleSpace
             ikparent.name = "ikparent_" + avatar.name;
             ikparent.tag = "IKHandleParent";
             ikparent.layer = LayerMask.NameToLayer("Handle");
-            ikparent.transform.Rotate(new Vector3(0f, 0f, 0f));
+            //ikparent.transform.Rotate(new Vector3(0f, 0f, 0f));
             //ikparent.AddComponent<PositionHandle>().enabled = false;
             //ikparent.AddComponent<RotationHandle>().enabled = false;
             ikparent.transform.SetParent(ikhp.transform);
@@ -709,27 +768,46 @@ namespace UserHandleSpace
                 ovrm.ShowHandleBody(false, ikparent);
             }
 
-            Quaternion CmnRotation = Quaternion.Euler(new Vector3(0, 180f, 0));
+            Quaternion CmnRotation = Quaternion.Euler(new Vector3(0, 0f, 0));
+            Quaternion CmnRotation180 = Quaternion.Euler(new Vector3(0, 180f, 0));
+            Quaternion CmnRotation90180 = Quaternion.Euler(new Vector3(-90f, 0f, 0f));
 
             avatar_olvrm.relatedHandleParent = ikparent;
             UserGroundOperation ugo = ikparent.GetComponent<UserGroundOperation>();
             ugo.SetRelatedAvatar(avatar);
 
-            GameObject copycamera = (GameObject)Resources.Load("EyeViewHandleSphere");
+            GameObject copycamera = (GameObject)Resources.Load("EyeViewHandleSphere"); //---showable IK marker
             GameObject camera = Instantiate(copycamera, copycamera.transform.position, Quaternion.identity, ikparent.transform);
             camera.name = "EyeViewHandle"; //+ avatar.name;
             Vector3 pos = animator.GetBoneTransform(HumanBodyBones.Head).transform.position;
             pos.Set(pos.x, pos.y, pos.z - 0.05f);
             camera.tag = "IKHandle";
-            camera.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
+            //camera.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
             camera.transform.position = new Vector3(pos.x, pos.y, -0.5f);
             camera.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
-            camera.GetComponent<UserHandleOperation>().SaveDefaultTransform();
+            ///camera.GetComponent<UserHandleOperation>().SaveDefaultTransform();
+            //---For VRM1.0 (for effective transform)
+            /*
+            GameObject realcamera = Instantiate(copycamera, copycamera.transform.position, Quaternion.identity, ikparent.transform);
+            realcamera.name = "REAL:EyeViewHandle";
+            realcamera.layer = camera.layer;
+            realcamera.tag = camera.tag;
+            realcamera.transform.position = new Vector3(camera.transform.position.x * -1, camera.transform.position.y, camera.transform.position.z);
+            realcamera.transform.SetParent(ikparent.transform);
+            UserHandleOperation realcamera_uho = realcamera.AddComponent<UserHandleOperation>();
+            realcamera_uho.SetRelatedAvatar(avatar);
+            realcamera_uho.SaveDefaultTransform();
+            UserVRM10IK uvik_camera = camera.GetComponent<UserVRM10IK>();
+            uvik_camera.relatedOriginalIK = realcamera.transform;
+            uvik_camera.originalIKName = camera.name;
+            uvik_camera.asistType = UserVRM10IK.AsistType.EyeViewHandle;
+            */
+
 
             GameObject copyhead = (GameObject)Resources.Load("IKHandleSphereHead");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject head = Instantiate(copyhead, copyhead.transform.position, Quaternion.identity, ikparent.transform);
             head.name = "Head";// + avatar.name;
-            head.transform.rotation = new Quaternion(0f, 180f, 0f, 0f);
+            head.transform.rotation = Quaternion.Euler(0, 180f, 0);
             head.tag = "IKHandle";
             head.GetComponent<UserHandleOperation>().PartsName = "head";
             head.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
@@ -740,13 +818,31 @@ namespace UserHandleSpace
             GameObject copylookat = (GameObject)Resources.Load("IKHandleSphereHead");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject lookat = Instantiate(copylookat, copylookat.transform.position, Quaternion.identity, ikparent.transform);
             lookat.name = "LookAt";// + avatar.name;
-            lookat.transform.rotation = new Quaternion(0f, 180f, 0f, 0f);
+            lookat.transform.rotation = CmnRotation;
             lookat.tag = "IKHandle";
             lookat.GetComponent<UserHandleOperation>().PartsName = "lookat";
             lookat.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
             Vector3 lookatpos = animator.GetBoneTransform(HumanBodyBones.Head).transform.position;
-            lookat.transform.position = new Vector3(headpos.x, headpos.y, -1f);
+            lookat.transform.position = new Vector3(headpos.x*-1, headpos.y, -1f);
             lookat.GetComponent<UserHandleOperation>().SaveDefaultTransform();
+            //---For VRM1.0 (for effective transform)
+            /*
+            GameObject reallookat = Instantiate(copylookat, copylookat.transform.position, Quaternion.identity, ikparent.transform);
+            UserVRM10IK uvik_lookat = lookat.AddComponent<UserVRM10IK>();
+            uvik_lookat.relatedOriginalIK = reallookat.transform;
+            uvik_lookat.originalIKName = lookat.name;
+            uvik_lookat.asistType = UserVRM10IK.AsistType.LookAt;
+
+            reallookat.name = "REAL:LookAt";
+            reallookat.tag = lookat.tag;
+            reallookat.layer = lookat.layer;
+            reallookat.transform.position = new Vector3(lookat.transform.position.x * -1, lookat.transform.position.y, lookat.transform.position.z*-1);
+            reallookat.transform.SetParent(ikparent.transform);
+            UserHandleOperation reallookat_uho = reallookat.GetComponent<UserHandleOperation>();
+            reallookat_uho.SetRelatedAvatar(avatar);
+            reallookat_uho.PartsName = "lookat";
+            reallookat_uho.SaveDefaultTransform();
+            */
 
             GameObject copyaim = (GameObject)Resources.Load("IKHandleSphereChest");
             GameObject aim = Instantiate(copyaim, copyaim.transform.position, Quaternion.identity, ikparent.transform);
@@ -754,6 +850,24 @@ namespace UserHandleSpace
             aim.tag = "IKHandle";
             aim.GetComponent<UserHandleOperation>().PartsName = "aim";
             aim.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
+            ///aim.GetComponent<UserHandleOperation>().enabled = false;
+            //---For VRM1.0 (for effective transform)
+            /*
+            GameObject realaim = Instantiate(copyaim, copyaim.transform.position, Quaternion.identity, ikparent.transform);
+            realaim.name = "REAL:Aim";
+            realaim.tag = aim.tag;
+            realaim.layer = aim.layer;
+            realaim.transform.SetParent(ikparent.transform);
+            UserHandleOperation realaim_uho = realaim.GetComponent<UserHandleOperation>();
+            realaim_uho.SetRelatedAvatar(avatar);
+            realaim_uho.PartsName = "aim";
+            realaim_uho.SaveDefaultTransform();
+            UserVRM10IK uvik_aim = aim.AddComponent<UserVRM10IK>();
+            uvik_aim.relatedOriginalIK = realaim.transform;
+            uvik_aim.originalIKName = aim.name;
+            uvik_aim.asistType = UserVRM10IK.AsistType.Aim;
+            */
+
 
             //---Chest is optional======
             Transform upperchesttrans = animator.GetBoneTransform(HumanBodyBones.Chest);
@@ -764,6 +878,7 @@ namespace UserHandleSpace
             aim.transform.position = new Vector3(upperchesttrans.position.x, upperchesttrans.position.y, upperchesttrans.position.z);
             aim.transform.rotation = upperchesttrans.transform.rotation;
             aim.GetComponent<UserHandleOperation>().SaveDefaultTransform();
+            //realaim.transform.position = new Vector3(aim.transform.position.x * -1, aim.transform.position.y, aim.transform.position.z*-1);
 
             GameObject copychest = (GameObject)Resources.Load("IKHandleSphereChest");
             GameObject chest = Instantiate(copychest, copychest.transform.position, Quaternion.identity, ikparent.transform);
@@ -772,15 +887,15 @@ namespace UserHandleSpace
             chest.GetComponent<UserHandleOperation>().PartsName = "chest";
             chest.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
             chest.transform.position = upperchesttrans.transform.position;
-            chest.transform.rotation = upperchesttrans.transform.rotation;
+            chest.transform.rotation = CmnRotation;
             chest.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
             GameObject copypelvis = (GameObject)Resources.Load("IKHandleSpherePelvis");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject pelvis = Instantiate(copypelvis, copypelvis.transform.position, Quaternion.identity, ikparent.transform);
             pelvis.name = "Pelvis";// + avatar.name;
-            Vector3 vrot = new Vector3(0f, 180f, 0f);
-            Quaternion rot = Quaternion.Euler(vrot);
-            pelvis.transform.rotation = rot;
+            //Vector3 vrot = new Vector3(0f, 0f, 0f);
+            //Quaternion rot = Quaternion.Euler(vrot);
+            pelvis.transform.rotation = CmnRotation;
             pelvis.tag = "IKHandle";
             pelvis.GetComponent<UserHandleOperation>().PartsName = "pelvis";
             pelvis.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
@@ -790,19 +905,20 @@ namespace UserHandleSpace
 
 
             //---Hand, Arm
+            Vector3 animLeftShoulderPos = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm).transform.position;
             GameObject copyleftshoulder = (GameObject)Resources.Load("IKHandleTriangleLeft");
             GameObject leftshoulder = Instantiate(copyleftshoulder, copyleftshoulder.transform.position, Quaternion.identity, chest.transform);
+
             leftshoulder.name = "LeftShoulder"; 
-            //leftshoulder.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-            leftshoulder.transform.localRotation = Quaternion.Euler(0f, 4.765f, 1.158f);
+            leftshoulder.transform.rotation = CmnRotation180;
             leftshoulder.transform.localScale = new Vector3(1f, 1f, 1f);
             UserHandleOperation leftsld = leftshoulder.GetComponent<UserHandleOperation>();
             leftsld.PartsName = "leftshoulder";
             leftsld.SetRelatedAvatar(avatar);
             leftshoulder.transform.position = new Vector3(
-                animator.GetBoneTransform(HumanBodyBones.LeftShoulder).transform.position.x+0.09f,
+                (animLeftShoulderPos.x*0.5f) * -1f,
                 chest.transform.position.y,
-                animator.GetBoneTransform(HumanBodyBones.LeftShoulder).transform.position.z
+                animLeftShoulderPos.z
             );
             leftsld.SaveDefaultTransform();
             ugo.LeftShoulderIK = leftshoulder.transform;
@@ -811,19 +927,22 @@ namespace UserHandleSpace
             GameObject copyleftlowerarm = (GameObject)Resources.Load("IKHandleSphereLeft");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject leftlowerarm = Instantiate(copyleftlowerarm, copyleftlowerarm.transform.position, Quaternion.identity, ikparent.transform);
             leftlowerarm.name = "LeftLowerArm";// + avatar.name;
-            leftlowerarm.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            leftlowerarm.transform.rotation = CmnRotation;
             leftlowerarm.tag = "IKHandle";
             leftlowerarm.GetComponent<UserHandleOperation>().PartsName = "leftlowerarm";
             leftlowerarm.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
             Vector3 leftlowervec = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm).transform.position;
+            leftlowervec.x *= -1f;
             leftlowervec.z += 0.01f;
             leftlowerarm.transform.position = leftlowervec;
             leftlowerarm.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
+            //leftshoulder.GetComponent<SkinnedMeshRenderer>().sharedMaterial = leftlowerarm.GetComponent<SkinnedMeshRenderer>().sharedMaterial;
+
             GameObject copylefthand = (GameObject)Resources.Load("IKHandleSphereLeft");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject lefthand = Instantiate(copylefthand, copylefthand.transform.position, Quaternion.identity, ikparent.transform);
             lefthand.name = "LeftHand";// + avatar.name;
-            lefthand.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            lefthand.transform.rotation = CmnRotation;
             lefthand.tag = "IKHandle";
             lefthand.GetComponent<UserHandleOperation>().PartsName = "leftarm";
             lefthand.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
@@ -831,20 +950,19 @@ namespace UserHandleSpace
             lefthand.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
 
-
+            Vector3 animRightShoulderPos = animator.GetBoneTransform(HumanBodyBones.RightLowerArm).transform.position;
             GameObject copyrightshoulder = (GameObject)Resources.Load("IKHandleTriangleRight");
             GameObject rightshoulder = Instantiate(copyrightshoulder, copyrightshoulder.transform.position, Quaternion.identity, chest.transform);
             rightshoulder.name = "RightShoulder";
-            //rightshoulder.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-            rightshoulder.transform.localRotation = Quaternion.Euler(0f, -4.765f, -1.158f);
+            rightshoulder.transform.rotation = CmnRotation180;
             rightshoulder.transform.localScale = new Vector3(1f, 1f, 1f);
             UserHandleOperation rightsld = rightshoulder.GetComponent<UserHandleOperation>();
             rightsld.PartsName = "rightshoulder";
             rightsld.SetRelatedAvatar(avatar);
             rightshoulder.transform.position = new Vector3(
-                animator.GetBoneTransform(HumanBodyBones.RightShoulder).transform.position.x-0.09f,
+                (animRightShoulderPos.x*0.5f) * -1f,
                 chest.transform.position.y,
-                animator.GetBoneTransform(HumanBodyBones.RightShoulder).transform.position.z
+                animRightShoulderPos.z
             );
             rightsld.SaveDefaultTransform();
             ugo.RightShoulderIK = rightshoulder.transform;
@@ -853,14 +971,17 @@ namespace UserHandleSpace
             GameObject copyrightlowerarm = (GameObject)Resources.Load("IKHandleSphereRight");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject rightlowerarm = Instantiate(copyrightlowerarm, copyrightlowerarm.transform.position, Quaternion.identity, ikparent.transform);
             rightlowerarm.name = "RightLowerArm";// + avatar.name;
-            rightlowerarm.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            rightlowerarm.transform.rotation = CmnRotation;
             rightlowerarm.tag = "IKHandle";
             rightlowerarm.GetComponent<UserHandleOperation>().PartsName = "rightlowerarm";
             rightlowerarm.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
             Vector3 rightlowervec = animator.GetBoneTransform(HumanBodyBones.RightLowerArm).transform.position;
+            rightlowervec.x *= -1f;
             rightlowervec.z += 0.01f;
             rightlowerarm.transform.position = rightlowervec;
             rightlowerarm.GetComponent<UserHandleOperation>().SaveDefaultTransform();
+
+            //rightshoulder.GetComponent<SkinnedMeshRenderer>().sharedMaterial = rightlowerarm.GetComponent<SkinnedMeshRenderer>().sharedMaterial;
 
             GameObject copyrighthand = (GameObject)Resources.Load("IKHandleSphereRight");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject righthand = Instantiate(copyrighthand, copyrighthand.transform.position, Quaternion.identity, ikparent.transform);
@@ -882,7 +1003,9 @@ namespace UserHandleSpace
             leftlowerleg.tag = "IKHandle";
             leftlowerleg.GetComponent<UserHandleOperation>().PartsName = "leftlowerleg";
             leftlowerleg.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            leftlowerleg.transform.position = animator.GetBoneTransform(HumanBodyBones.LeftLowerLeg).transform.position;
+            Vector3 animLeftLowerLegPos = animator.GetBoneTransform(HumanBodyBones.LeftLowerLeg).transform.position;
+            animLeftLowerLegPos.x *= -1f;
+            leftlowerleg.transform.position = animLeftLowerLegPos;
             leftlowerleg.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
             GameObject copyleftleg = (GameObject)Resources.Load("IKHandleSphereLeft");
@@ -892,7 +1015,10 @@ namespace UserHandleSpace
             leftleg.tag = "IKHandle";
             leftleg.GetComponent<UserHandleOperation>().PartsName = "leftleg";
             leftleg.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            leftleg.transform.position = animator.GetBoneTransform(HumanBodyBones.LeftFoot).transform.position;
+            Vector3 animLeftFootPos = animator.GetBoneTransform(HumanBodyBones.LeftFoot).transform.position;
+            animLeftFootPos.x *= -1f;
+            leftleg.transform.position = animLeftFootPos;
+            
             leftleg.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
 
@@ -904,7 +1030,9 @@ namespace UserHandleSpace
             rightlowerleg.tag = "IKHandle";
             rightlowerleg.GetComponent<UserHandleOperation>().PartsName = "rightlowerleg";
             rightlowerleg.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            rightlowerleg.transform.position = animator.GetBoneTransform(HumanBodyBones.RightLowerLeg).transform.position;
+            Vector3 animRightLowerLegPos = animator.GetBoneTransform(HumanBodyBones.RightLowerLeg).transform.position;
+            animRightLowerLegPos.x *= -1f;
+            rightlowerleg.transform.position = animRightLowerLegPos;
             rightlowerleg.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
             GameObject copyrightleg = (GameObject)Resources.Load("IKHandleSphereRight");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -914,7 +1042,9 @@ namespace UserHandleSpace
             rightleg.tag = "IKHandle";
             rightleg.GetComponent<UserHandleOperation>().PartsName = "rightleg";
             rightleg.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            rightleg.transform.position = animator.GetBoneTransform(HumanBodyBones.RightFoot).transform.position;
+            Vector3 animRightFootPos = animator.GetBoneTransform(HumanBodyBones.RightFoot).transform.position;
+            animRightFootPos.x *= -1f;
+            rightleg.transform.position = animRightFootPos;
             rightleg.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
             return ikparent;
@@ -1027,6 +1157,7 @@ namespace UserHandleSpace
 
 
             //---Hand, Arm
+            Vector3 animLeftShoulderPos = animator.GetBoneTransform(HumanBodyBones.LeftShoulder).transform.position;
             GameObject copyleftshoulder = (GameObject)Resources.Load("IKHandleTriangleLeft");
             GameObject leftshoulder = Instantiate(copyleftshoulder, copyleftshoulder.transform.position, Quaternion.identity, upperchest.transform);
             leftshoulder.name = "LeftShoulder";
@@ -1037,9 +1168,9 @@ namespace UserHandleSpace
             leftsld.PartsName = "leftshoulder";
             leftsld.SetRelatedAvatar(avatar);
             leftshoulder.transform.position = new Vector3(
-                animator.GetBoneTransform(HumanBodyBones.LeftShoulder).transform.position.x + 0.09f,
+                (animLeftShoulderPos.x) * 1f,
                 upperchest.transform.position.y,
-                animator.GetBoneTransform(HumanBodyBones.LeftShoulder).transform.position.z
+                animLeftShoulderPos.z
             );
             leftsld.SaveDefaultTransform();
             ugo.LeftShoulderIK = leftshoulder.transform;
@@ -1052,9 +1183,10 @@ namespace UserHandleSpace
             leftlowerarm.tag = "IKHandle";
             leftlowerarm.GetComponent<UserHandleOperation>().PartsName = "leftlowerarm";
             leftlowerarm.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            Vector3 leftlowervec = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm).transform.position;
-            leftlowervec.z += 0.01f;
-            leftlowerarm.transform.position = leftlowervec;
+            Vector3 animLeftLowerArmPos = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm).transform.position;
+            animLeftLowerArmPos.z = 0.01f;
+            animLeftLowerArmPos.x *= 1f;
+            leftlowerarm.transform.position = animLeftLowerArmPos;
             leftlowerarm.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
             GameObject copylefthand = (GameObject)Resources.Load("IKHandleSphereLeft");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -1064,7 +1196,9 @@ namespace UserHandleSpace
             lefthand.tag = "IKHandle";
             lefthand.GetComponent<UserHandleOperation>().PartsName = "leftarm";
             lefthand.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            lefthand.transform.position = animator.GetBoneTransform(HumanBodyBones.LeftHand).transform.position;
+            Vector3 animLeftHandPos = animator.GetBoneTransform(HumanBodyBones.LeftHand).transform.position;
+            animLeftHandPos.x *= -1f;
+            lefthand.transform.position = animLeftHandPos;
             lefthand.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
 
@@ -1075,13 +1209,14 @@ namespace UserHandleSpace
             rightshoulder.transform.rotation = CmdZeroRotation;
             //rightshoulder.transform.localRotation = Quaternion.Euler(0f, -4.765f, -1.158f);
             rightshoulder.transform.localScale = new Vector3(1f, 1f, 1f);
+            Vector3 animRightShoulderPos = animator.GetBoneTransform(HumanBodyBones.RightShoulder).transform.position;
             UserHandleOperation rightsld = rightshoulder.GetComponent<UserHandleOperation>();
             rightsld.PartsName = "rightshoulder";
             rightsld.SetRelatedAvatar(avatar);
             rightshoulder.transform.position = new Vector3(
-                animator.GetBoneTransform(HumanBodyBones.RightShoulder).transform.position.x - 0.09f,
+                (animRightShoulderPos.x) * 1f,
                 upperchest.transform.position.y,
-                animator.GetBoneTransform(HumanBodyBones.RightShoulder).transform.position.z
+                animRightShoulderPos.z
             );
             rightsld.SaveDefaultTransform();
             ugo.RightShoulderIK = rightshoulder.transform;
@@ -1094,9 +1229,10 @@ namespace UserHandleSpace
             rightlowerarm.tag = "IKHandle";
             rightlowerarm.GetComponent<UserHandleOperation>().PartsName = "rightlowerarm";
             rightlowerarm.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            Vector3 rightlowervec = animator.GetBoneTransform(HumanBodyBones.RightLowerArm).transform.position;
-            rightlowervec.z += 0.01f;
-            rightlowerarm.transform.position = rightlowervec;
+            Vector3 animRightLowerArmPos = animator.GetBoneTransform(HumanBodyBones.RightLowerArm).transform.position;
+            animRightLowerArmPos.z = 0.01f;
+            animRightLowerArmPos.x *= 1f;
+            rightlowerarm.transform.position = animRightLowerArmPos;
             rightlowerarm.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
             GameObject copyrighthand = (GameObject)Resources.Load("IKHandleSphereRight");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -1106,7 +1242,10 @@ namespace UserHandleSpace
             righthand.tag = "IKHandle";
             righthand.GetComponent<UserHandleOperation>().PartsName = "rightarm";
             righthand.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            righthand.transform.position = animator.GetBoneTransform(HumanBodyBones.RightHand).transform.position;
+
+            Vector3 animRightHandPos = animator.GetBoneTransform(HumanBodyBones.RightHand).transform.position;
+            animRightHandPos.x *= 1f;
+            righthand.transform.position = animRightHandPos;
             righthand.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
 
@@ -1119,7 +1258,9 @@ namespace UserHandleSpace
             leftlowerleg.tag = "IKHandle";
             leftlowerleg.GetComponent<UserHandleOperation>().PartsName = "leftlowerleg";
             leftlowerleg.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            leftlowerleg.transform.position = animator.GetBoneTransform(HumanBodyBones.LeftLowerLeg).transform.position;
+            Vector3 animLeftLowerLegPos = animator.GetBoneTransform(HumanBodyBones.LeftLowerLeg).transform.position;
+            animLeftLowerLegPos.x *= -1;
+            leftlowerleg.transform.position = animLeftLowerLegPos;
             leftlowerleg.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
             GameObject copyleftleg = (GameObject)Resources.Load("IKHandleSphereLeft");
@@ -1129,7 +1270,9 @@ namespace UserHandleSpace
             leftleg.tag = "IKHandle";
             leftleg.GetComponent<UserHandleOperation>().PartsName = "leftleg";
             leftleg.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            leftleg.transform.position = animator.GetBoneTransform(HumanBodyBones.LeftFoot).transform.position;
+            Vector3 animLeftFootPos = animator.GetBoneTransform(HumanBodyBones.LeftFoot).transform.position;
+            animLeftFootPos.x *= 1f;
+            leftleg.transform.position = animLeftFootPos;
             leftleg.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
 
@@ -1141,7 +1284,9 @@ namespace UserHandleSpace
             rightlowerleg.tag = "IKHandle";
             rightlowerleg.GetComponent<UserHandleOperation>().PartsName = "rightlowerleg";
             rightlowerleg.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            rightlowerleg.transform.position = animator.GetBoneTransform(HumanBodyBones.RightLowerLeg).transform.position;
+            Vector3 animRightLowerLegPos = animator.GetBoneTransform(HumanBodyBones.RightLowerLeg).transform.position;
+            animRightLowerLegPos.x *= 1f;
+            rightlowerleg.transform.position = animRightLowerLegPos;
             rightlowerleg.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
             GameObject copyrightleg = (GameObject)Resources.Load("IKHandleSphereRight");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -1151,7 +1296,9 @@ namespace UserHandleSpace
             rightleg.tag = "IKHandle";
             rightleg.GetComponent<UserHandleOperation>().PartsName = "rightleg";
             rightleg.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            rightleg.transform.position = animator.GetBoneTransform(HumanBodyBones.RightFoot).transform.position;
+            Vector3 animRightFootPos = animator.GetBoneTransform(HumanBodyBones.RightFoot).transform.position;
+            animRightFootPos.x *= 1f;
+            rightleg.transform.position = animRightFootPos;
             rightleg.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
             return ikparent;

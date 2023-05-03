@@ -28,11 +28,9 @@ namespace UserHandleSpace
         ManageAnimation manim;
 
 
-        private void Awake()
+        override protected void Awake()
         {
-            effectPunch = new AvatarPunchEffect();
-            effectShake = new AvatarShakeEffect();
-
+            base.Awake();
 
             cameraPlayFlag = UserAnimationState.Stop;
 
@@ -41,8 +39,10 @@ namespace UserHandleSpace
             availableRenderTexture = null;
         }
         // Start is called before the first frame update
-        void Start()
+        override protected void Start()
         {
+            base.Start();
+
             manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
             CameraClearFlags flg =  Camera.main.gameObject.GetComponent<CameraOperation1>().GetClearFlag();
             SetClearFlag((int)flg);
@@ -52,6 +52,10 @@ namespace UserHandleSpace
         void Update()
         {
 
+        }
+        override protected void OnDestroy()
+        {
+            base.OnDestroy();
         }
         /// <summary>
         /// To pack all properties for HTML-UI
@@ -264,17 +268,17 @@ namespace UserHandleSpace
         /// <param name="param">1 - renderTexture, 0 - camera self</param>
         public void SetCameraRenderFlag(int param)
         {
-            if (cameraRenderFlag == param) return;
+            //if (cameraRenderFlag == param) return;
 
             cameraRenderFlag = param;
-            if (cameraRenderFlag == 1)
+            /*if (cameraRenderFlag == 1)
             {
                 ApplyRenderTexture();
             }
             else
             {
                 DestroyRenderTexture();
-            }
+            }*/
         }
 
 
@@ -298,6 +302,8 @@ namespace UserHandleSpace
         }
         public void ApplyRenderTexture()
         {
+            if (availableRenderTexture != null) return;
+
             Camera lt = transform.gameObject.GetComponent<Camera>();
             RenderTexture rt = new RenderTexture((int)RenderSize.x, (int)RenderSize.y, 32);
             rt.dimension = UnityEngine.Rendering.TextureDimension.Tex2D;
@@ -319,6 +325,17 @@ namespace UserHandleSpace
         public RenderTexture GetRenderTexture()
         {
             return availableRenderTexture;
+        }
+        public void AutoReloadRenderTexture()
+        {
+            if (cameraRenderFlag == 1)
+            {
+                ApplyRenderTexture();
+            }
+            else
+            {
+                DestroyRenderTexture();
+            }
         }
     }
 

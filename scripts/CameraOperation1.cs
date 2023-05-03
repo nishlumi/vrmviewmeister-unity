@@ -70,7 +70,7 @@ public class CameraOperation1 : MonoBehaviour
 
         //Debug.Log(RenderSettings.skybox.shader.name);
 
-        configLab = GameObject.Find("AnimateArea").GetComponent<ConfigSettingLabs>();
+        configLab = GameObject.Find("Canvas").GetComponent<ConfigSettingLabs>();
         mainCamera = Camera.main;
         //Dbg_diff = GameObject.Find("Dbg_diff").GetComponent<Text>();
         //Dbg_mouse = GameObject.Find("Dbg_mouse").GetComponent<Text>();
@@ -158,8 +158,8 @@ public class CameraOperation1 : MonoBehaviour
                 if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
                 {
                     //rotate to left
-                    mainCamera.transform.Rotate(Vector3.down * manim.cfg_keymove_speed_rot);
-                    targetObject.transform.Rotate(Vector3.down * manim.cfg_keymove_speed_rot);
+                    mainCamera.transform.Rotate(Vector3.down * manim.cfg_keymove_speed_rot, Space.World);
+                    targetObject.transform.Rotate(Vector3.down * manim.cfg_keymove_speed_rot, Space.World);
                     targetObject.transform.position = mainCamera.transform.position;
                     targetObject.transform.Translate(Vector3.forward * manim.cfg_dist_cam2view);
                 }
@@ -176,8 +176,8 @@ public class CameraOperation1 : MonoBehaviour
                 if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
                 {
                     //rotate to right
-                    mainCamera.transform.Rotate(Vector3.up * manim.cfg_keymove_speed_rot);
-                    targetObject.transform.Rotate(Vector3.up * manim.cfg_keymove_speed_rot);
+                    mainCamera.transform.Rotate(Vector3.up * manim.cfg_keymove_speed_rot, Space.World);
+                    targetObject.transform.Rotate(Vector3.up * manim.cfg_keymove_speed_rot, Space.World);
                     targetObject.transform.position = mainCamera.transform.position;
                     targetObject.transform.Translate(Vector3.forward * manim.cfg_dist_cam2view);
                 }
@@ -355,15 +355,17 @@ public class CameraOperation1 : MonoBehaviour
 
         
     }
-    void execCameraMover(Vector3 inputPosition)
+    Vector3 execCameraMover(Vector3 inputPosition)
     {
         
         var delta = lastDragPos - inputPosition;
         mainCamera.transform.Translate(delta * Time.deltaTime * 0.25f);
         targetObject.transform.Translate(delta * Time.deltaTime * 0.25f);
         lastDragPos = inputPosition;
+
+        return inputPosition;
     }
-    void execCameraRotater(Vector3 inputPosition)
+    Vector3 execCameraRotater(Vector3 inputPosition)
     {
         var x = 0f;
         var y = 0f;
@@ -385,7 +387,7 @@ public class CameraOperation1 : MonoBehaviour
 
         }
         if (diff.magnitude < Vector3.kEpsilon)
-            return;
+            return inputPosition;
         if (Mathf.Abs(x) < Mathf.Abs(y))
         {
             x = 0;
@@ -426,6 +428,8 @@ public class CameraOperation1 : MonoBehaviour
 
         //Debug.Log("transform.rotation=" + transform.rotation);
         lastMousePos = inputPosition;
+
+        return inputPosition;
     }
     public void execCameraRotation()
     {
@@ -453,6 +457,10 @@ public class CameraOperation1 : MonoBehaviour
     {
         isRotateMode = false;
     }
+
+    /// <summary>
+    /// Reset camera first position and rotation
+    /// </summary>
     public void ResetCameraFromOuter()
     {
         mainCamera.transform.position = new Vector3(0f, 1f, -2.5f);
@@ -461,10 +469,51 @@ public class CameraOperation1 : MonoBehaviour
 
         mainCamera.transform.parent.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
     }
+
+    /// <summary>
+    /// Reset z-dimension to 0
+    /// </summary>
     public void ResetCenterTarget()
     {
         targetObject.transform.position = new Vector3(0f, 1f, 0f);
         targetObject.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+    }
+    public void ResetCenterTargetFromOuter()
+    {
+        mainCamera.transform.rotation = Quaternion.Euler(new Vector3(mainCamera.transform.rotation.eulerAngles.x, mainCamera.transform.rotation.eulerAngles.y, 0));
+        ResetCenterTarget();
+    }
+    public void MoveCamera2TargetDistance (int flag)
+    {
+        if (flag  == 1)
+        { // I - key
+            float dist = Vector3.Distance(transform.position, targetObject.transform.position);
+            if (dist <= 5f)
+            {
+                targetObject.transform.Translate(Vector3.forward * 0.01f);
+                manim.cfg_dist_cam2view = dist;
+            }
+            else if (dist > 5f)
+            {
+                manim.cfg_dist_cam2view = 5f;
+                targetObject.transform.Translate(Vector3.back * 0.01f);
+            }
+        }
+        else if (flag == -1)
+        { // O - key
+            float dist = Vector3.Distance(transform.position, targetObject.transform.position);
+            //manim.cfg_dist_cam2view -= 0.1f;
+            if (0.3f <= dist)
+            {
+                targetObject.transform.Translate(Vector3.back * 0.01f);
+                manim.cfg_dist_cam2view = dist;
+            }
+            else if (dist < 0.3f)
+            {
+                manim.cfg_dist_cam2view = 0.3f;
+                targetObject.transform.Translate(Vector3.forward * 0.01f);
+            }
+        }
     }
     public void FocusCameraToVRMFromOuter(string param)
     {
@@ -563,6 +612,7 @@ public class CameraOperation1 : MonoBehaviour
     public void RotateCameraPosFromOuter(string param)
     {
         string[] prm = param.Split(',');
+        //-1 ~ 1
         float x = float.TryParse(prm[0], out x) ? x : 0f;
         float y = float.TryParse(prm[1], out y) ? y : 0f;
         float z = 0f;
@@ -573,24 +623,55 @@ public class CameraOperation1 : MonoBehaviour
         mainCamera.transform.Translate(delta * Time.deltaTime * 0.25f);
         lastDragPos = pos;
         */
-        execCameraRotater(pos);
+        //Vector3 vec = execCameraRotater(pos);
+
+        /*if (pos.y != 0)
+        { //Y is change
+            mainCamera.transform.Rotate(pos * manim.cfg_keymove_speed_rot);
+            targetObject.transform.Rotate(pos * manim.cfg_keymove_speed_rot);
+        }
+        else
+        { //X, Z is change
+            mainCamera.transform.Rotate(pos * manim.cfg_keymove_speed_rot, Space.World);
+            targetObject.transform.Rotate(pos * manim.cfg_keymove_speed_rot, Space.World);
+        }*/
+        targetObject.transform.rotation = mainCamera.transform.rotation;
+
+        mainCamera.transform.RotateAround(targetObject.transform.position, Vector3.up, pos.x);
+        mainCamera.transform.RotateAround(targetObject.transform.position, mainCamera.transform.right, -pos.y);
+
+        //targetObject.transform.position = mainCamera.transform.position;
+        //targetObject.transform.Translate(Vector3.forward * manim.cfg_dist_cam2view);
+
 
     }
     public void TranslateCameraPosFromOuter(string param)
     {
         string[] prm = param.Split(',');
+        //-1 ~ 1
         float x = float.TryParse(prm[0], out x) ? x : 0f;
         float y = float.TryParse(prm[1], out y) ? y : 0f;
         float z = float.TryParse(prm[2], out z) ? z : 0f;
         Vector3 pos = new Vector3(x, y, z);
 
-        execCameraMover(pos);
+        //Vector3 vec = execCameraMover(pos);
+
+
+        mainCamera.transform.Translate(pos * manim.cfg_keymove_speed_trans);
+        targetObject.transform.Translate(pos * manim.cfg_keymove_speed_trans);
+
+
     }
     public void ProgressCameraPosFromOuter(float zpos)
     {
         Vector3 pos = new Vector3(0, 0, zpos);
 
-        execCameraMover(pos);
+        //Vector3 vec = execCameraMover(pos);
+
+        mainCamera.transform.Translate(pos * manim.cfg_keymove_speed_trans);
+        targetObject.transform.Translate(pos * manim.cfg_keymove_speed_trans);
+
+
     }
     public void ShowTargetObject(string param)
     {
@@ -619,14 +700,14 @@ public class CameraOperation1 : MonoBehaviour
         if (param == 1)
         {
             canvas.transform.Find("GizmoRenderer").gameObject.SetActive(true);
-            GameObject.Find("ObjectInfoView").SetActive(true);
+            canvas.transform.Find("ObjectInfoView").gameObject.SetActive(true);
             //RectTransform rt = GameObject.Find("GizmoRenderer").GetComponent<RectTransform>();
             //rt.anchoredPosition = new Vector2(40, rt.anchoredPosition.y);
         }
         else
         {
             canvas.transform.Find("GizmoRenderer").gameObject.SetActive(false);
-            GameObject.Find("ObjectInfoView").SetActive(false);
+            canvas.transform.Find("ObjectInfoView").gameObject.SetActive(false);
             //RectTransform rt = GameObject.Find("GizmoRenderer").GetComponent<RectTransform>();
             //rt.anchoredPosition = new Vector2(-40, rt.anchoredPosition.y);
         }
@@ -893,7 +974,6 @@ public class CameraOperation1 : MonoBehaviour
             ret.Add(new BasicStringFloatList("_Rotation", RenderSettings.skybox.GetFloat("_Rotation")));
 
         }
-
         return ret;
     }
     public List<BasicStringColorList> ListSkyMaterialColor()

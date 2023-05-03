@@ -68,10 +68,9 @@ namespace UserHandleSpace
          *  Variables only...
          */
         // Start is called before the first frame update
-        void Awake()
+        override protected void Awake()
         {
-            effectPunch = new AvatarPunchEffect();
-            effectShake = new AvatarShakeEffect();
+            base.Awake();
 
 
             childCount = 0;
@@ -82,8 +81,10 @@ namespace UserHandleSpace
             //backupTextureFiles = new Dictionary<string, MaterialProperties>();
             targetType = AF_TARGETTYPE.OtherObject;
         }
-        private void Start()
+        override protected void Start()
         {
+            base.Start();
+
             manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
             currentAnim = gameObject.GetComponent<Animation>();
             triggerCurrentAnimOnFinished = false;
@@ -106,8 +107,9 @@ namespace UserHandleSpace
         {
             
         }
-        private void OnDestroy()
+        override protected void OnDestroy()
         {
+            base.OnDestroy();
 
             foreach (KeyValuePair<string, Material> kvp in userSharedMaterials)
             {
