@@ -153,7 +153,11 @@ namespace UserHandleSpace
 #endif
             return cameraPlayFlag;
         }
-        public void SetCameraPlaying(int flag)
+        public void SetCameraPlaying(UserAnimationState flag)
+        {
+            cameraPlayFlag = flag;
+        }
+        public void SetCameraPlayingFromOuter(int flag)
         {
             cameraPlayFlag = (UserAnimationState)flag;
         }

@@ -105,7 +105,15 @@ namespace UserHandleSpace
         // Update is called once per frame
         void Update()
         {
-            
+            if (manim.IsVRAR() && !manim.IsPlaying)
+            {
+                //If VR/AR mode, directly move OtherObject, and apply the transform to IK marker after.
+                if (relatedHandleParent != null)
+                {
+                    relatedHandleParent.transform.position = transform.position;
+                    relatedHandleParent.transform.rotation = transform.rotation;
+                }
+            }
         }
         override protected void OnDestroy()
         {

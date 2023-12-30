@@ -526,7 +526,7 @@ namespace UserHandleSpace
             pos.Set(pos.x, pos.y, pos.z - 0.05f);
             camera.tag = "IKHandle";
             camera.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
-            camera.transform.position = new Vector3(pos.x, pos.y, -0.5f);
+            camera.transform.position = new Vector3(pos.x, pos.y, -0.75f);
             camera.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
             //camera.transform.SetParent(ikparent.transform);
 
@@ -568,15 +568,15 @@ namespace UserHandleSpace
             lookat.transform.position = new Vector3(lookatpos.x, lookatpos.y, -1f);
             lookat.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
-
+            //---Chest: Aim same as BipedIK ???
             GameObject copychest = (GameObject)Resources.Load("IKHandleSpherePelvis");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject chest = Instantiate(copychest, copychest.transform.position, Quaternion.identity, ikparent.transform);
-            chest.name = "Chest";// + avatar.name;
+            chest.name = "Aim";// + avatar.name;
             Vector3 vrot = new Vector3(0f, 180f, 0f);
             Quaternion rot = CmnRotation;
             chest.transform.rotation = rot;
             chest.tag = "IKHandle";
-            chest.GetComponent<UserHandleOperation>().PartsName = "chest";
+            chest.GetComponent<UserHandleOperation>().PartsName = "aim";
             chest.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
             chest.transform.position = animator.GetBoneTransform(HumanBodyBones.Spine).transform.position;
 
@@ -651,12 +651,12 @@ namespace UserHandleSpace
             righthand.transform.position = animator.GetBoneTransform(HumanBodyBones.RightHand).transform.position;
 
 
-            //---new: upperchest
+            //---new: upperchest -> Chest same as BipedIK
             GameObject copyupperchest = (GameObject)Resources.Load("IKHandleSphereChest");
             GameObject upperchest = Instantiate(copyupperchest, copyupperchest.transform.position, Quaternion.identity, ikparent.transform);
-            upperchest.name = "UpperChest";
+            upperchest.name = "Chest"; //if instead of "UpperChest";
             upperchest.tag = "IKHandle";
-            upperchest.GetComponent<UserHandleOperation>().PartsName = "upperchest";
+            upperchest.GetComponent<UserHandleOperation>().PartsName = "chest"; //if instead of  "upperchest";
             upperchest.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
             if (animator.GetBoneTransform(HumanBodyBones.Neck) != null) upperchest.transform.position = animator.GetBoneTransform(HumanBodyBones.Neck).transform.position;
             else if (animator.GetBoneTransform(HumanBodyBones.UpperChest) != null) upperchest.transform.position = animator.GetBoneTransform(HumanBodyBones.UpperChest).transform.position;
@@ -762,6 +762,9 @@ namespace UserHandleSpace
             //ikparent.AddComponent<PositionHandle>().enabled = false;
             //ikparent.AddComponent<RotationHandle>().enabled = false;
             ikparent.transform.SetParent(ikhp.transform);
+            Rigidbody rid = ikparent.AddComponent<Rigidbody>();
+            rid.drag = 10f;
+            rid.angularDrag = 10f;
 
             if (!ovrm.isMoveMode)
             {
@@ -1069,6 +1072,9 @@ namespace UserHandleSpace
             ikparent.layer = LayerMask.NameToLayer("Handle");
             ikparent.transform.Rotate(new Vector3(0f, 0f, 0f));
             ikparent.transform.SetParent(ikhp.transform);
+            //Rigidbody rid = ikparent.AddComponent<Rigidbody>();
+            //rid.drag = 10f;
+            //rid.angularDrag = 10f;
 
             if (!ovrm.isMoveMode)
             {
@@ -1107,7 +1113,7 @@ namespace UserHandleSpace
             GameObject copylookat = (GameObject)Resources.Load("IKHandleSphereHead");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject lookat = Instantiate(copylookat, copylookat.transform.position, Quaternion.identity, ikparent.transform);
             lookat.name = "LookAt";// + avatar.name;
-            lookat.transform.rotation = CmnRotation;
+            lookat.transform.rotation = CmdZeroRotation;
             lookat.tag = "IKHandle";
             lookat.GetComponent<UserHandleOperation>().PartsName = "lookat";
             lookat.GetComponent<UserHandleOperation>().SetRelatedAvatar(avatar);
@@ -1115,7 +1121,7 @@ namespace UserHandleSpace
             lookat.transform.position = new Vector3(headpos.x, headpos.y, -1f);
             lookat.GetComponent<UserHandleOperation>().SaveDefaultTransform();
 
-            GameObject copyaim = (GameObject)Resources.Load("IKHandleSphereChest");
+            GameObject copyaim = (GameObject)Resources.Load("IKHandleObjAim");
             GameObject aim = Instantiate(copyaim, copyaim.transform.position, Quaternion.identity, ikparent.transform);
             aim.name = "Aim";
             aim.tag = "IKHandle";
@@ -1158,7 +1164,7 @@ namespace UserHandleSpace
 
             //---Hand, Arm
             Vector3 animLeftShoulderPos = animator.GetBoneTransform(HumanBodyBones.LeftShoulder).transform.position;
-            GameObject copyleftshoulder = (GameObject)Resources.Load("IKHandleTriangleLeft");
+            GameObject copyleftshoulder = (GameObject)Resources.Load("IKHandleTriangleLeft_new");
             GameObject leftshoulder = Instantiate(copyleftshoulder, copyleftshoulder.transform.position, Quaternion.identity, upperchest.transform);
             leftshoulder.name = "LeftShoulder";
             leftshoulder.transform.rotation = CmdZeroRotation;
@@ -1203,7 +1209,7 @@ namespace UserHandleSpace
 
 
 
-            GameObject copyrightshoulder = (GameObject)Resources.Load("IKHandleTriangleRight");
+            GameObject copyrightshoulder = (GameObject)Resources.Load("IKHandleTriangleRight_new");
             GameObject rightshoulder = Instantiate(copyrightshoulder, copyrightshoulder.transform.position, Quaternion.identity, upperchest.transform);
             rightshoulder.name = "RightShoulder";
             rightshoulder.transform.rotation = CmdZeroRotation;

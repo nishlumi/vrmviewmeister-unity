@@ -238,8 +238,6 @@ namespace UserVRMSpace
                     newpos.x = headtrans.position.x;
                     newpos.y = headtrans.position.y + 0.1f; // bnd.y < headtrans.position.y ? headtrans.position.y : bnd.y; // hanstrans.position.y + (hanstrans.localScale.y / 2);
                     newpos.z = headtrans.position.z;
-                    hans.transform.position = newpos;
-                    hans.transform.Rotate(new Vector3(0, 0f, 0f));
 
                     //vik.solver.headMapping.bone = headtrans;
                     /*
@@ -273,6 +271,11 @@ namespace UserVRMSpace
                     //2022.05.17 -- Leave control to UserHandleOperation (DummyIK) 
                     cik.enabled = false;
                     //hans.GetComponent<UserHandleSpace.UserHandleOperation>().enabled = false;
+                    yield return null;
+                    //necktrans.Rotate(new Vector3(-13f, 0f, 0f));
+                    hans.transform.position = newpos;
+                    hans.transform.rotation = Quaternion.Euler(new Vector3(0, -180f, 0f));
+
 
                 }
                 else if (hans.name.IndexOf("LookAt") > -1)
@@ -284,21 +287,26 @@ namespace UserVRMSpace
                     newpos.x = headtrans.position.x;
                     newpos.y = headtrans.position.y; // bnd.y < headtrans.position.y ? headtrans.position.y : bnd.y;
                     newpos.z = -0.5f;
-                    hans.transform.localPosition = newpos;
+                    hans.transform.position = newpos;
 
                     
                     laik.solver.target = hans.transform;
                     laik.solver.eyes = new IKSolverLookAt.LookAtBone[0];
                     laik.solver.IKPositionWeight = 1f;
                     laik.solver.bodyWeight = 0f;
-                    laik.solver.headWeight = 1f;
+                    laik.solver.headWeight = 0.5f;
+                    laik.solver.eyesWeight = 0f;
+                    laik.solver.clampWeight = 0f;
+                    laik.solver.clampWeightEyes = 0f;
+                    laik.solver.clampWeightHead = 0.5f;
                     laik.solver.head.transform = headtrans;
                     laik.solver.head.axis = new Vector3(0f, 0f, 1f);
 
-                    laik.enabled = false;
-                }
-                else if (hans.name.IndexOf("UpperChest") > -1)
+                    laik.enabled = true;
+                }              
+                else if (hans.name.IndexOf("Chest") > -1)
                 {
+                    Transform necktrans = animator.GetBoneTransform(HumanBodyBones.Neck);
                     Transform LeftSho = hans.transform.Find("LeftShoulder");
                     Transform RightSho = hans.transform.Find("RightShoulder");
 
@@ -316,8 +324,10 @@ namespace UserVRMSpace
                     vik.solver.rightShoulderEffector.positionWeight = 1f;
                     vik.solver.rightShoulderEffector.rotationWeight = 1f;
 
-                    LeftSho.gameObject.layer = 10;
-                    RightSho.gameObject.layer = 10;
+                    //LeftSho.gameObject.layer = 10;
+                    //RightSho.gameObject.layer = 10;
+
+                    hans.transform.position = necktrans.position;
                 }
                 /*
                 else if (hans.name.IndexOf("LeftShoulder") > -1)
@@ -328,6 +338,7 @@ namespace UserVRMSpace
                     vik.solver.leftShoulderEffector.target = hans.transform;
                     vik.solver.leftShoulderEffector.positionWeight = 1f;
                     vik.solver.leftShoulderEffector.rotationWeight = 1f;
+
                 }
                 else if (hans.name.IndexOf("RightShoulder") > -1)
                 {
@@ -346,6 +357,7 @@ namespace UserVRMSpace
 
                     vik.solver.leftArmChain.bendConstraint.bendGoal = hans.transform;
                     vik.solver.leftArmChain.bendConstraint.weight = 1f;
+                    
                 }
                 else if (hans.name.IndexOf("RightLowerArm") > -1)
                 {
@@ -377,7 +389,7 @@ namespace UserVRMSpace
                     vik.solver.rightHandEffector.rotationWeight = 1.0f;
 
                 }
-                else if (hans.name.IndexOf("Chest") > -1)
+                else if (hans.name.IndexOf("Aim") > -1)
                 {
                     Transform hips = animator.GetBoneTransform(HumanBodyBones.Chest);
                     Transform spine = animator.GetBoneTransform(HumanBodyBones.Spine);
@@ -390,6 +402,9 @@ namespace UserVRMSpace
                     vik.solver.bodyEffector.target = hans.transform;
                     vik.solver.bodyEffector.positionWeight = 1.0f;
                     vik.solver.bodyEffector.rotationWeight = 1.0f;
+
+                    UserHandleOperation uho = hans.GetComponent<UserHandleOperation>();
+                    uho.IsFixTransform = false;
                 }
                 else if (hans.name.IndexOf("Pelvis") > -1)
                 {
@@ -402,6 +417,7 @@ namespace UserVRMSpace
                     vik.solver.leftThighEffector.target = LeftULeg;
                     vik.solver.leftThighEffector.positionWeight = 1.0f;
                     vik.solver.leftThighEffector.rotationWeight = 1.0f;
+                    
 
                     pt = animator.GetBoneTransform(HumanBodyBones.RightUpperLeg);
                     //RightULeg.position = pt.position;
@@ -409,6 +425,9 @@ namespace UserVRMSpace
                     vik.solver.rightThighEffector.target = RightULeg;
                     vik.solver.rightThighEffector.positionWeight = 1.0f;
                     vik.solver.rightThighEffector.rotationWeight = 1.0f;
+
+                    LeftULeg.gameObject.layer = 10;
+                    RightULeg.gameObject.layer = 10;
                 }
                 /*
                 else if (hans.name.IndexOf("LeftUpperLeg") > -1)
@@ -436,6 +455,8 @@ namespace UserVRMSpace
 
                     vik.solver.leftLegChain.bendConstraint.bendGoal = hans.transform;
                     vik.solver.leftLegChain.bendConstraint.weight = 1.0f;
+
+                    hans.transform.position = new Vector3(pt.position.x * 1f, pt.position.y, pt.position.z - 0.1f);
                 }
                 else if (hans.name.IndexOf("LeftLeg") > -1)
                 {
@@ -484,6 +505,8 @@ namespace UserVRMSpace
 
                     vik.solver.rightLegChain.bendConstraint.bendGoal = hans.transform;
                     vik.solver.rightLegChain.bendConstraint.weight = 1.0f;
+
+                    hans.transform.position = new Vector3(pt.position.x * 1f, pt.position.y, pt.position.z - 0.1f);
                 }
                 else if (hans.name.IndexOf("RightLeg") > -1)
                 {
@@ -716,6 +739,8 @@ namespace UserVRMSpace
                     vik.solvers.leftHand.bendModifier = IKSolverLimb.BendModifier.Goal;
                     vik.solvers.leftHand.bendGoal = hans.transform;
                     vik.solvers.leftHand.bendModifierWeight = 1f;
+                    //vik.solvers.ikSolvers[0]
+                    
 
                     //rightlapos.z = chestpos.z * 2f;
                     hans.transform.position = hanspos;
@@ -739,6 +764,7 @@ namespace UserVRMSpace
                     vik.solvers.rightHand.bendModifier = IKSolverLimb.BendModifier.Goal;
                     vik.solvers.rightHand.bendGoal = hans.transform;
                     vik.solvers.rightHand.bendModifierWeight = 1f;
+                   
 
                     //leftlapos.z = chestpos.z * 2f;
                     hans.transform.position = hanspos;
@@ -885,6 +911,8 @@ namespace UserVRMSpace
             Transform[] bts = ikhandles.GetComponentsInChildren<Transform>();
 
             int cnt = bts.Length; // ikhandles.transform.childCount;
+            Vector3 baseReverse = new Vector3(0, 0, 0);
+            Vector3 secondReverse = new Vector3(-1, 0, -1);
 
             for (int i = 0; i < cnt; i++)
             {
@@ -901,16 +929,16 @@ namespace UserVRMSpace
 
 
                     vik.Neck = hans.transform;
-                    vik.NeckReversed = new Vector3(-1, 0, -1);
+                    vik.NeckReversed = secondReverse;
                 }
                 else if (hans.name.IndexOf("LookAt") > -1)
                 {
-                    Transform hanstrans = animator.GetBoneTransform(HumanBodyBones.Neck);
+                    Transform hanstrans = animator.GetBoneTransform(HumanBodyBones.Head);
                     if (hanstrans == null) hanstrans = animator.GetBoneTransform(HumanBodyBones.Head);
 
                     Vector3 newpos;
                     newpos.x = hanstrans.position.x;
-                    newpos.y = hanstrans.position.y + 0.1f; // bnd.y < hanstrans.position.y ? hanstrans.position.y : bnd.y;
+                    newpos.y = hanstrans.position.y; // bnd.y < hanstrans.position.y ? hanstrans.position.y : bnd.y;
                     newpos.z = (bnd.z < 0 ? bnd.z : bnd.z * -1f) - 0.2f;
                     hans.transform.position = newpos;
 
@@ -925,10 +953,11 @@ namespace UserVRMSpace
                 {
                     Transform hanstrans = animator.GetBoneTransform(HumanBodyBones.Chest);
                     if (hanstrans == null) hanstrans = animator.GetBoneTransform(HumanBodyBones.Spine);
-                    hans.transform.position = new Vector3(hanstrans.position.x, hanstrans.position.y + 0.1f, (bnd.z < 0 ? bnd.z : bnd.z * -1f) - 0.25f);
+                    hans.transform.position = new Vector3(hanstrans.position.x, hanstrans.position.y + 0.1f, hanstrans.position.z - 0.1f);
+                    //(bnd.z < 0 ? bnd.z : bnd.z * -1f)
 
                     vik.Spine = hans.transform;
-                    vik.SpineReversed = new Vector3(-1, 0, -1);
+                    vik.SpineReversed = secondReverse;
 
                     VvmIkConstraint vic = new VvmIkConstraint();
                     vic.BoneTran = hans.transform;
@@ -945,8 +974,19 @@ namespace UserVRMSpace
                     Transform hanstrans = animator.GetBoneTransform(HumanBodyBones.Neck);
                     if (hanstrans == null) hanstrans = animator.GetBoneTransform(HumanBodyBones.Spine);
                     hans.transform.position = new Vector3(hanstrans.position.x, hanstrans.position.y, hanstrans.position.z);
+                    Transform upperchest = animator.GetBoneTransform(HumanBodyBones.UpperChest);
 
-                    vik.UpperChest = hans.transform;
+                    if (upperchest == null)
+                    { //---model, don't has Upper Chest
+                        vik.Chest = hans.transform;
+                        vik.ChestReversed = secondReverse;
+                    }
+                    else
+                    { //---model, has Upper Chest and Chest both.
+                        vik.UpperChest = hans.transform;
+                        vik.UpperChestReversed = secondReverse;
+                    }
+                    
 
                     VvmIkConstraint vic = new VvmIkConstraint();
                     vic.BoneTran = hans.transform;
@@ -965,7 +1005,7 @@ namespace UserVRMSpace
                     hans.transform.position = hanspos;
 
                     vik.LeftShoulder = hans.transform;
-                    vik.LeftShoulderReversed = new Vector3(-1, 0, -1);
+                    vik.LeftShoulderReversed = secondReverse;
                 }
                 else if (hans.name.IndexOf("RightShoulder") > -1)
                 {
@@ -974,7 +1014,7 @@ namespace UserVRMSpace
                     hans.transform.position = hanspos;
 
                     vik.RightShoulder = hans.transform;
-                    vik.RightShoulderReversed = new Vector3(-1, 0, -1);
+                    vik.RightShoulderReversed = secondReverse;
                 }
                 else if (hans.name.IndexOf("LeftLowerArm") > -1)
                 {

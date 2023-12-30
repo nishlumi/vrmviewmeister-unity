@@ -12,6 +12,8 @@ namespace UserHandleSpace
         public TMPro.TextMeshProUGUI DistCam2ObjView;
 
         OperateActiveVRM oavrm;
+        [SerializeField]
+        ManageAnimation manim;
         // Start is called before the first frame update
         void Start()
         {
@@ -23,6 +25,8 @@ namespace UserHandleSpace
         // Update is called once per frame
         void Update()
         {
+            if (manim.IsVRAR()) return;
+
             if (oldposition != transform.position)
             {
                 if (oavrm.ActiveAvatar != null)

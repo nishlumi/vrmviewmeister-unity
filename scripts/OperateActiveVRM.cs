@@ -167,6 +167,35 @@ namespace UserHandleSpace
                 return ActiveAvatar;
             }
         }
+        public String GetActiveAvatarTitle()
+        {
+            string ret = "";
+            if (ActiveType == AF_TARGETTYPE.VRM)
+            {
+                ret = ActiveAvatar.GetComponent<OperateLoadedVRM>().Title;
+            }
+            else if (
+                (ActiveType == AF_TARGETTYPE.OtherObject) ||
+                (ActiveType == AF_TARGETTYPE.Image)
+            )
+            {
+                ret = ActiveAvatar.GetComponent<OperateLoadedOther>().Title;
+
+            }
+            else if (ActiveType == AF_TARGETTYPE.Light)
+            {
+                ret = ActiveAvatar.GetComponent<OperateLoadedLight>().Title;
+            }
+            else if (ActiveType == AF_TARGETTYPE.Camera)
+            {
+                ret = ActiveAvatar.GetComponent<OperateLoadedCamera>().Title;
+            }          
+            else if (ActiveType == AF_TARGETTYPE.Effect)
+            {
+                ret = ActiveAvatar.GetComponent<OperateLoadedEffect>().Title;
+            }
+            return ret;
+        }
         public AF_TARGETTYPE ConvertTag2Type(GameObject avatar)
         {
             AF_TARGETTYPE ret = AF_TARGETTYPE.Unknown;
@@ -750,6 +779,7 @@ namespace UserHandleSpace
         public void DisableHandle_Avatar(GameObject ikparent, AF_TARGETTYPE type = AF_TARGETTYPE.Unknown)
         {
             const string TARGETLAYER = "HiddenHandle";
+            //---DLightIK is always show IK marker.
             if (ikparent.name.ToLower() != "dlightik")
             {
                 ikparent.layer = LayerMask.NameToLayer(TARGETLAYER);
@@ -778,6 +808,7 @@ namespace UserHandleSpace
         {
             Transform[] bts = gameObject.GetComponentsInChildren<Transform>();
 
+            //---Other loaded objects disabled
             int cnt = bts.Length; // gameObject.transform.childCount;
             for (int i = 0; i < cnt; i++)
             {
@@ -795,7 +826,7 @@ namespace UserHandleSpace
             }
 
             if (!isEquip)
-            {
+            { //---current select object ( not equiped by VRM) enabled.
                 //---save now active object as old selected object
                 OldActiveAvatar = ActiveAvatar;
                 OldActiveType = ActiveType;

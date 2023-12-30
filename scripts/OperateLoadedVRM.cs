@@ -112,6 +112,9 @@ namespace UserHandleSpace
                 blendShapeList.Add(lsf);
 
             });*/
+
+            //---set  up IKMapping.
+            constructIKMappingList();
         }
 
         // Update is called once per frame
@@ -530,6 +533,11 @@ namespace UserHandleSpace
             }
             
         }
+
+        /// <summary>
+        /// Convert HumanBodyBones transform to This app IK transform
+        /// </summary>
+        /// <returns></returns>
         public IEnumerator ApplyBoneTransformToIKTransform()
         {
             const int BIPEDIK = 1;
@@ -2336,7 +2344,19 @@ namespace UserHandleSpace
         //===============================================================================================================================
         //  IK handle
         //  
-
+        /// <summary>
+        /// To construct initial IKMappingList
+        /// </summary>
+        public void constructIKMappingList ()
+        {
+            for (int ik = (int)IKBoneType.EyeViewHandle; ik < (int)IKBoneType.RightLeg; ik++)
+            {
+                AvatarIKMappingClass aik = new AvatarIKMappingClass();
+                aik.parts = (IKBoneType)ik;
+                aik.name = "self";
+                ikMappingList.Add(aik);
+            }
+        }
         /// <summary>
         /// To reset all IK target marker to Default
         /// </summary>
@@ -2499,6 +2519,22 @@ namespace UserHandleSpace
             ReceiveStringVal(js);
 #endif
         }
+
+        /// <summary>
+        /// Exchange maincamera IKTarget to between MainCamera and WebXRCameraSet
+        /// </summary>
+        /// <param name="isnormal"></param>
+        public void ChangeNormalVRAR_IKTarget()
+        {
+            for (int i = 0; i < ikMappingList.Count; i++)
+            {
+                AvatarIKMappingClass aikmc = ikMappingList[i];
+                if (aikmc.name == "maincamera")
+                {
+                    SetIKTarget(aikmc.parts, aikmc.name);
+                }
+            }
+        }
         public void SetIKTarget(IKBoneType parts, string name, bool isPlayMode = false)
         {
             BipedIK bik = gameObject.GetComponent<BipedIK>();
@@ -2514,7 +2550,15 @@ namespace UserHandleSpace
             }
             else if (name.ToLower() == "maincamera")
             {
-                target = Camera.main.transform;
+                if (manim.IsVRAR())
+                {
+                    target = manim.camxr.transform;
+                }
+                else
+                {
+                    target = Camera.main.transform;
+                }
+                
             }
             else
             {
@@ -2532,6 +2576,7 @@ namespace UserHandleSpace
                 //VRMLookAtHead vlook = gameObject.GetComponent<VRMLookAtHead>();
                 //vlook.Target = target;
                 vrminstance.Gaze = target;
+                
             }
             else if (parts == IKBoneType.LookAt)
             {
@@ -2604,24 +2649,21 @@ namespace UserHandleSpace
                     return false;
                 });
 
-                if (name.ToLower() == "self")
-                { //---if ik handle is self(original handle), remove this handle list.
-                    ikMappingList.RemoveAt(inx);
+                //---set up as special IK handle. self, specified parts apply all.
+                //   self is NOT remove from list!!
+                AvatarIKMappingClass aik = new AvatarIKMappingClass();
+                aik.parts = parts;
+                aik.name = name;
+                if (inx == -1)
+                { //---if IK parts is not register, add it.
+                    ikMappingList.Add(aik);
                 }
                 else
-                { //---if it is not self, set up as special IK handle
-                    AvatarIKMappingClass aik = new AvatarIKMappingClass();
-                    aik.parts = parts;
-                    aik.name = name;
-                    if (inx == -1)
-                    {
-                        ikMappingList.Add(aik);
-                    }
-                    else
-                    {
-                        ikMappingList[inx].name = name;
-                    }
+                {
+                    ikMappingList[inx].name = name;
                 }
+
+                
             }
             
         }

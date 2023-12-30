@@ -477,6 +477,39 @@ namespace UserHandleSpace
             ReceiveFloatVal(ret);
 #endif
         }
+        public Sequence SetTweenLight(Sequence seq, Light lt, AnimationTargetParts movedata, float duration)
+        {
+            LensFlare flare = OwnFlare;
+
+            //---Range
+            seq.Join(DOTween.To(() => lt.range, x => lt.range = x, movedata.range, duration));
+
+            //---Color
+            seq.Join(lt.DOColor(movedata.color, duration));
+
+            //---Power
+            //seq.Join(lt.DOIntensity(movedata.power, duration));
+            seq.Join(DOTween.To(() => lt.intensity, x => lt.intensity = x, movedata.power, duration));
+
+            //---Angle (SpotLight only)
+            if (lt.type == LightType.Spot)
+            {
+                seq.Join(DOTween.To(() => lt.spotAngle, x => lt.spotAngle = x, movedata.spotAngle, duration));
+            }
+
+            //---Halo
+            ////seq.Join(DOTween.To(() => RenderSettings.haloStrength, x => RenderSettings.haloStrength = x, movedata.halo, duration));
+
+
+            //---flareBrightness
+            seq.Join(DOTween.To(() => flare.brightness, x => flare.brightness = x, movedata.flareBrightness, duration));
+
+            //---flare fade
+            seq.Join(DOTween.To(() => flare.fadeSpeed, x => flare.fadeSpeed = x, movedata.flareFade, duration));
+
+
+            return seq;
+        }
     }
 
 }

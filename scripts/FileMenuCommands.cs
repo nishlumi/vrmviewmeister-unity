@@ -28,7 +28,7 @@ using TriLibCore.General;
 using TriLibCore.SFB;
 using TriLibCore.Mappers;
 using System;
-
+using System.Linq;
 
 namespace UserVRMSpace
 {
@@ -253,6 +253,7 @@ namespace UserVRMSpace
         {
             configLab = GameObject.Find("Canvas").GetComponent<ConfigSettingLabs>();
 
+            
             //VRMChara = GameObject.FindWithTag("Player");
             if (!ParentObject)
             {
@@ -1008,7 +1009,7 @@ namespace UserVRMSpace
             //olvrm.ListProxyBlendShape();
 
             bool useFullBodyIK = false; // configLab.GetIntVal("use_fullbody_bipedik") == 1 ? true : false;
-            bool useVVMIK = false;
+            bool useVVMIK = true;
 
             //---set up IK
 
@@ -1039,6 +1040,12 @@ namespace UserVRMSpace
                 RootMotion.BipedReferences biref = new RootMotion.BipedReferences();
                 RootMotion.BipedReferences.AutoDetectReferences(ref biref, fullik.transform, RootMotion.BipedReferences.AutoDetectParams.Default);
                 fullik.SetReferences(biref, null);
+                fullik.solver.SetLimbOrientations(new RootMotion.BipedLimbOrientations(
+                    new RootMotion.BipedLimbOrientations.LimbOrientation(Vector3.forward, Vector3.forward, Vector3.left),
+                    new RootMotion.BipedLimbOrientations.LimbOrientation(Vector3.forward, Vector3.forward, Vector3.left),
+                    new RootMotion.BipedLimbOrientations.LimbOrientation(Vector3.back, Vector3.forward, Vector3.left),
+                    new RootMotion.BipedLimbOrientations.LimbOrientation(Vector3.back, Vector3.forward, Vector3.right)
+                ));
                 LookAtIK laik = contextRoot.AddComponent<LookAtIK>();
                 CCDIK cik = contextRoot.AddComponent<CCDIK>();
 
@@ -1072,6 +1079,13 @@ namespace UserVRMSpace
                     bik = contextRoot.AddComponent<BipedIK>();
                     RootMotion.BipedReferences biref = new RootMotion.BipedReferences();
                     RootMotion.BipedReferences.AutoDetectReferences(ref biref, bik.transform, RootMotion.BipedReferences.AutoDetectParams.Default);
+                    RootMotion.BipedLimbOrientations biplimb_orient = new RootMotion.BipedLimbOrientations(
+                        new RootMotion.BipedLimbOrientations.LimbOrientation(Vector3.forward, Vector3.forward, Vector3.left),
+                        new RootMotion.BipedLimbOrientations.LimbOrientation(Vector3.forward, Vector3.forward, Vector3.left),
+                        new RootMotion.BipedLimbOrientations.LimbOrientation(Vector3.forward, Vector3.forward, Vector3.left),
+                        new RootMotion.BipedLimbOrientations.LimbOrientation(Vector3.forward, Vector3.forward, Vector3.left)
+                    );
+                    bik.SetToDefaults();
 
                     //bik.solvers.AssignReferences(biref);
                     bik.references = biref;
@@ -1258,6 +1272,7 @@ namespace UserVRMSpace
             //{
             //    Destroy(_loadedGameObject);
             //}
+
             assetLoaderContext.RootGameObject.SetActive(false);
             if (assetLoaderContext.Filename != null)
             {
@@ -1281,6 +1296,13 @@ namespace UserVRMSpace
             OperateLoadedOther ol = oth.AddComponent<OperateLoadedOther>();
             oth.AddComponent<ManageAvatarTransform>();
             Vector3 orirot = oth.transform.rotation.eulerAngles;
+            Rigidbody rbody = oth.AddComponent<Rigidbody>();
+            MouseOperationXR moxr = oth.AddComponent<MouseOperationXR>();
+            rbody.drag = 10;
+            rbody.angularDrag = 10;
+            rbody.useGravity = false;
+            rbody.isKinematic = false;
+
 
             ol.childCount = oth.transform.childCount;
 
@@ -1382,6 +1404,8 @@ namespace UserVRMSpace
 
             OperateLoadedOther olo = oth.GetComponent<OperateLoadedOther>();
 
+
+
             olo.RegisterUserMaterial();
 
             OtherObjectInformation ret = new OtherObjectInformation();
@@ -1425,17 +1449,20 @@ namespace UserVRMSpace
 
             int cnt = oth.transform.childCount;
 
+            BoxCollider tmpbc;
+            SphereCollider tmpsc;
+            CapsuleCollider tmpccc;
+            MeshCollider tmpmcc;
             if (cnt == 0)
             {
-                BoxCollider tmpbc;
-                SphereCollider tmpsc;
-                CapsuleCollider tmpccc;
-                if (
+                
+                /*if (
                     (!oth.TryGetComponent<BoxCollider>(out tmpbc)) && (!oth.TryGetComponent<SphereCollider>(out tmpsc)) && (!oth.TryGetComponent<CapsuleCollider>(out tmpccc))
                 )
                 { //---if any collider not found, forcely add BoxCollider
                     oth.AddComponent<BoxCollider>();
-                }
+                }*/
+
                 /*
                 MeshRenderer mr;
                 if (oth.TryGetComponent<MeshRenderer>(out mr))
@@ -1456,9 +1483,33 @@ namespace UserVRMSpace
                     }
                 }*/
             }
+            if (oth.TryGetComponent<BoxCollider>(out tmpbc))
+            {
+
+            }
+            else
+            {
+                if (oth.TryGetComponent<SphereCollider>(out tmpsc))
+                {
+
+                }
+                else if (oth.TryGetComponent<CapsuleCollider>(out tmpccc))
+                {
+
+                }
+                else if (oth.TryGetComponent<MeshCollider>(out tmpmcc))
+                {
+
+                }
+                else
+                {
+                    //---if any collider not found, forcely add BoxCollider
+                    oth.AddComponent<BoxCollider>();
+                }
+            }
 
             //---Check MeshRenderer and save information
-            
+
             MeshRenderer[] mesharr = oth.GetComponentsInChildren<MeshRenderer>();
             SkinnedMeshRenderer[] skinarr = oth.GetComponentsInChildren<SkinnedMeshRenderer>();
 
@@ -1491,6 +1542,43 @@ namespace UserVRMSpace
 
             //_loadedGameObject = null;
 
+            BoxCollider boxc;
+            if (oth.TryGetComponent<BoxCollider>(out boxc))
+            {
+                boxc.isTrigger = true;
+                //boxc.size = Vector3.zero;
+                
+                boxc.isTrigger = true;
+                // すべての子のBoxColliderの位置とサイズを取得する
+                List<Bounds> bounds = new List<Bounds>();
+                foreach (Transform child in oth.transform)
+                {
+                    BoxCollider tmpcol;
+                    if (child.TryGetComponent<BoxCollider>(out tmpcol))
+                    {
+                        bounds.Add(tmpcol.bounds);
+                    }
+                    
+                }
+                // MinとMaxを取得する
+                Vector3 min = Vector3.zero;
+                Vector3 max = Vector3.zero;
+                foreach (Bounds bound in bounds)
+                {
+                    min = Vector3.Min(min, bound.min);
+                    max = Vector3.Max(max, bound.max);
+                }
+
+                // 親のBoxColliderのサイズを設定する
+                boxc.size = new Vector3(max.x - min.x, max.y - min.y, max.z - min.z);
+
+                // 親のBoxColliderの位置を設定する
+                boxc.center = new Vector3(0, boxc.size.y * 0.5f, 0);
+            }
+            
+
+
+
             return ret;
         }
         private void enumMaterialFuncBody(GameObject child, ref List<OtherObjectMaterialInfo> oomis, ref OperateLoadedOther olo)
@@ -1498,7 +1586,37 @@ namespace UserVRMSpace
             //---For collider judge, add Collider ( effective, use the parent of Collider object )
             child.tag = "OtherPlayerCollider";
             child.layer = LayerMask.NameToLayer("Player");
-            child.AddComponent<BoxCollider>();
+
+            BoxCollider boxc;
+            SphereCollider tmpsc;
+            CapsuleCollider tmpccc;
+            MeshCollider tmpmcc;
+            if (child.TryGetComponent<BoxCollider>(out boxc))
+            {
+                
+            }
+            else
+            {
+                if (child.TryGetComponent<SphereCollider>(out tmpsc))
+                {
+
+                }
+                else if (child.TryGetComponent<CapsuleCollider>(out tmpccc))
+                {
+
+                }
+                else if (child.TryGetComponent<MeshCollider>(out tmpmcc))
+                {
+
+                }
+                else
+                {
+                    //---if any collider not found, forcely add BoxCollider
+                    boxc = child.AddComponent<BoxCollider>();
+                    boxc.isTrigger = true;
+                }
+            }
+
 
             /*
             Material[] mat = child.GetComponent<Renderer>().materials;
@@ -1754,6 +1872,39 @@ namespace UserVRMSpace
             oth.layer = LayerMask.NameToLayer("Player");
             OperateLoadedOther ol = oth.AddComponent<OperateLoadedOther>();
             oth.AddComponent<ManageAvatarTransform>();
+            Rigidbody rbody = oth.AddComponent<Rigidbody>();
+            MouseOperationXR moxr = oth.AddComponent<MouseOperationXR>();
+            rbody.drag = 10;
+            rbody.angularDrag = 10;
+            rbody.useGravity = false;
+            rbody.isKinematic = false;
+
+            if (ptype == UserPrimitiveType.Cube)
+            {
+                BoxCollider boxc = oth.AddComponent<BoxCollider>();
+                boxc.isTrigger = true;
+                BoxCollider copyboxc = copyoth.GetComponent<BoxCollider>();
+                boxc.size = copyboxc.size;
+            }
+            else if (
+                (ptype == UserPrimitiveType.Cylinder) ||
+                (ptype == UserPrimitiveType.Capsule)
+            )
+            {
+                CapsuleCollider capsuleCollider = oth.AddComponent<CapsuleCollider>();
+                capsuleCollider.isTrigger = true;
+                CapsuleCollider copycap = copyoth.GetComponent<CapsuleCollider>();
+                capsuleCollider.radius = copycap.radius;
+                capsuleCollider.height = copycap.height;
+            }
+            else if (ptype == UserPrimitiveType.Sphere)
+            {
+                SphereCollider sphereCollider = oth.AddComponent<SphereCollider>();
+                sphereCollider.isTrigger = true;
+                SphereCollider copysph = copyoth.GetComponent<SphereCollider>();
+                sphereCollider.radius = copysph.radius;
+            }
+            
 
             //--- Create unique material for This Blank Object
             Material mat = new Material(mr.sharedMaterial);
@@ -2487,7 +2638,12 @@ namespace UserVRMSpace
             OperateLoadedOther ol = empt.AddComponent<OperateLoadedOther>();
             empt.AddComponent<ManageAvatarTransform>();
             OnShowedOtherObject(empt);
-
+            Rigidbody rbody = empt.AddComponent<Rigidbody>();
+            MouseOperationXR moxr = empt.AddComponent<MouseOperationXR>();
+            rbody.drag = 10;
+            rbody.angularDrag = 10;
+            rbody.useGravity = false;
+            rbody.isKinematic = false;
 
             GameObject copycube = (GameObject)Resources.Load("IKHandleCube");
             GameObject ikcube = Instantiate(copycube, copycube.transform.position, Quaternion.identity, ikhp.transform);

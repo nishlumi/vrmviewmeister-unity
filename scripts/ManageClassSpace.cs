@@ -24,6 +24,8 @@ namespace UserHandleSpace
     public class MaterialPropertiesBase
     {
 
+        public int includeMotion = 0; //1 - include, 0 - exclude
+
         /// <summary>
         /// GameObject name : (0)~(n) when duplicated
         /// </summary>
@@ -243,6 +245,7 @@ namespace UserHandleSpace
     [Serializable]
     public class AvatarTransformSaveClass
     {
+        public int version = 0;
         public string sampleavatar;
         public string thumbnail;
         public AnimationFrameActor frameData;
@@ -652,6 +655,7 @@ namespace UserHandleSpace
         public AvatarShakeEffect effectShake;
         public int jumpNum;
         public float jumpPower;
+        public int isRotate360;
 
         //---vrm options
         public int isHandPose;
@@ -764,6 +768,7 @@ namespace UserHandleSpace
             effectShake = new AvatarShakeEffect();
             jumpNum = 0;
             jumpPower = 1f;
+            isRotate360 = 0;
             isHandPose = 0;
             fingerpose = new AvatarFingerForHPC();
             isBlendShape = 0;
@@ -1996,6 +2001,8 @@ namespace UserHandleSpace
         public int isAnimationSeekOnly = 0;
         public int isSystemEffectOnly = 0;
 
+        public int isRotate360 = 0;
+
         /// <summary>
         /// To compile an animation as an external using.(futurely as library)
         /// </summary>
@@ -2007,6 +2014,8 @@ namespace UserHandleSpace
         //public AF_MOVETYPE registerMove = AF_MOVETYPE.Rest;
         public List<int> registerBoneTypes = new List<int>();
         public List<int> registerMoveTypes = new List<int>();
+        public List<BasicStringIntList> registerExpressions = new List<BasicStringIntList>();
+        public List<BasicStringIntList> registerMaterials = new List<BasicStringIntList>();
 
         /// <summary>
         /// to append registration a motion to same key-frame

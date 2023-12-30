@@ -60,6 +60,15 @@ public class OtherObjectDummyIK : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        /*if (
+            (!animarea.IsPlaying) &&
+            (animarea.IsVRAR()) && 
+            (gameObject.name != "DLightIK")
+        )
+        {
+            // If VR/AR mode, IK-marker for OtherObject/Image don't move.
+            return;
+        }*/
         if (relatedAvatar != null)
         {
             if ((transform.position != oldikposition) || (transform.rotation != oldikrotation))

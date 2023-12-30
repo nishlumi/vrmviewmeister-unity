@@ -871,8 +871,12 @@ namespace UserHandleSpace
             {
                 //Vector3 aimcenter = Vector3.Leap(aai.list[11].position, aai.list[24].position, 0.5f);
 
+                Vector2 aimcenter = Vector3.Lerp(shouldercenter, hipcenter, 0.5f);
 
+                Vector3 aimdir = hipcenter - shouldercenter;
+                aimdir.Normalize();
 
+                /*
                 Vector3 tmppos = CalcFromTwoPointToObjectDirection(shouldercenter, hipcenter, 0.5f);
                 //Debug.Log("aim tmppos 1=" + tmppos.ToString());
                 //tmppos.x = (Mathf.Abs(tmppos.x) + t_pelvis.x);
@@ -910,7 +914,7 @@ namespace UserHandleSpace
                 
                 
 
-
+                */
                 //Vector3 shoulder_hip_center = Vector3.Lerp(shouldercenter, hipcenter, 0.5f);
 
                 //Quaternion to_tmppos_rot = Quaternion.LookRotation(shoulder_hip_center, tmppos);
@@ -918,7 +922,9 @@ namespace UserHandleSpace
 
                 yield return null;
                 //tmppos.z += Vector3.back.z;
-                aim.localPosition = tmppos; // new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tmpobj.transform.position.z);
+                //aim.localPosition = tmppos; // new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tmpobj.transform.position.z);
+                aim.localPosition = aimcenter;
+                aim.forward = aimdir;
                                 
             }
             yield return null;
@@ -1340,6 +1346,7 @@ namespace UserHandleSpace
             string ret = "";
             GameObject ikparent = null;
             AvatarTransformSaveClass atran = new AvatarTransformSaveClass();
+            atran.version = ManageAnimation.PROJECT_VERSION;
 
             if (param.ToLower() == "vrm")
             {
@@ -1374,6 +1381,15 @@ namespace UserHandleSpace
             aro.index = 1;
             aro.targetId = gameObject.name;
             aro.targetType = AF_TARGETTYPE.VRM;
+
+            List<int> regBones = new List<int>();
+            for (int i = (int)ParseIKBoneType.EyeViewHandle; i < (int)ParseIKBoneType.LeftHandPose; i++)
+            {
+                aro.registerBoneTypes.Add(i);
+            }
+            aro.registerMoveTypes.Add((int)AF_MOVETYPE.Translate);
+            aro.registerMoveTypes.Add((int)AF_MOVETYPE.NormalTransform);
+            aro.registerMoveTypes.Add((int)AF_MOVETYPE.AllProperties);
             NativeAnimationFrameActor savedActor = new NativeAnimationFrameActor();
             NativeAnimationFrameActor actor = maa.GetFrameActorFromObjectID(gameObject.name, AF_TARGETTYPE.VRM);
             savedActor = actor.SCopy();
@@ -1985,7 +2001,7 @@ namespace UserHandleSpace
             //---construct frame data
             foreach (AnimationFrame fr in atran.frameData.frames)
             {
-                NativeAnimationFrame nframe = maa.ParseEffectiveFrame(nact, fr);
+                NativeAnimationFrame nframe = maa.ParseEffectiveFrame(nact, fr, atran.version);
                 nact.frames.Add(nframe);
             }
             //---calculate difference of the height

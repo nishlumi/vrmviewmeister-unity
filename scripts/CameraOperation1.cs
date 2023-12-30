@@ -30,6 +30,10 @@ public class CameraOperation1 : MonoBehaviour
     public Camera Front3DCam;
     public Camera Front2DCam;
     public Camera FrontIKCam;
+    public Camera VRCameraL;
+    public Camera VRCameraR;
+    public Camera ARCameraL;
+    public Camera ARCameraR;
 
     private Camera mainCamera;
     private Vector3 lastMousePos;
@@ -56,6 +60,8 @@ public class CameraOperation1 : MonoBehaviour
     private Material[] skyMaterials = { };
 
     private ManageAnimation manim;
+    [SerializeField]
+    private CameraManagerXR camxr;
 
     public TMPro.TextMeshProUGUI KeyOperationModeView;
     public TMPro.TextMeshProUGUI KeyObjGlobalLocal;
@@ -71,7 +77,7 @@ public class CameraOperation1 : MonoBehaviour
         //Debug.Log(RenderSettings.skybox.shader.name);
 
         configLab = GameObject.Find("Canvas").GetComponent<ConfigSettingLabs>();
-        mainCamera = Camera.main;
+        mainCamera = GetComponent<Camera>(); // Camera.main;
         //Dbg_diff = GameObject.Find("Dbg_diff").GetComponent<Text>();
         //Dbg_mouse = GameObject.Find("Dbg_mouse").GetComponent<Text>();
 
@@ -94,6 +100,8 @@ public class CameraOperation1 : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (!camxr.isActiveNormal()) return;
+
         //distance_camera2viewpoint = configLab.GetFloatVal("distance_camera_viewpoint", 2.5f);
         //camera_keymove_speed = configLab.GetFloatVal("camera_keymove_speed", 0.1f);
         //camera_keymove_speed_t = camera_keymove_speed / 10;
@@ -396,6 +404,7 @@ public class CameraOperation1 : MonoBehaviour
         {
             y = 0;
         }
+        
 
         newAngle.x = x * rotationSpeed.x;
         newAngle.y = y * rotationSpeed.y;
@@ -680,7 +689,7 @@ public class CameraOperation1 : MonoBehaviour
 
         if (param == "1")
         {
-            col.a = 0.25f;
+            col.a = 0.2f;
         }
         else
         {
@@ -834,6 +843,8 @@ public class CameraOperation1 : MonoBehaviour
     public void SetClearFlag(CameraClearFlags param)
     {
         Front3DCam.clearFlags = param;
+        VRCameraL.clearFlags = param;
+        VRCameraR.clearFlags = param;
 
         List<NativeAnimationAvatar> list = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
         list.ForEach(item =>
@@ -863,6 +874,8 @@ public class CameraOperation1 : MonoBehaviour
     public void SetSkyColor(Color param)
     {
         Front3DCam.backgroundColor = param;
+        VRCameraL.backgroundColor = param;
+        VRCameraR.backgroundColor = param;
         //Front3DCam.transform.GetChild(0).gameObject.GetComponent<Camera>().backgroundColor = param;
 
         List<NativeAnimationAvatar> list = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
@@ -883,6 +896,12 @@ public class CameraOperation1 : MonoBehaviour
     public Sequence SetSkyColorTween(Sequence seq, Color param, float duration)
     {
         seq.Join(Front3DCam.DOColor(param, duration));
+        if (camxr.isActiveVR())
+        {
+            seq.Join(VRCameraL.DOColor(param, duration));
+            seq.Join(VRCameraR.DOColor(param, duration));
+        }
+
         List<NativeAnimationAvatar> list = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
         for (int i = 0; i < list.Count; i++) 
         { 

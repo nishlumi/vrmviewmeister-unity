@@ -323,8 +323,8 @@ namespace UserHandleSpace
                         {
                             //seq.Join(ll.transform.DOMoveX(leftlowerleg.localPosition.x, 0.1f));
 
-                            if (legX > 0) llnewpos.x = ll.transform.localPosition.x - legX;
-                            else llnewpos.x = ll.transform.localPosition.x - legX;
+                            //if (legX > 0) llnewpos.x = ll.transform.localPosition.x - legX;
+                            //else llnewpos.x = ll.transform.localPosition.x - legX;
                             
                             if (transform.localPosition.x == 0)
                             {
@@ -472,33 +472,38 @@ namespace UserHandleSpace
             {
                 if (manim.IsLimitedChest)
                 {
-                    Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
-                    Transform leftlowerarm = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
-                    Transform rightlowerarm = animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
-                    GameObject hd = transform.parent.Find("Head").gameObject;
-                    GameObject ll = transform.parent.Find("LeftLowerArm").gameObject;
-                    GameObject rl = transform.parent.Find("RightLowerArm").gameObject;
-
-                    Vector3 hdnewpos = transform.parent.InverseTransformPoint(head.position);
-                    Vector3 llnewpos = transform.parent.InverseTransformPoint(leftlowerarm.position);
-                    Vector3 rlnewpos = transform.parent.InverseTransformPoint(rightlowerarm.position);
-
-                    if (this.transform.localPosition != oldPosition)
+                    if (manim.camxr.isActiveNormal())
                     {
-                        seq.Join(ll.transform.DOLocalMoveX(llnewpos.x, 0.01f));
-                        //seq.Join(ll.transform.DOLocalMoveY(llnewpos.y, 0.01f));
-                        seq.Join(ll.transform.DOLocalMoveZ(llnewpos.z + cns_lowerleg_z, 0.01f));
+                        Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
+                        Transform leftlowerarm = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
+                        Transform rightlowerarm = animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
+                        GameObject hd = transform.parent.Find("Head").gameObject;
+                        GameObject ll = transform.parent.Find("LeftLowerArm").gameObject;
+                        GameObject rl = transform.parent.Find("RightLowerArm").gameObject;
 
-                        seq.Join(rl.transform.DOLocalMoveX(rlnewpos.x, 0.01f));
-                        //seq.Join(rl.transform.DOLocalMoveY(rlnewpos.y, 0.01f));
-                        seq.Join(rl.transform.DOLocalMoveZ(rlnewpos.z + cns_lowerleg_z, 0.01f));
+                        Vector3 hdnewpos = transform.parent.InverseTransformPoint(head.position);
+                        Vector3 llnewpos = transform.parent.InverseTransformPoint(leftlowerarm.position);
+                        Vector3 rlnewpos = transform.parent.InverseTransformPoint(rightlowerarm.position);
 
-                        seq.Join(hd.transform.DOLocalMoveX(hdnewpos.x, 0.01f));
-                        //seq.Join(hd.transform.DOLocalMoveY(hdnewpos.y, 0.01f));
-                        seq.Join(hd.transform.DOLocalMoveZ(hdnewpos.z, 0.01f));
+
+                        if (this.transform.localPosition != oldPosition)
+                        {
+                            seq.Join(ll.transform.DOLocalMoveX(llnewpos.x, 0.01f));
+                            //seq.Join(ll.transform.DOLocalMoveY(llnewpos.y, 0.01f));
+                            seq.Join(ll.transform.DOLocalMoveZ(llnewpos.z + cns_lowerleg_z, 0.01f));
+
+                            seq.Join(rl.transform.DOLocalMoveX(rlnewpos.x, 0.01f));
+                            //seq.Join(rl.transform.DOLocalMoveY(rlnewpos.y, 0.01f));
+                            seq.Join(rl.transform.DOLocalMoveZ(rlnewpos.z + cns_lowerleg_z, 0.01f));
+
+                            seq.Join(hd.transform.DOLocalMoveX(hdnewpos.x, 0.01f));
+                            //seq.Join(hd.transform.DOLocalMoveY(hdnewpos.y, 0.01f));
+                            seq.Join(hd.transform.DOLocalMoveZ(hdnewpos.z, 0.01f));
+                        }
+
+                        seq.Play();
                     }
-
-                    seq.Play();
+                    
                 }
                 
 

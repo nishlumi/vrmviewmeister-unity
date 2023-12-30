@@ -499,6 +499,12 @@ namespace UserHandleSpace
 
             int valueCount = int.TryParse(lst[CSV_VALCNT], out valueCount) ? valueCount : 1;
 
+            if ((movetype == "rest") &&
+                ((targetType != AF_TARGETTYPE.OtherObject) && (targetType != AF_TARGETTYPE.Audio) && (targetType != AF_TARGETTYPE.Effect))
+            )
+            { // rest exists in OtherObject, Audio, Effect.
+                return atp;
+            }
             //---mostly common 
             if (movetype == "punch")
             {
@@ -549,6 +555,14 @@ namespace UserHandleSpace
                         {
                             atp.animationType = AF_MOVETYPE.Rotate;
                             atp.rotation = new Vector3(vec3[0], vec3[1], vec3[2]);
+                            if (valueCount > 3)
+                            { //---add for rotate 360. (2023.05.05)
+                                atp.isRotate360 = (int)vec3[3];
+                            }
+                            else
+                            {
+                                atp.isRotate360 = 0;
+                            }
                         }
                         else if (movetype == "scale")
                         {
@@ -771,24 +785,24 @@ namespace UserHandleSpace
                     }
                     else if (movetype == "animstop")
                     {
-                        atp.animationType = AF_MOVETYPE.AnimStop;
+                        atp.animationType = AF_MOVETYPE.AnimStart;// AnimStop;
                         atp.animPlaying = UserAnimationState.Stop;
                     }
                     else if (movetype == "animseek")
                     {
-                        atp.animationType = AF_MOVETYPE.AnimSeek;
+                        atp.animationType = AF_MOVETYPE.AnimStart;// AnimSeek;
                         atp.animPlaying = UserAnimationState.Seeking;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
                         atp.animSeek = vec3[0];
                     }
                     else if (movetype == "animpause")
                     {
-                        atp.animationType = AF_MOVETYPE.AnimPause;
+                        atp.animationType = AF_MOVETYPE.AnimStart;// AnimPause;
                         atp.animPlaying = UserAnimationState.Pause;
                     }
                     else if (movetype == "rest")
                     {
-                        atp.animationType = AF_MOVETYPE.Rest;
+                        atp.animationType = AF_MOVETYPE.AnimStart;// Rest;
                         atp.animPlaying = UserAnimationState.Playing;
                     }
                     else if (movetype == "animprop")
@@ -840,17 +854,20 @@ namespace UserHandleSpace
 
                     if (movetype == "cameraon")
                     {
-                        atp.animationType = AF_MOVETYPE.CameraOn;
+                        atp.animationType = AF_MOVETYPE.Camera;// CameraOn;
+                        atp.animPlaying = UserAnimationState.Play;
                         atp.cameraPlaying = (int)UserAnimationState.Play;
                     }
                     else if (movetype == "camera")
                     {
                         atp.animationType = AF_MOVETYPE.Camera;
+                        atp.animPlaying = UserAnimationState.Playing;
                         atp.cameraPlaying = (int)UserAnimationState.Playing;
                     }
                     else if (movetype == "cameraoff")
                     {
-                        atp.animationType = AF_MOVETYPE.CameraOff;
+                        atp.animationType = AF_MOVETYPE.Camera;// CameraOff;
+                        atp.animPlaying = UserAnimationState.Stop;
                         atp.cameraPlaying = (int)UserAnimationState.Stop;
                     }
                     else if (movetype == "cameraprop")
@@ -909,6 +926,7 @@ namespace UserHandleSpace
                     if (movetype == "animstart")
                     {
                         atp.animationType = AF_MOVETYPE.AnimStart;
+                        atp.animPlaying = UserAnimationState.Play;
                         atp.audioName = optParts;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
                         //atp.isSE = (int)vec3[0];
@@ -916,7 +934,8 @@ namespace UserHandleSpace
                     }
                     else if (movetype == "animstop")
                     {
-                        atp.animationType = AF_MOVETYPE.AnimStop;
+                        atp.animationType = AF_MOVETYPE.AnimStart;// AnimStop;
+                        atp.animPlaying = UserAnimationState.Stop;
                         atp.audioName = optParts;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
                         //atp.isSE = (int)vec3[0];
@@ -924,7 +943,8 @@ namespace UserHandleSpace
                     }
                     else if (movetype == "animpause")
                     {
-                        atp.animationType = AF_MOVETYPE.AnimPause;
+                        atp.animationType = AF_MOVETYPE.AnimStart;// AnimPause;
+                        atp.animPlaying = UserAnimationState.Pause;
                         atp.audioName = optParts;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
                         //atp.isSE = (int)vec3[0];
@@ -932,7 +952,8 @@ namespace UserHandleSpace
                     }
                     else if (movetype == "animseek")
                     {
-                        atp.animationType = AF_MOVETYPE.AnimSeek;
+                        atp.animationType = AF_MOVETYPE.AnimStart;// AnimSeek;
+                        atp.animPlaying = UserAnimationState.Seeking;
                         atp.audioName = optParts;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
                         //atp.isSE = (int)vec3[0];
@@ -941,7 +962,8 @@ namespace UserHandleSpace
                     }
                     else if (movetype == "rest")
                     {
-                        atp.animationType = AF_MOVETYPE.Rest;
+                        atp.animationType = AF_MOVETYPE.AnimStart;// Rest;
+                        atp.animPlaying = UserAnimationState.Playing;
                         atp.audioName = optParts;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
                         //atp.isSE = (int)vec3[0];
@@ -975,17 +997,17 @@ namespace UserHandleSpace
                     }
                     else if (movetype == "animpause")
                     {
-                        atp.animationType = AF_MOVETYPE.AnimPause;
+                        atp.animationType = AF_MOVETYPE.AnimStart;// AnimPause;
                         atp.animPlaying = UserAnimationState.Pause;
                     }
                     else if (movetype == "animstop")
                     {
-                        atp.animationType = AF_MOVETYPE.AnimStop;
+                        atp.animationType = AF_MOVETYPE.AnimStart;// AnimStop;
                         atp.animPlaying = UserAnimationState.Stop;
                     }
                     else if (movetype == "rest")
                     {
-                        atp.animationType = AF_MOVETYPE.Rest;
+                        atp.animationType = AF_MOVETYPE.AnimStart;// Rest;
                         atp.animPlaying = UserAnimationState.Playing;
                     }
                     else if (movetype == "collider")
@@ -1005,12 +1027,20 @@ namespace UserHandleSpace
                     if (movetype == "systemeffect")
                     {
                         atp.animationType = AF_MOVETYPE.SystemEffect;
+                        atp.animPlaying = UserAnimationState.Play;
                         List<float> flst = new List<float>(vec3);
                         atp.effectValues = flst;
                     }
                     else if (movetype == "systemeffectoff")
                     {
-                        atp.animationType = AF_MOVETYPE.SystemEffectOff;
+                        atp.animationType = AF_MOVETYPE.SystemEffect;
+                        atp.animPlaying = UserAnimationState.Stop;
+                        if (valueCount > 0)
+                        {
+                            List<float> flst = new List<float>(vec3);
+                            atp.effectValues = flst;
+
+                        }
                     }
                 }
                 else if (targetType == AF_TARGETTYPE.Stage)
@@ -1183,8 +1213,8 @@ namespace UserHandleSpace
             /*
                 CSV format:
                 |       0      |      1       |     2   |         3           |         4~N      |
-                 object IK type (VRM)bone type move type float paramater count float paramaters
-                 char           string          string      integer               float
+                 object IK type (VRM)bone type move type float paramater count  float paramaters
+                 char           string          string        integer               float
                                 optional 
                                  other than
                                    VRM
@@ -1226,10 +1256,11 @@ namespace UserHandleSpace
                     ret.Add("");
                 }
                 ret.Add("rotation");
-                ret.Add("3");
+                ret.Add("4");
                 ret.Add(atp.rotation.x.ToString());
                 ret.Add(atp.rotation.y.ToString());
                 ret.Add(atp.rotation.z.ToString());
+                ret.Add(atp.isRotate360.ToString());
             }
             else if (atp.animationType == AF_MOVETYPE.Scale)
             {
@@ -1401,31 +1432,52 @@ namespace UserHandleSpace
                     ret.Add(atp.animName);
                     if (atp.animationType == AF_MOVETYPE.AnimStart)
                     {
-                        ret.Add("animstart");
-                        ret.Add("1");
-                        ret.Add(atp.animSeek.ToString());
+                        switch (atp.animPlaying)
+                        {
+                            case UserAnimationState.Play:
+                                ret.Add("animstart");
+                                ret.Add("1");
+                                ret.Add(atp.animSeek.ToString());
+                                break;
+                            case UserAnimationState.Playing:
+                                ret.Add("rest");
+                                ret.Add("0");
+                                break;
+                            case UserAnimationState.Pause:
+                                ret.Add("animpause");
+                                ret.Add("0");
+                                break;
+                            case UserAnimationState.Stop:
+                                ret.Add("animstop");
+                                ret.Add("0");
+                                break;
+                            case UserAnimationState.Seeking:
+                                ret.Add("animseek");
+                                ret.Add("1");
+                                ret.Add(atp.animSeek.ToString());
+                                break;
+                            default:
+                                break;
+                        }
+                        
                     }
+                    /*
                     else if (atp.animationType == AF_MOVETYPE.AnimStop)
                     {
-                        ret.Add("animstop");
-                        ret.Add("0");
+                        
                     }
                     else if (atp.animationType == AF_MOVETYPE.AnimSeek)
                     {
-                        ret.Add("animseek");
-                        ret.Add("1");
-                        ret.Add(atp.animSeek.ToString());
+                        
                     }
                     else if (atp.animationType == AF_MOVETYPE.AnimPause)
                     {
-                        ret.Add("animpause");
-                        ret.Add("0");
+                        
                     }
                     else if (atp.animationType == AF_MOVETYPE.Rest)
                     {
-                        ret.Add("rest");
-                        ret.Add("0");
-                    }
+                        
+                    }*/
                     else if (atp.animationType == AF_MOVETYPE.AnimProperty)
                     {
                         ret.Add("animprop");
@@ -1508,24 +1560,28 @@ namespace UserHandleSpace
                 {
                     ret.Add(((int)atp.vrmBone).ToString());
                     ret.Add("");
-                    if (atp.animationType == AF_MOVETYPE.CameraOn)
+                    if (atp.animationType == AF_MOVETYPE.Camera)
                     {
-                        ret.Add("cameraon");
-                        ret.Add("1");
-                        ret.Add(atp.cameraPlaying.ToString());
+                        if (atp.animPlaying == UserAnimationState.Play)
+                        {
+                            ret.Add("cameraon");
+                            ret.Add("1");
+                            ret.Add(((int)atp.animPlaying).ToString());
+                        }
+                        else if (atp.animPlaying == UserAnimationState.Playing)
+                        {
+                            ret.Add("camera");
+                            ret.Add("1");
+                            ret.Add(((int)atp.animPlaying).ToString());
+                        }
+                        else if (atp.animPlaying == UserAnimationState.Stop)
+                        {
+                            ret.Add("cameraoff");
+                            ret.Add("1");
+                            ret.Add(((int)atp.animPlaying).ToString());
+                        }
                     }
-                    else if (atp.animationType == AF_MOVETYPE.Camera)
-                    {
-                        ret.Add("camera");
-                        ret.Add("1");
-                        ret.Add(atp.cameraPlaying.ToString());
-                    }
-                    else if (atp.animationType == AF_MOVETYPE.CameraOff)
-                    {
-                        ret.Add("cameraoff");
-                        ret.Add("1");
-                        ret.Add(atp.cameraPlaying.ToString());
-                    }
+                    
                     else if (atp.animationType == AF_MOVETYPE.CameraProperty)
                     {
                         ret.Add("cameraprop");
@@ -1602,38 +1658,41 @@ namespace UserHandleSpace
                     ret.Add(atp.audioName);
                     if (atp.animationType == AF_MOVETYPE.AnimStart)
                     {
-                        ret.Add("animstart");
-                        ret.Add("2");
-                        ret.Add(atp.isSE.ToString());
-                        ret.Add(atp.seekTime.ToString());
-                    }
-                    else if (atp.animationType == AF_MOVETYPE.AnimPause)
-                    {
-                        ret.Add("animpause");
-                        ret.Add("2");
-                        ret.Add(atp.isSE.ToString());
-                        ret.Add(atp.seekTime.ToString());
-                    }
-                    else if (atp.animationType == AF_MOVETYPE.AnimStop)
-                    {
-                        ret.Add("animstop");
-                        ret.Add("2");
-                        ret.Add(atp.isSE.ToString());
-                        ret.Add(atp.seekTime.ToString());
-                    }
-                    else if (atp.animationType == AF_MOVETYPE.AnimSeek)
-                    {
-                        ret.Add("animseek");
-                        ret.Add("2");
-                        ret.Add(atp.isSE.ToString());
-                        ret.Add(atp.seekTime.ToString());
-                    }
-                    else if (atp.animationType == AF_MOVETYPE.Rest)
-                    {
-                        ret.Add("rest");
-                        ret.Add("1");
-                        ret.Add(atp.isSE.ToString());
-                        ret.Add(atp.seekTime.ToString());
+                        if (atp.animPlaying == UserAnimationState.Play)
+                        {
+                            ret.Add("animstart");
+                            ret.Add("2");
+                            ret.Add(atp.isSE.ToString());
+                            ret.Add(atp.seekTime.ToString());
+                        }
+                        else if (atp.animPlaying == UserAnimationState.Pause)
+                        {
+                            ret.Add("animpause");
+                            ret.Add("2");
+                            ret.Add(atp.isSE.ToString());
+                            ret.Add(atp.seekTime.ToString());
+                        }
+                        else if (atp.animPlaying == UserAnimationState.Stop)
+                        {
+                            ret.Add("animstop");
+                            ret.Add("2");
+                            ret.Add(atp.isSE.ToString());
+                            ret.Add(atp.seekTime.ToString());
+                        }
+                        else if (atp.animPlaying == UserAnimationState.Seeking)
+                        {
+                            ret.Add("animseek");
+                            ret.Add("2");
+                            ret.Add(atp.isSE.ToString());
+                            ret.Add(atp.seekTime.ToString());
+                        }
+                        else if (atp.animPlaying == UserAnimationState.Playing)
+                        {
+                            ret.Add("rest");
+                            ret.Add("1");
+                            ret.Add(atp.isSE.ToString());
+                            ret.Add(atp.seekTime.ToString());
+                        }
                     }
                     else if (atp.animationType == AF_MOVETYPE.AudioProperty)
                     {
@@ -1663,23 +1722,23 @@ namespace UserHandleSpace
                     else
                     {
                         ret.Add(atp.effectGenre + "%" + atp.effectName);
-                        if (atp.animationType == AF_MOVETYPE.AnimStart)
+                        if (atp.animPlaying == UserAnimationState.Play)
                         {
                             ret.Add("animstart");
                             ret.Add("1");
                             ret.Add(atp.animLoop.ToString());
                         }
-                        else if (atp.animationType == AF_MOVETYPE.AnimPause)
+                        else if (atp.animPlaying == UserAnimationState.Pause)
                         {
                             ret.Add("animpause");
                             ret.Add("0");
                         }
-                        else if (atp.animationType == AF_MOVETYPE.AnimStop)
+                        else if (atp.animPlaying == UserAnimationState.Stop)
                         {
                             ret.Add("animstop");
                             ret.Add("0");
                         }
-                        else if (atp.animationType == AF_MOVETYPE.Rest)
+                        else if (atp.animPlaying == UserAnimationState.Playing)
                         {
                             ret.Add("rest");
                             ret.Add("0");
@@ -1694,19 +1753,27 @@ namespace UserHandleSpace
                     if (atp.animationType == AF_MOVETYPE.SystemEffect)
                     {
                         ret.Add(atp.effectName);
-                        ret.Add("systemeffect");
+                        if (atp.animPlaying == UserAnimationState.Play)
+                        {
+                            ret.Add("systemeffect");
+                        }
+                        else
+                        {
+                            ret.Add("systemeffectoff");
+                        }
+                        
                         ret.Add(atp.effectValues.Count.ToString());
                         atp.effectValues.ForEach(v =>
                         {
                             ret.Add(v.ToString());
                         });
                     }
-                    else if (atp.animationType == AF_MOVETYPE.SystemEffectOff)
+                    /*else if (atp.animationType == AF_MOVETYPE.SystemEffectOff)
                     {
                         ret.Add(atp.effectName);
                         ret.Add("systemeffectoff");
                         ret.Add("0");
-                    }
+                    }*/
                 }
                 else if (targetType == AF_TARGETTYPE.Stage)
                 {
@@ -2039,6 +2106,7 @@ namespace UserHandleSpace
 
             IsExternalProject = proj.isSharing;
 
+            nproj.version = proj.version;
             nproj.mkey = proj.mkey;
             nproj.meta = proj.meta;
             nproj.baseDuration = proj.baseDuration;
@@ -2131,7 +2199,7 @@ namespace UserHandleSpace
 
                 foreach (AnimationFrame fr in actor.frames)
                 {
-                    NativeAnimationFrame nframe = ParseEffectiveFrame(nact, fr);
+                    NativeAnimationFrame nframe = ParseEffectiveFrame(nact, fr, nproj.version);
                     nact.frames.Add(nframe);
                 }
                 nproj.timeline.characters.Add(nact);
@@ -2337,7 +2405,7 @@ namespace UserHandleSpace
         /// </summary>
         /// <param name="frame"></param>
         /// <returns></returns>
-        public NativeAnimationFrame ParseEffectiveFrame(NativeAnimationFrameActor actor, AnimationFrame frame)
+        public NativeAnimationFrame ParseEffectiveFrame(NativeAnimationFrameActor actor, AnimationFrame frame, int file_version = 0)
         {
             NativeAnimationFrame naframe = new NativeAnimationFrame();
             //naframe.targetId = frame.targetId;
@@ -2353,11 +2421,12 @@ namespace UserHandleSpace
             //---for Translate only
             for (int i = 0; i < (int)ParseIKBoneType.LeftHandPose; i++)
             {
+                
                 string pikt = i.ToString();
                 List<string> translateLst = frame.movingData.FindAll(match =>
                 {
                     string[] lst = match.Split(',');
-                    if (lst.Length > 0)
+                    if (lst.Length > 2)
                     {
                         if (
                             (lst[0] == pikt) &&  //---ParseIKBoneType
@@ -2379,11 +2448,16 @@ namespace UserHandleSpace
                 if (translateLst.Count > 0)
                 {
                     AnimationTranslateTargetParts attp = new AnimationTranslateTargetParts((ParseIKBoneType)i, AF_MOVETYPE.Translate);
+                    
                     foreach (string line in translateLst)
                     {
                         attp = CsvToFrameTranslateData(actor, actor.targetType, line, attp);
                     }
                     naframe.translateMovingData.Add(attp);
+                }
+                if (actor.avatar.type != AF_TARGETTYPE.VRM)
+                { //---VRM other than is IKParent only.
+                    break;
                 }
             }
             
@@ -2394,20 +2468,103 @@ namespace UserHandleSpace
                 AnimationTargetParts atp = new AnimationTargetParts();
                 if (line != null)
                 {
-                    //naframe.movingData.Add(line);
-                    naframe.movingData.Add(CsvToFrameData(actor, actor.targetType, line, atp));
-                    //Memo: position do not generate. "position" change to "xxxposition".
+                    try
+                    {
+                        //naframe.movingData.Add(line);
+                        naframe.movingData.Add(CsvToFrameData(actor, actor.targetType, line, atp));
+                        //Memo: position do not generate. "position" change to "xxxposition".
+                    }
+                    catch (Exception err)
+                    {
+                        Debug.LogWarning("Found an error:\n" + err.Message.ToString() + "\n" + line);
+                    }
+                    
                 }
             }
+            if (file_version < PROJECT_VERSION)
+            {
+                naframe = ConvertAimBipedIK2VVMIK(actor, naframe);
+            }
+            
 
             return naframe;
         }
 
-        //=====================================================================================================================
-        //
-        //  Single Motion functions
-        //
-        //=====================================================================================================================
+        /// <summary>
+        /// Convert Aim of BipedIK (translate) to VVMIK's one (rotate).
+        /// </summary>
+        /// <param name="naframe"></param>
+        /// <returns></returns>
+        public NativeAnimationFrame ConvertAimBipedIK2VVMIK(NativeAnimationFrameActor nactor, NativeAnimationFrame naframe)
+        {
+            for (int i = 0; i < naframe.movingData.Count; i++)
+            {
+                var attp = naframe.movingData[i];
+                if (attp.vrmBone == ParseIKBoneType.LeftShoulder)
+                {
+                    attp.rotation.y = MathF.Abs(attp.rotation.y) - 180f;
+                }
+                else if (attp.vrmBone == ParseIKBoneType.RightShoulder)
+                {
+                    attp.rotation.y = MathF.Abs(attp.rotation.y) - 180f;
+                }
+                else if (attp.vrmBone == ParseIKBoneType.Head)
+                {
+                    attp.rotation.y = MathF.Abs(attp.rotation.y) - 180f;
+                }
+                else if (attp.vrmBone == ParseIKBoneType.Chest)
+                {
+                    if (Mathf.Abs(attp.rotation.y) > 175f)  {
+                        attp.rotation.y = MathF.Abs(attp.rotation.y) - 180f;
+                    }
+                }
+                else if (attp.vrmBone == ParseIKBoneType.Aim)
+                {
+                    if (MathF.Abs(attp.rotation.y) > 175f)
+                    {
+                        attp.rotation.y = MathF.Abs(attp.rotation.y) - 180f;
+                    }
+                }
+            }
+            /*
+            List<AnimationTranslateTargetParts> attps = naframe.translateMovingData.FindAll(match =>
+            {
+                if (match.vrmBone == ParseIKBoneType.Aim) return true;
+                return false;
+            });
+            int aimtranIndex = naframe.movingData.FindIndex(match =>
+            {
+                if (match.vrmBone == ParseIKBoneType.Aim) return true;
+                return false;
+            });
+
+            if (attps.Count > 0)
+            {
+                GameObject aimobj = nactor.avatar.ikparent.transform.Find("Aim").gameObject;
+                if ((aimobj != null) && (aimtranIndex > -1))
+                {
+                    Transform spineTran = nactor.avatar.avatar.transform.GetComponent<Animator>().GetBoneTransform(HumanBodyBones.Spine);
+                    Vector3 actorDirection = spineTran.forward;
+
+                    attps.ForEach(atp =>
+                    {
+                        Vector3 markerDirection = atp.values[0];
+                        Vector3 delta = markerDirection - actorDirection;
+                        naframe.movingData[aimtranIndex].rotation = Quaternion.FromToRotation(actorDirection, delta).eulerAngles;
+                    });
+                }
+                
+            }
+
+            */
+            return naframe;
+        }
+
+//=====================================================================================================================
+//
+//  Single Motion functions
+//
+//=====================================================================================================================
         /// <summary>
         /// To decide FrameActor of indicated role.
         /// </summary>
@@ -2566,23 +2723,37 @@ namespace UserHandleSpace
                                     }
                                     naframe.translateMovingData.Add(attp);
                                 }
+                                if (naf.avatar.type != AF_TARGETTYPE.VRM)
+                                { //---VRM other than is IKParent only.
+                                    break;
+                                }
                             }
 
+                            //---for Rotate/Scale/etc...
                             foreach (string linedata in fr.movingData)
                             {
-                                AnimationTargetParts atp = new AnimationTargetParts();
-                                atp = CsvToFrameData(naf, asm.targetType, linedata, atp);
-                                naframe.movingData.Add(atp);
+                                if ((linedata != null) && (linedata != ""))
+                                {
+                                    AnimationTargetParts atp = new AnimationTargetParts();
+                                    atp = CsvToFrameData(naf, asm.targetType, linedata, atp);
+                                    naframe.movingData.Add(atp);
 
-                                //---For returning HTML
-                                aframe.movingData.Add(linedata);
+                                    //---For returning HTML
+                                    aframe.movingData.Add(linedata);
+                                }
+                                
                             }
 
                             naf.frames.Add(naframe);
+                            if (asm.version < PROJECT_VERSION)
+                            {
+                                naframe = ConvertAimBipedIK2VVMIK(naf, naframe);
+                            }
 
                             afa.frames.Add(aframe);
                         }   
                     }
+                    
 
                     //---apply height difference with absorb to this avatar (VRM only)
                     CalculateAllFrameForCurrent(nav, naf);
@@ -2639,14 +2810,24 @@ namespace UserHandleSpace
                     {
                         foreach (Vector3 vv in tmv.values)
                         {
-                            afg.movingData.Add(TranslateDataToCSV(rawactor.targetType, tmv, vv));
+                            string ln = TranslateDataToCSV(rawactor.targetType, tmv, vv);
+                            if (ln != "")
+                            {
+                                afg.movingData.Add(ln);
+                            }
+                            
                         }
                         
                     }
                     //---OTHER THAN translate to csv
                     foreach (AnimationTargetParts mv in frame.movingData)
                     {
-                        afg.movingData.Add(DataToCSV(rawactor.targetType, mv));
+                        string ln = DataToCSV(rawactor.targetType, mv);
+                        if (ln != "")
+                        {
+                            afg.movingData.Add(ln);
+                        }
+                        
                         //afg.movingData.Add(mv);
                     }
                     rawactor.frames.Add(afg);
@@ -2694,6 +2875,7 @@ namespace UserHandleSpace
 #endif
             return ret;
         }
+        
 
         /// <summary>
         /// Get cast and frame actor's timeline for single motion file to save
@@ -2738,7 +2920,12 @@ namespace UserHandleSpace
                     {
                         foreach (Vector3 vv in tmv.values)
                         {
-                            asf.movingData.Add(TranslateDataToCSV(type, tmv, vv));
+                            string ln = TranslateDataToCSV(type, tmv, vv);
+                            if (ln != "")
+                            {
+                                asf.movingData.Add(ln);
+                            }
+                            
                         }
 
                     }
@@ -2747,7 +2934,12 @@ namespace UserHandleSpace
                     {
                         foreach (AnimationTargetParts mv in frame.movingData)
                         {
-                            asf.movingData.Add(DataToCSV(type, mv));
+                            string ln = DataToCSV(type, mv);
+                            if (ln != "")
+                            {
+                                asf.movingData.Add(ln);
+                            }
+                            
                         }
                         asm.frames.Add(asf);
                     }
