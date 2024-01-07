@@ -479,7 +479,6 @@ namespace UserVRMSpace
                 }
                 
             }
-            Addressables.Release(opHandle);
 
             string ret = string.Join('\t', arr);
 #if !UNITY_EDITOR && UNITY_WEBGL

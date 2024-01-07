@@ -74,7 +74,7 @@ namespace UserHandleSpace
         const int CSV_VALCNT = 3;
         const int CSV_BEGINVAL = 4;
 
-        public static  int PROJECT_VERSION = 3;
+        public static  int PROJECT_VERSION = 4;
 
         //-------------------------------------------------------------------------
         // Important objects
@@ -792,7 +792,7 @@ namespace UserHandleSpace
         {
             NativeAnimationFrameActor ret = null;
 
-            ret = currentProject.timeline.characters.Find(av =>
+            int ishit = currentProject.timeline.characters.FindIndex(av =>
             {
                 if (av.avatar == null)
                 {
@@ -812,6 +812,11 @@ namespace UserHandleSpace
                 
                 
             });
+            if (ishit > -1)
+            {
+                ret = currentProject.timeline.characters[ishit];
+            }
+            
             return ret;
         }
 
@@ -825,7 +830,8 @@ namespace UserHandleSpace
         private NativeAnimationFrame GetFrame(NativeAnimationFrameActor actor, int index, bool isFinalize = false)
         {
             NativeAnimationFrame ret = null;
-            ret = actor.frames.Find(item =>
+            int ishit = -1;
+            ishit = actor.frames.FindIndex(item =>
             {
                 if (isFinalize)
                 {
@@ -844,6 +850,10 @@ namespace UserHandleSpace
 
                 return false;
             });
+            if (ishit > -1)
+            {
+                ret = actor.frames[ishit];
+            }
             /*for (var i = 0; i < currentProject.timeline.groups.Count; i++)
             {
                 if (currentProject.timeline.groups[i].index == index)
@@ -1585,6 +1595,7 @@ namespace UserHandleSpace
                     }
                 }
                 OperateLoadedVRM olvrm = avatar.GetComponent<OperateLoadedVRM>();
+                //---Set to blendShapeList of FrameActor the blendShapeList, what VRM has.
                 naf.blendShapeList.Clear();
                 olvrm.blendShapeList.ForEach(item =>
                 {
@@ -1698,8 +1709,10 @@ namespace UserHandleSpace
                 [1] : role title
             */
             string[] prm = param.Split(',');
-            foreach (NativeAnimationAvatar avatar in currentProject.casts)
+            for (int i = 0; i < currentProject.casts.Count; i++)
             {
+                NativeAnimationAvatar avatar = currentProject.casts[i];
+
                 if (avatar.avatarId == prm[0])
                 {
                     //---repair for influence of renaming role title
@@ -1728,8 +1741,10 @@ namespace UserHandleSpace
              * prm[0] - roleName
              * prm[1] - avatar ID
              */
-            foreach (NativeAnimationAvatar avatar in currentProject.casts)
+            for (int i = 0; i < currentProject.casts.Count; i++)
             {
+                NativeAnimationAvatar avatar = currentProject.casts[i];
+
                 if (avatar.roleName == prm[0])
                 {
                     //---overwrite target cast info to the called role 
@@ -1763,10 +1778,14 @@ namespace UserHandleSpace
                         
                     }*/
 
+                    //---timeline(frame actor)
+                    NativeAnimationFrameActor naf = GetFrameActorFromRole(avatar.roleName, avatar.type);
+                    naf.targetId = avatar.avatarId;
+
                     //---apply height difference with absorb to this role(frame actor) (VRM only)
                     //------height: old:avatar --> new:tmpav
                     //Array.Copy(tmpav.bodyHeight, avatar.bodyHeight, tmpav.bodyHeight.Length);
-                    NativeAnimationFrameActor naf = GetFrameActorFromRole(avatar.roleName, avatar.type);
+
                     CalculateAllFrameForCurrent(avatar, naf);
                     //------update also the height of frame actor (NECCESARY): this avatar height --> frame actor height ( 1:1 )
                     Array.Copy(tmpav.bodyHeight, naf.bodyHeight, tmpav.bodyHeight.Length);
@@ -1788,28 +1807,40 @@ namespace UserHandleSpace
         public void DetachAvatarFromRole(string param)
         {
             string[] prm = param.Split(',');
-            foreach (NativeAnimationAvatar avatar in currentProject.casts)
+            for (int i = 0; i < currentProject.casts.Count; i++)
             {
+                NativeAnimationAvatar avatar = currentProject.casts[i];
+                NativeAnimationFrameActor naf = GetFrameActorFromRole(avatar.roleName, avatar.type);
+
                 if (prm[1] == "role")
                 {
                     if (avatar.roleName == prm[0])
                     {
+                     
+                        //---cast
                         avatar.avatarId = "";
                         avatar.avatar = null;
                         avatar.ikparent = null;
                         avatar.path = "";
                         avatar.ext = "";
+
+                        //---timeline
+                        naf.targetId = "";
                     }
                 }
                 else if(prm[1] == "avatar")
                 {
                     if (avatar.avatarId == prm[0])
                     {
+                        //---cast
                         avatar.avatarId = "";
                         avatar.avatar = null;
                         avatar.ikparent = null;
                         avatar.path = "";
                         avatar.ext = "";
+
+                        //---timeline
+                        naf.targetId = "";
                     }
                 }
             }
@@ -3476,72 +3507,74 @@ namespace UserHandleSpace
         { //---loop is character -> frame   
             foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
             {
-                //==================================================
-                //  Tween sequence for 1-role = 1-timeline              
-                Sequence actorSeq = DOTween.Sequence();
-                actorSeq.SetAutoKill(false);
-                actorSeq.SetLink(gameObject);
-                actorSeq.OnRewind(() =>
+                if ((actor.avatar != null) && (actor.avatar.avatar != null))
                 {
-
-                    //---For non-DOTween method and properties
-                    ///SpecialUpdateFor_no_DOTween(currentProject.timeline, frameIndex);
-
-                    //seqInIndex++;
-                    //Debug.Log("(" + actor.avatar.roleTitle + " begin");
-                });
-                actorSeq.OnStepComplete(() =>
-                {
-                    //Debug.Log(")" + actor.avatar.roleTitle + " EOF");
-                });
-                actorSeq.OnUpdate(() =>
-                {
-                    
-                });
-
-                TweenCallback cb_endfunc = () =>
-                {
-                    //---other, setting for each avatar type
-                    if (actor.avatar.type == AF_TARGETTYPE.VRM)
+                    //==================================================
+                    //  Tween sequence for 1-role = 1-timeline              
+                    Sequence actorSeq = DOTween.Sequence();
+                    actorSeq.SetAutoKill(false);
+                    actorSeq.SetLink(gameObject);
+                    actorSeq.OnRewind(() =>
                     {
-                        if (currentPlayingOptions.isCompileAnimation == 1)
-                        {
-                            OperateLoadedVRM olvrm = actor.avatar.avatar.GetComponent<OperateLoadedVRM>();
-                            //---recover a bone rotation to IKPosition and IKRotation 
-                            StartCoroutine(olvrm.ApplyBoneTransformToIKTransform());
-                        }
 
-                    }
-                };
-                if (currentPlayingOptions.isLoop == 1)
-                {
-                    actorSeq.OnKill(cb_endfunc);
-                }
-                else
-                {
-                    actorSeq.OnComplete(cb_endfunc);
-                }
+                        //---For non-DOTween method and properties
+                        ///SpecialUpdateFor_no_DOTween(currentProject.timeline, frameIndex);
 
-                //---for BVH and other motion settings---
-                //   First playing, start record as other motion data.
-                if (IsRecordingOtherMotion)
-                {
-                    if (actor.targetType == AF_TARGETTYPE.VRM)
+                        //seqInIndex++;
+                        //Debug.Log("(" + actor.avatar.roleTitle + " begin");
+                    });
+                    actorSeq.OnStepComplete(() =>
                     {
-                        ManageAvatarTransform mat = actor.avatar.avatar.GetComponent<ManageAvatarTransform>();
-                        if (mat != null)
+                        //Debug.Log(")" + actor.avatar.roleTitle + " EOF");
+                    });
+                    actorSeq.OnUpdate(() =>
+                    {
+
+                    });
+
+                    TweenCallback cb_endfunc = () =>
+                    {
+                        //---other, setting for each avatar type
+                        if (actor.avatar.type == AF_TARGETTYPE.VRM)
                         {
-                            //mat.RegenerateBVH(currentProject);
-                            //mat.ExportForBVH();
-                            //mat.StartRecordBVH();
+                            if (currentPlayingOptions.isCompileAnimation == 1)
+                            {
+                                OperateLoadedVRM olvrm = actor.avatar.avatar.GetComponent<OperateLoadedVRM>();
+                                //---recover a bone rotation to IKPosition and IKRotation 
+                                StartCoroutine(olvrm.ApplyBoneTransformToIKTransform());
+                            }
+
+                        }
+                    };
+                    if (currentPlayingOptions.isLoop == 1)
+                    {
+                        actorSeq.OnKill(cb_endfunc);
+                    }
+                    else
+                    {
+                        actorSeq.OnComplete(cb_endfunc);
+                    }
+
+                    //---for BVH and other motion settings---
+                    //   First playing, start record as other motion data.
+                    if (IsRecordingOtherMotion)
+                    {
+                        if (actor.targetType == AF_TARGETTYPE.VRM)
+                        {
+                            ManageAvatarTransform mat = actor.avatar.avatar.GetComponent<ManageAvatarTransform>();
+                            if (mat != null)
+                            {
+                                //mat.RegenerateBVH(currentProject);
+                                //mat.ExportForBVH();
+                                //mat.StartRecordBVH();
+                            }
                         }
                     }
+
+                    //---build each actor's motion as timeline
+                    currentSeq.Join(PlayEachTimeline(actorSeq, actor));
                 }
                 
-                
-
-
-                currentSeq.Join(PlayEachTimeline(actorSeq, actor));
             }
         }
 
@@ -3695,7 +3728,7 @@ namespace UserHandleSpace
 
                 while (actor.frameIndexMarker < actor.frames.Count)
                 {
-                    if (actor.targetRole != "")
+                    if ((actor.targetRole != "") && (actor.targetId != ""))
                     {
                         if ((actor.avatar != null) && (actor.avatar.avatar != null))
                         {
@@ -3732,9 +3765,9 @@ namespace UserHandleSpace
                                 oldframe = avatarFrame;
                             }
                             else
-                            {
+                            { //---2nd frame after...
                                 if (avatarFrame.ease == oldframe.ease)
-                                {
+                                { //---during same easing
                                     isexec_different = false;
                                 }
                                 else

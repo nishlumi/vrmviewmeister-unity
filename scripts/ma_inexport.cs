@@ -200,6 +200,10 @@ namespace UserHandleSpace
             {
                 catmats.Add(mat.pixelSize.ToString());
             }
+            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_CUSTOMCUTOUT)
+            {
+                catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.color));
+            }
 
             ln = String.Join(CST_SEPSTR_PROP, catmats);
 
@@ -391,6 +395,10 @@ namespace UserHandleSpace
                 {
                     mat.pixelSize = float.TryParse(matc[inx++], out mat.pixelSize) ? mat.pixelSize : 0.01f;
                 }
+                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_CUSTOMCUTOUT)
+                {
+                    mat.color = ColorUtility.TryParseHtmlString(matc[inx++], out mat.color) ? mat.color : Color.white;
+                }
                 matProp.Add(mat);
             }
             if (matProp.Count > 0) ret = true;
@@ -464,8 +472,9 @@ namespace UserHandleSpace
         /// <param name="targetType">Target object type</param>
         /// <param name="param">csv data to load</param>
         /// <param name="atp">destination frame data</param>
+        /// <param name="file_version">file format version</param>
         /// <returns></returns>
-        private AnimationTargetParts CsvToFrameData(NativeAnimationFrameActor actor, AF_TARGETTYPE targetType, string param, AnimationTargetParts atp)
+        private AnimationTargetParts CsvToFrameData(NativeAnimationFrameActor actor, AF_TARGETTYPE targetType, string param, AnimationTargetParts atp, int file_version)
         {
             string[] lst = param.Split(',');
             const string CST_SEPSTR_PROP = "=";
@@ -640,17 +649,30 @@ namespace UserHandleSpace
                             string[] blendItem = lste.Split('=');
                             int blendIndex = int.TryParse(blendItem[0], out blendIndex) ? blendIndex : -1;
                             float blendVal = float.TryParse(blendItem[1], out blendVal) ? blendVal : 0f;
-                            if (
+
+                            if (file_version >= 4)
+                            { //---convert and apply: PROX:happy=0.7, PROX:FCL_MTH_Angry=0.65, ...
+                                if (blendIndex == -1)
+                                { //---if X of x=n is string, X is Shape key. directly save to movingData.blendshapes.
+                                    atp.isBlendShape = 1;
+                                    atp.blendshapes.Add(new BasicBlendShapeKey(blendItem[0], blendVal, 1));
+                                }
+                            }
+                            else
+                            {
+                                if (
                                 (blendIndex > -1) &&
                                 (blendIndex < actor.blendShapeList.Count)
                             )
-                            {
-                                //---convert and apply: 0=99,1=45  --> blendShapeList[0] (probably...PROX:happy) , blendShapeList[1](PROX:angry)
-                                //CAUTION: 別VRMのモーションを読み込むと動かさないシェイプが出る可能性あり。
-                                string bname = actor.blendShapeList[blendIndex];
-                                atp.isBlendShape = 1;
-                                atp.blendshapes.Add(new BasicStringFloatList(bname, blendVal));
-                            }
+                                {
+                                    //---convert and apply: 0=99,1=45  --> blendShapeList[0] (probably...PROX:happy) , blendShapeList[1](PROX:angry)
+                                    //CAUTION: 別VRMのモーションを読み込むと動かさないシェイプが出る可能性あり。
+                                    string bname = actor.blendShapeList[blendIndex];
+                                    atp.isBlendShape = 1;
+                                    //---registered key ONLY ( Therefore, is_changed is 1)
+                                    atp.blendshapes.Add(new BasicBlendShapeKey(bname, blendVal, 1));
+                                }
+                            }                            
 
                         }
 
@@ -686,6 +708,15 @@ namespace UserHandleSpace
 
                             aes.bodybonename = (HumanBodyBones)ival;
                             aes.equipitem = equipItem[1];
+                            //---version >= 4
+                            if (file_version >= 4)
+                            {
+                                if (equipItem.Length > 1)
+                                {
+                                    int intflag = int.TryParse(equipItem[2], out intflag) ? intflag : 0;
+                                    aes.equipflag = intflag;
+                                }
+                            }
                             atp.equipDestinations.Add(aes);
                         }
 
@@ -1337,10 +1368,12 @@ namespace UserHandleSpace
                         ret.Add("");
                         ret.Add("blendshape");
                         ret.Add(atp.blendshapes.Count.ToString());
+                        //---registered key ONLY
                         for (int i = 0; i < atp.blendshapes.Count; i++)
                         {
-
-                            ret.Add(i.ToString() + "=" + atp.blendshapes[i].value);
+                            //ret.Add(i.ToString() + "=" + atp.blendshapes[i].value);
+                            //---version >= 4
+                            ret.Add(atp.blendshapes[i].text + "=" + atp.blendshapes[i].value);
                         }
                     }
                     else if (atp.animationType == AF_MOVETYPE.VRMBlink)
@@ -1358,19 +1391,19 @@ namespace UserHandleSpace
                     }
                     else if (atp.animationType == AF_MOVETYPE.Equipment)
                     {
-                        ret.Add(((int)ParseIKBoneType.Unknown).ToString());
+                        ret.Add(((int)atp.vrmBone).ToString());
                         ret.Add("");
                         ret.Add("equipment");
                         ret.Add(atp.equipDestinations.Count.ToString());
                         atp.equipDestinations.ForEach(equip =>
-                        {
-                            ret.Add(((int)equip.bodybonename).ToString() + CST_SEPSTR_PROP + equip.equipitem);
+                        { //version >= 4: add equip.equipflag.ToString()
+                            ret.Add(((int)equip.bodybonename).ToString() + CST_SEPSTR_PROP + equip.equipitem + CST_SEPSTR_PROP + equip.equipflag.ToString());
                         });
 
                     }
                     else if (atp.animationType == AF_MOVETYPE.GravityProperty)
                     {
-                        ret.Add(((int)ParseIKBoneType.Unknown).ToString());
+                        ret.Add(((int)atp.vrmBone).ToString());
                         ret.Add("");
                         ret.Add("gravity");
                         ret.Add(atp.gravity.list.Count.ToString());
@@ -1382,7 +1415,7 @@ namespace UserHandleSpace
                     }
                     else if (atp.animationType == AF_MOVETYPE.VRMIKProperty)
                     {
-                        ret.Add(((int)ParseIKBoneType.Unknown).ToString());
+                        ret.Add(((int)atp.vrmBone).ToString());
                         ret.Add("");
                         ret.Add("vrmik");
                         ret.Add(atp.handleList.Count.ToString());
@@ -1394,7 +1427,7 @@ namespace UserHandleSpace
                     }
                     else if (atp.animationType == AF_MOVETYPE.ObjectTexture)
                     {
-                        ret.Add(((int)ParseIKBoneType.Unknown).ToString());
+                        ret.Add(((int)atp.vrmBone).ToString());
                         ret.Add("");
                         ret.Add("objtex");
                         ret.Add("0");
@@ -2471,7 +2504,7 @@ namespace UserHandleSpace
                     try
                     {
                         //naframe.movingData.Add(line);
-                        naframe.movingData.Add(CsvToFrameData(actor, actor.targetType, line, atp));
+                        naframe.movingData.Add(CsvToFrameData(actor, actor.targetType, line, atp, file_version));
                         //Memo: position do not generate. "position" change to "xxxposition".
                     }
                     catch (Exception err)
@@ -2481,7 +2514,7 @@ namespace UserHandleSpace
                     
                 }
             }
-            if (file_version < PROJECT_VERSION)
+            if (file_version < 3) //---version < 3 
             {
                 naframe = ConvertAimBipedIK2VVMIK(actor, naframe);
             }
@@ -2735,7 +2768,7 @@ namespace UserHandleSpace
                                 if ((linedata != null) && (linedata != ""))
                                 {
                                     AnimationTargetParts atp = new AnimationTargetParts();
-                                    atp = CsvToFrameData(naf, asm.targetType, linedata, atp);
+                                    atp = CsvToFrameData(naf, asm.targetType, linedata, atp, asm.version);
                                     naframe.movingData.Add(atp);
 
                                     //---For returning HTML
@@ -2745,7 +2778,7 @@ namespace UserHandleSpace
                             }
 
                             naf.frames.Add(naframe);
-                            if (asm.version < PROJECT_VERSION)
+                            if (asm.version < 3) //---version < 3
                             {
                                 naframe = ConvertAimBipedIK2VVMIK(naf, naframe);
                             }

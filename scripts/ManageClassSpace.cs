@@ -128,6 +128,19 @@ namespace UserHandleSpace
         public string equipitem;
         public Vector3 position;
         public Vector3 rotation;
+
+        /// <summary>
+        /// equip states(0 - rest, 1 - start equip, -1 - end unequip). USE FUTURE (after 2024/01/06)
+        /// </summary>
+        public int equipflag;
+        public AvatarEquipSaveClass()
+        {
+            equipflag = 0;
+            position = Vector3.zero;
+            rotation = Vector3.zero;
+            equipitem = "";
+            bodybonename = HumanBodyBones.Hips;
+        }
     }
     [Serializable]
     public class AvatarEquipmentClass
@@ -198,6 +211,26 @@ namespace UserHandleSpace
                 values.Add(action);
             });
 
+        }
+    }
+    [Serializable]
+    public class BasicBlendShapeKey
+    {
+        public string text;
+        public float value;
+        public int is_changed;
+
+        public BasicBlendShapeKey(string t, float v, int c = 0)
+        {
+            text = t;
+            value = v;
+            is_changed = c;
+        }
+        public BasicBlendShapeKey(BasicStringFloatList bs)
+        {
+            text = bs.text;
+            value = bs.value;
+            is_changed = 0;
         }
     }
     /*
@@ -662,7 +695,7 @@ namespace UserHandleSpace
         public List<float> handpose;
         public AvatarFingerForHPC fingerpose;
         public int isBlendShape;
-        public List<BasicStringFloatList> blendshapes;
+        public List<BasicBlendShapeKey> blendshapes;
         public int equipType;
         public List<AvatarEquipSaveClass> equipDestinations;
         public AvatarGravityClass gravity;
@@ -787,7 +820,7 @@ namespace UserHandleSpace
             animSpeed = 1.0f;
             animName = "";
             handpose = new List<float>();
-            blendshapes = new List<BasicStringFloatList>();
+            blendshapes = new List<BasicBlendShapeKey>();
             viewHandle = "self";
             handleList = new List<AvatarIKMappingClass>();
             matProp = new List<MaterialProperties>();
@@ -825,7 +858,7 @@ namespace UserHandleSpace
             }
             if (sc.blendshapes != null)
             {
-                sc.blendshapes = new List<BasicStringFloatList>(blendshapes);
+                sc.blendshapes = new List<BasicBlendShapeKey>(blendshapes);
             }
             if (sc.effectValues != null)
             {

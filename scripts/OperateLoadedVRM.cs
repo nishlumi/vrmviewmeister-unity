@@ -42,7 +42,7 @@ namespace UserHandleSpace
         private SkinnedMeshRenderer BSFace;
         private List<SkinnedMeshRenderer> BSMeshs;
 
-        public List<BasicStringFloatList> blendShapeList;
+        public List<BasicBlendShapeKey> blendShapeList;
 
         public bool isMoveMode;
 
@@ -82,7 +82,7 @@ namespace UserHandleSpace
             targetType = AF_TARGETTYPE.VRM;
 
             bodyinfoList = new List<Vector3>();
-            blendShapeList = new List<BasicStringFloatList>();
+            blendShapeList = new List<BasicBlendShapeKey>();
             gravityList = new AvatarGravityClass();
             equipType = 0;
             equipDestinations = new AvatarEquipmentClass();
@@ -1672,9 +1672,9 @@ namespace UserHandleSpace
         /// Gert all blend shape proxy, the avatar has.
         /// </summary>
         /// <returns></returns>
-        public List<BasicStringFloatList> ListProxyBlendShape()
+        public List<BasicBlendShapeKey> ListProxyBlendShape()
         {
-            List<BasicStringFloatList> ret = new List<BasicStringFloatList>();
+            List<BasicBlendShapeKey> ret = new List<BasicBlendShapeKey>();
             /*
             VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
 
@@ -1691,7 +1691,7 @@ namespace UserHandleSpace
             IReadOnlyList<ExpressionKey> eklist = vrminstance.Runtime.Expression.ExpressionKeys;
             for (int i = 0; i < eklist.Count; i++)
             {
-                BasicStringFloatList bsf = new BasicStringFloatList(PREFIX_PROXY + eklist[i].Name, vrminstance.Runtime.Expression.GetWeight(eklist[i]));
+                BasicBlendShapeKey bsf = new BasicBlendShapeKey(PREFIX_PROXY + eklist[i].Name, vrminstance.Runtime.Expression.GetWeight(eklist[i]));
                 ret.Add(bsf);
             }
 
@@ -1699,10 +1699,10 @@ namespace UserHandleSpace
         }
         public void ListProxyBlendShapeFromOuter()
         {
-            List<BasicStringFloatList> lst = ListProxyBlendShape();
+            List<BasicBlendShapeKey> lst = ListProxyBlendShape();
             List<string> retlst = new List<string>();
 
-            foreach (BasicStringFloatList bsf in lst)
+            foreach (BasicBlendShapeKey bsf in lst)
             {
                 retlst.Add(bsf.text + "=" + bsf.value.ToString());
             }
@@ -1718,7 +1718,7 @@ namespace UserHandleSpace
             List<string> ret = new List<string>();
             for (int i = 0; i < blendShapeList.Count; i++)
             {
-                ret.Add(blendShapeList[i].text + "=" + blendShapeList[i].value.ToString());
+                ret.Add(blendShapeList[i].text + "=" + blendShapeList[i].value.ToString() + "=" + blendShapeList[i].is_changed.ToString());
                 //Debug.Log(blendShapeList[i].text + "=" + blendShapeList[i].value.ToString());
             }
             
@@ -1743,16 +1743,16 @@ namespace UserHandleSpace
             //});
 
             //---Expression only
-            List<BasicStringFloatList> lst_px = ListProxyBlendShape();
+            List<BasicBlendShapeKey> lst_px = ListProxyBlendShape();
             lst_px.ForEach(item =>
             {
                 blendShapeList.Add(item);
             });
             //Debug.Log(blendShapeList.Count);
         }
-        public void SetBlendShapeToBackup(string name, float value)
+        public void SetBlendShapeToBackup(string name, float value, int is_changed = 0)
         {
-            BasicStringFloatList bs = blendShapeList.Find(item =>
+            BasicBlendShapeKey bs = blendShapeList.Find(item =>
             {
                 if (item.text == name) return true;
                 return false;
@@ -1760,6 +1760,7 @@ namespace UserHandleSpace
             if (bs != null)
             {
                 bs.value = value;
+                bs.is_changed = is_changed;
             }
         }
         //------ getting blendshape ----------------------==========================
@@ -1825,7 +1826,7 @@ namespace UserHandleSpace
             //VRMBlendShapeProxy prox = GetComponent<VRMBlendShapeProxy>();
 
             float ret = 0f;
-            List<BasicStringFloatList> lst = ListProxyBlendShape();
+            List<BasicBlendShapeKey> lst = ListProxyBlendShape();
             for (int i = 0; i < lst.Count; i++)
             {
                 if (lst[i].text == param)
@@ -2127,7 +2128,7 @@ namespace UserHandleSpace
 
         /// <summary>
         /// To equip other item object
-        /// (*) if already equped, nothing function
+        /// (*) if already equiped, nothing function
         /// vi devas sxargi position kaj rotation antaux cxi tiu funkcio
         /// </summary>
         /// <param name="parts"></param>
@@ -2139,6 +2140,7 @@ namespace UserHandleSpace
             OperateLoadedBase olo = equipment.avatar.GetComponent<OperateLoadedBase>();
             OtherObjectDummyIK ooik = olo.relatedHandleParent.GetComponent<OtherObjectDummyIK>();
 
+            //---wheather already equiped the equipment avatar?
             int isHit = equipDestinations.list.FindIndex(match =>
             {
                 if ((match.bodybonename == parts) && (match.equipitem == equipment.roleName)) return true;
@@ -2162,6 +2164,7 @@ namespace UserHandleSpace
                 ave.equipitem = equipment.roleName;  //roles[0];
                 ave.position = olo.GetPosition();
                 ave.rotation = olo.GetRotation();
+                ave.equipflag = 1;
                 equipDestinations.list.Add(ave);
 
                 //---set up IK marker
@@ -2177,7 +2180,7 @@ namespace UserHandleSpace
         }
 
         /// <summary>
-        /// To exchange before equipment and after equipment.
+        /// To exchange old equipment and new equipment.
         /// </summary>
         /// <param name="parts"></param>
         /// <param name="equipment">animation avatar</param>
@@ -2190,10 +2193,11 @@ namespace UserHandleSpace
             });
 
             if (isHit > -1)
-            {
-                UnequipObject(parts, equipment.roleName);
+            { //---unquip old equippable avatar
+                UnequipObject(parts, equipDestinations.list[isHit].equipitem); // equipment.roleName);
             }
 
+            //---equip new equippable avatar
             EquipObject(parts, equipment);
         }
 
@@ -2231,28 +2235,14 @@ namespace UserHandleSpace
             {
                 if (isequip == "1")
                 {
-                    EquipExchange((HumanBodyBones)index, nav);
+                    //EquipExchange((HumanBodyBones)index, nav);
+                    EquipObject((HumanBodyBones)index, nav);
                 }
                 else
                 { //---effectively NOT USE
                     EquipPositioning((HumanBodyBones)index, nav);
                 }
             }
-            /*
-            GameObject pt = GameObject.Find(name);
-            if (pt != null)
-            {
-                if (isequip == "1")
-                {
-                    //EquipObject((HumanBodyBones)index, pt);
-                    EquipExchange((HumanBodyBones)index, pt);
-                }
-                else
-                {
-                    EquipPositioning((HumanBodyBones)index, pt);
-                }
-            }
-            */
             
         }
 

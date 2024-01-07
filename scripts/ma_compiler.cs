@@ -1087,7 +1087,7 @@ namespace UserHandleSpace
             }
 
 
-            //---Blend Shape
+            //---Blend Shape (registered key ONLY)
             if (movedata.animationType == AF_MOVETYPE.BlendShape)
             {
                 //OperateLoadedVRM mainface = naa.avatar.GetComponent<OperateLoadedVRM>();
@@ -1099,7 +1099,7 @@ namespace UserHandleSpace
                 IReadOnlyList<ExpressionKey> eklist = expression.ExpressionKeys;
 
                 //int maxcnt = face.sharedMesh.blendShapeCount;
-                foreach (BasicStringFloatList val in movedata.blendshapes)
+                foreach (BasicBlendShapeKey val in movedata.blendshapes)
                 {
                     float weight = val.value;
 
@@ -1143,7 +1143,7 @@ namespace UserHandleSpace
                             else ovrm.changeProxyBlendShapeByName(val.text + "=" + weight.ToString());
 
                             //---backup as app blend shape key (prefix: PROX:)
-                            ovrm.SetBlendShapeToBackup(val.text, weight);
+                            ovrm.SetBlendShapeToBackup(val.text, weight, 1);
                         }
                         
                     }
@@ -1178,7 +1178,7 @@ namespace UserHandleSpace
                             else ovrm.changeAvatarBlendShapeByName(val.text, val.value);  //face.SetBlendShapeWeight(bindex, weight);
 
                             //---write as backup to Loaded setting.
-                            ovrm.SetBlendShapeToBackup(hitName, weight);
+                            ovrm.SetBlendShapeToBackup(hitName, weight, 1);
                         }
                     }
                 }
@@ -1213,12 +1213,117 @@ namespace UserHandleSpace
             }
             if (movedata.animationType == AF_MOVETYPE.Equipment)
             { //===Not include an animation (Until there is a prospect of correction.) ============================================================
+                //:::local function: unequip function
+                void tmpfunc_unequip(AvatarEquipSaveClass body)
+                {
+                    AvatarEquipSaveClass equip = movedata.equipDestinations.Find(match =>
+                    {
+                        if ((match.bodybonename == body.bodybonename) && (match.equipitem == body.equipitem)) return true;
+                        return false;
+                    });
+                    if (equip == null) //---animation don't has this body equip...UNEQUIP
+                    {
+                        NativeAnimationAvatar cast = GetCastInProject(body.equipitem);
+                        if (cast != null)
+                        {
+                            ovrm.UnequipObject((HumanBodyBones)body.bodybonename, cast.roleName);
+                        }
 
+                    }
+                }
+                //:::local function: equip function
+                void tmpfunc_equip(AvatarEquipSaveClass body)
+                {
+                    //---check existed equipment
+                    AvatarEquipSaveClass equip = ovrm.equipDestinations.list.Find(match =>
+                    {
+                        if ((match.bodybonename == body.bodybonename) && (match.equipitem == body.equipitem)) return true;
+                        return false;
+                    });
+                    if (equip == null) //---body don't has this animation equip...EQUIP
+                    {
+                        NativeAnimationAvatar equipitemCast = GetCastInProject(body.equipitem);
+                        if (equipitemCast != null)
+                        { //---get an equippable avatar
+                            //---load an equipment side FrameActor
+                            NativeAnimationFrameActor nafact = GetFrameActorFromRole(equipitemCast.roleName, equipitemCast.type);
+                            if (nafact != null)
+                            {
+                                NativeAnimationFrame naf_frame = nafact.frames.Find(nafact_frame =>
+                                {
+                                    if (nafact_frame.index == frame.index) return true;
+                                    return false;
+                                });
+                                if (naf_frame != null)
+                                { 
+                                    //---get transform info of an equipment side.
+                                    AnimationTargetParts translate_atp = naf_frame.FindMovingData(AF_MOVETYPE.Translate);
+                                    AnimationTargetParts rotation_atp = naf_frame.FindMovingData(AF_MOVETYPE.Rotate);
+                                    OperateLoadedBase cast_olb = equipitemCast.avatar.GetComponent<OperateLoadedBase>();
+                                    if (cast_olb != null)
+                                    { //---save transform info of key-frame to avatar object's OperateLoaded-component.
+                                        cast_olb.SetPosition(translate_atp.position);
+                                        cast_olb.SetRotation(rotation_atp.rotation);
+                                    }
+                                }
+                            }
+                            //ovrm.SetPosition(body.position);
+                            //ovrm.SetRotation(body.rotation);
+                            //vi devas sxargi POSITION kaj ROTATION antaux cxi tiu metodo.
+                            ovrm.EquipObject((HumanBodyBones)body.bodybonename, equipitemCast);
+                        }
+                    }
+                }
                 //if (options.isBuildDoTween == 0)
                 if (options.isExecuteForDOTween == 1)
                 {
-                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
-                    {
+                    if (options.isBuildDoTween == 1)
+                    { //---when animation 
+                        seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                        {
+                            ovrm.SetEquipFlag(movedata.equipType);
+
+                            //---For unequipping
+                            ovrm.equipDestinations.list.ForEach(body =>
+                            {
+                                AvatarEquipSaveClass equip = movedata.equipDestinations.Find(match =>
+                                {
+                                    if ((match.bodybonename == body.bodybonename) && (match.equipitem == body.equipitem)) return true;
+                                    return false;
+                                });
+                                if (equip == null) //---animation don't has this body equip...UNEQUIP
+                                {
+                                    NativeAnimationAvatar cast = GetCastInProject(body.equipitem);
+                                    if (cast != null)
+                                    {
+                                        ovrm.UnequipObject((HumanBodyBones)body.bodybonename, cast.roleName);
+                                    }
+
+                                }
+                            });
+                            //---For equipping
+                            movedata.equipDestinations.ForEach(body =>
+                            {
+                                tmpfunc_equip(body);
+                            });
+
+                            //---new version(2024/01/06~)
+                            movedata.equipDestinations.ForEach(body =>
+                            {
+                                if (body.equipflag == 1)
+                                { //---start equip
+
+                                }
+                                else if (body.equipflag == -1)
+                                { //---finish unequip
+
+                                }
+                            });
+
+                        }, false));
+                    }
+                    else
+                    { //---when preview
                         ovrm.SetEquipFlag(movedata.equipType);
 
                         //---For unequipping
@@ -1242,46 +1347,12 @@ namespace UserHandleSpace
                         //---For equipping
                         movedata.equipDestinations.ForEach(body =>
                         {
-                            AvatarEquipSaveClass equip = ovrm.equipDestinations.list.Find(match =>
-                            {
-                                if ((match.bodybonename == body.bodybonename) && (match.equipitem == body.equipitem)) return true;
-                                return false;
-                            });
-                            if (equip == null) //---body don't has this animation equip...EQUIP
-                            {
-                                NativeAnimationAvatar cast = GetCastInProject(body.equipitem);
-                                if (cast != null)
-                                {
-                                    //---load an equipment side FrameActor
-                                    NativeAnimationFrameActor nafact = GetFrameActorFromRole(cast.roleName, cast.type);
-                                    if (nafact != null)
-                                    {
-                                        NativeAnimationFrame naf_frame = nafact.frames.Find(nafact_ma =>
-                                        {
-                                            if (nafact_ma.index == frame.index) return true;
-                                            return false;
-                                        });
-                                        if (naf_frame != null)
-                                        {
-                                            //---get transform info of an equipment side.
-                                            AnimationTargetParts translate_atp =  naf_frame.FindMovingData(AF_MOVETYPE.Translate);
-                                            AnimationTargetParts rotation_atp = naf_frame.FindMovingData(AF_MOVETYPE.Rotate);
-                                            OperateLoadedBase cast_olb = cast.avatar.GetComponent<OperateLoadedBase>();
-                                            if (cast_olb != null)
-                                            {
-                                                cast_olb.SetPosition(translate_atp.position);
-                                                cast_olb.SetRotation(rotation_atp.rotation);
-                                            }
-                                        }
-                                    }
-                                    //ovrm.SetPosition(body.position);
-                                    //ovrm.SetRotation(body.rotation);
-                                    //vi devas sxargi POSITION kaj ROTATION antaux cxi tiu metodo.
-                                    ovrm.EquipObject((HumanBodyBones)body.bodybonename, cast);
-                                }
-                            }
+                            tmpfunc_equip(body);
                         });
-                    }, false));
+
+                        
+                    }
+                    
                 }
                 
             }
@@ -2886,6 +2957,22 @@ namespace UserHandleSpace
                         vmrec.InsertBlankFrame(newindex);
                         mat.recbvh.InsertFrame(newindex);
                     }
+                    else
+                    {
+                        for (int i = 0; i < chara.frames.Count; i++)
+                        {
+                            NativeAnimationFrame naf = chara.frames[i];
+                            if (naf.index >= newindex)
+                            {
+                                if (directiontype == "r")
+                                {
+                                    naf.index += insertCount;
+                                    naf.finalizeIndex += insertCount;
+                                }
+
+                            }
+                        }
+                    }
                     
                 }
                 
@@ -3964,9 +4051,30 @@ namespace UserHandleSpace
                 naf.blendShapeList.Clear();
 
                 //---From BlendShape Proxy (Key has always "PROX:" - prefix.)
-                List<BasicStringFloatList> proxlist =  ovrm.ListProxyBlendShape();
-                foreach (BasicStringFloatList bsf in proxlist)
+                AnimationTargetParts oldBlendShape = oldframe.movingData.Find(bm =>
+                {
+                    if (bm.animationType == AF_MOVETYPE.BlendShape) return true;
+                    return false;
+                });
+                oldBlendShape.blendshapes.ForEach(action =>
+                {
+                    atblendshape.blendshapes.Add(action);
+                });
+
+                List<BasicBlendShapeKey> proxlist =  ovrm.ListProxyBlendShape();
+                foreach (BasicBlendShapeKey bsf in proxlist)
                 { //---float value is already 0.xxf 
+                    int alreadyIsHit = -1;
+                    if (oldBlendShape != null)
+                    {
+                        alreadyIsHit = oldBlendShape.blendshapes.FindIndex(bm =>
+                        {
+                            if (bm.text == bsf.text) return true;
+                            return false;
+                        });
+                    }
+                    
+                    //---The key of the blend shape you are about to register
                     int ishit = options.registerExpressions.FindIndex(match =>
                     {
                         if ((match.text == bsf.text) && (match.value == 1)) return true;
@@ -4000,6 +4108,7 @@ namespace UserHandleSpace
             {
                 //---equipment
                 AnimationTargetParts atequip = new AnimationTargetParts();
+                atequip.vrmBone = ParseIKBoneType.Unknown;
                 atequip.equipType = ovrm.GetEquipFlag();
                 atequip.animationType = AF_MOVETYPE.Equipment;
 
@@ -4012,6 +4121,8 @@ namespace UserHandleSpace
                     aes.equipitem = match.equipitem;
                     aes.position = match.position;
                     aes.rotation = match.rotation;
+                    aes.equipflag = match.equipflag;
+
                     atequip.equipDestinations.Add(aes);
                 });
                 movingData.Add(atequip);
@@ -4019,6 +4130,7 @@ namespace UserHandleSpace
 
                 //---gravity info
                 AnimationTargetParts atgravity = new AnimationTargetParts();
+                atgravity.vrmBone = ParseIKBoneType.Unknown;
                 atgravity.animationType = AF_MOVETYPE.GravityProperty;
                 //---renewal the list, and apply it to key-frame.
                 ovrm.ListGravityInfo();
@@ -4032,6 +4144,7 @@ namespace UserHandleSpace
                 if (ovrm.ikMappingList.Count > 0)
                 {
                     AnimationTargetParts atikhandle = new AnimationTargetParts();
+                    atikhandle.vrmBone = ParseIKBoneType.Unknown;
                     atikhandle.animationType = AF_MOVETYPE.VRMIKProperty;
                     atikhandle.handleList = new List<AvatarIKMappingClass>(ovrm.ikMappingList);
                     movingData.Add(atikhandle);
@@ -4040,6 +4153,7 @@ namespace UserHandleSpace
                 //---Materials
 
                 AnimationTargetParts atmat = new AnimationTargetParts();
+                atmat.vrmBone = ParseIKBoneType.Unknown;
                 atmat.animationType = AF_MOVETYPE.ObjectTexture;
                 List<MaterialProperties> mats = ovrm.ListUserMaterialObject();
                 foreach (MaterialProperties mat in mats)

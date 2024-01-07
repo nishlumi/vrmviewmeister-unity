@@ -34,6 +34,7 @@ namespace UserHandleSpace
         public const string SHAD_COMIC = "custom/comicshader";
         public const string SHAD_ICE = "custom/iceshader";
         public const string SHAD_MICRA = "custom/pixelizetexture";
+        public const string SHAD_CUSTOMCUTOUT = "unlit/customcutout";
 
 
         public string Title;
@@ -938,6 +939,10 @@ namespace UserHandleSpace
             {
                 matp.pixelSize = mat.GetFloat("_PixelSize");
             }
+            else if (mat.shader.name.ToLower() == SHAD_CUSTOMCUTOUT)
+            {
+                matp.color = mat.GetColor("_Color");
+            }
 
             return matp;
         }
@@ -1196,6 +1201,17 @@ namespace UserHandleSpace
                     };
                     ret = String.Join(SEPSTR, tmparr);
                 }
+                else if (mat.shader.name.ToLower() == SHAD_CUSTOMCUTOUT)
+                {
+                    string[] tmparr = new string[]
+                    {
+                        gobjName,
+                        mat.name,
+                        mat.shader.name,
+                        ColorUtility.ToHtmlStringRGBA(mat.color)
+                    };
+                    ret = String.Join(SEPSTR, tmparr);
+                }
             }
             /////Debug.Log("ret=" + ret);
             // 0 - key name
@@ -1400,6 +1416,15 @@ namespace UserHandleSpace
                         mat.pixelSize.ToString()
                     });
 
+                }
+                else if ((mat.shaderName.ToLower() == SHAD_CUSTOMCUTOUT))
+                {
+                    retarr.AddRange(new string[]  {
+                        gobjName,
+                        mat.matName,
+                        mat.shaderName,
+                        ColorUtility.ToHtmlStringRGBA(mat.color),
+                    });
                 }
                 ret = String.Join(SEPSTR, retarr);
             }
@@ -1976,7 +2001,7 @@ namespace UserHandleSpace
                         if (ColorUtility.TryParseHtmlString(value, out col))
                         {
                             //mat.color = col;
-                            if ((mat.shader.name.ToLower() == SHAD_STD) || (mat.shader.name.ToLower() == SHAD_VRM))
+                            if ((mat.shader.name.ToLower() == SHAD_STD) || (mat.shader.name.ToLower() == SHAD_VRM) || (mat.shader.name.ToLower() == SHAD_CUSTOMCUTOUT))
                             {
                                 mat.SetColor("_Color", col);
                             }
@@ -2699,11 +2724,12 @@ namespace UserHandleSpace
                     }
                     else if (value.shaderName.ToLower() == SHAD_MICRA)
                     {
-                        
-                        
-
                         if (mat.HasProperty("_PixelSize")) seq.Join(mat.DOFloat(value.pixelSize, "_PixelSize", duration));
 
+                    }
+                    else if (value.shaderName.ToLower() == SHAD_CUSTOMCUTOUT)
+                    {
+                        if (mat.HasProperty("_Color")) seq.Join(mat.DOColor(value.iceColor, "_Color", duration));
                     }
                 }
             }
