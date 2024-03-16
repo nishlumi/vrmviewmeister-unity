@@ -6,12 +6,18 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 using System.Threading.Tasks;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Networking;
+
 using UserHandleSpace;
 using RootMotion.FinalIK;
 using VRM;
+using VRMShaders;
 using UniVRM10;
 using DG.Tweening;
 using LumisIkApp;
+using UniGLTF;
+using TriLibCore.Dae.Schema;
+using RootMotion.Demos;
 
 namespace UserHandleSpace
 {
@@ -35,7 +41,9 @@ namespace UserHandleSpace
          *  This class is manager function, all VRM
          *  Variables only...
          */
-        //public GameObject relatedHandleParent;
+
+        
+
         //private VRMImporterContext context;
         private Bounds bodyInfoTPose;
         private List<Vector3> bodyinfoList;
@@ -69,6 +77,28 @@ namespace UserHandleSpace
         public float RightHandValue = 0;
         public AvatarFingerInHand LeftFingerBkup;
         public AvatarFingerInHand RightFingerBkup;
+
+        private OperateVRMExporter ovrmex;
+        private Vrm10AnimationInstance vrmaInst;
+        private Animation VrmaNativeAnimation;
+        public UserAnimationState animationStartFlag;  //1 - play, 0 - stop, 2 - playing, 3 - seeking, 4 - pause
+        public float animationRemainTime;
+        private float local_animRemainTime;
+        protected bool triggerCurrentAnimOnFinished;
+        private string VrmaFileName;
+        private string animationClipName;
+
+        //---stocked sequence for auto blendshape
+        Coroutine m_coroutine;
+        private Sequence autoBlendShapeSequence;
+        private int IsAutoBlendShape = 0;
+        private float autoBlendShapeOpeningSeconds = 0.1f;
+        private float autoBlendShapeClosingSeconds = 0.1f;
+        private float autoBlendShapeInterval = 0.2f;
+        private bool IsKillAutoBlendShape;
+        public UserAnimationState AutoBlendShapeFlag;
+
+ 
 
         // Start is called before the first frame update
         override protected void Awake()
@@ -115,6 +145,11 @@ namespace UserHandleSpace
 
             //---set  up IKMapping.
             constructIKMappingList();
+
+            //---set up exporter
+            ovrmex = new OperateVRMExporter();
+
+            triggerCurrentAnimOnFinished = false;
         }
 
         // Update is called once per frame
@@ -293,8 +328,10 @@ namespace UserHandleSpace
                 isMoveMode = (flag == 1) ? true : false;
 
                 if (relatedHandleParent == null) return;
+                if (relatedTrueIKParent == null) return;
             }
-            relatedHandleParent.GetComponent<BoxCollider>().enabled = isMoveMode;
+            //relatedHandleParent.GetComponent<BoxCollider>().enabled = isMoveMode;
+            relatedTrueIKParent.GetComponent<BoxCollider>().enabled = isMoveMode;
         }
         public GameObject GetIKHandle(string name)
         {
@@ -309,8 +346,12 @@ namespace UserHandleSpace
                     break;
                 }
             }*/
-
-            ret = relatedHandleParent.transform.Find(name).gameObject;
+            Transform[] children = relatedHandleParent.transform.GetComponentsInChildren<Transform>();
+            foreach (var child in children)
+            {
+                if (child.name == name) ret = child.gameObject;
+            }
+            //ret = relatedHandleParent.transform.Find(name).gameObject;
             return ret;
         }
         /// <summary>
@@ -538,11 +579,11 @@ namespace UserHandleSpace
         /// Convert HumanBodyBones transform to This app IK transform
         /// </summary>
         /// <returns></returns>
-        public IEnumerator ApplyBoneTransformToIKTransform()
+        public IEnumerator ApplyBoneTransformToIKTransform(Animator animator)
         {
             const int BIPEDIK = 1;
             const int VVMIK = 2;
-            Animator animator = GetComponent<Animator>();
+            //Animator animator = GetComponent<Animator>();
             BipedIK bik = GetComponent<BipedIK>();
             CCDIK cik = GetComponent<CCDIK>();
             VvmIk vik = GetComponent<VvmIk>();
@@ -638,7 +679,12 @@ namespace UserHandleSpace
                 }
                 else if (isIK == VVMIK)
                 {
-                    if (bspine != null)
+                    if (bchest != null)
+                    {
+                        pos = bchest.position;
+                        rot = bchest.rotation.eulerAngles;
+                    }
+                    else
                     {
                         pos = bspine.position;
                         rot = bspine.rotation.eulerAngles;
@@ -654,10 +700,20 @@ namespace UserHandleSpace
             Transform chest = relatedHandleParent.transform.Find("Chest");
             if (chest != null)
             {
-                Vector3 bnecktmp1 = bneck.localRotation.eulerAngles;
-                //bnecktmp1.y += -180f;
-                chest.position = bneck.position;
-                chest.rotation = Quaternion.Euler(bnecktmp1.x, bnecktmp1.y, bnecktmp1.z);
+                if (bchest != null)
+                {
+                    chest.position = bchest.position;
+                    chest.rotation = bchest.rotation;
+                }
+                else
+                {
+                    chest.position = bspine.position;
+                    chest.rotation = bspine.rotation;
+                }
+                //Vector3 bnecktmp1 = bneck.localRotation.eulerAngles;
+                ////bnecktmp1.y += -180f;
+                //chest.position = bneck.position;
+                //chest.rotation = Quaternion.Euler(bnecktmp1.x, bnecktmp1.y, bnecktmp1.z);
                 yield return null;
             }
 
@@ -680,8 +736,8 @@ namespace UserHandleSpace
             Transform head = relatedHandleParent.transform.Find("Head");
             if (head != null)
             {
-                Vector3 bheadtmp1 = bhead.rotation.eulerAngles;
-                head.rotation = Quaternion.Euler(bheadtmp1.x, bheadtmp1.y, bheadtmp1.z);
+                head.position = bhead.position;
+                head.rotation = bhead.rotation;
                 yield return null;
             }
 
@@ -1121,13 +1177,20 @@ namespace UserHandleSpace
             string gravityjs = JsonUtility.ToJson(gravityList);
 
             string movemode = (isMoveMode == true) ? "1" : "0";
+
+            List<string> animclips = ListAnimationClips();            
+            string jsclip = string.Join('=', animclips);
+            int pflag = IsPlayingAnimation();
+            int playflag = (int)animationStartFlag;
+            float seek = animationRemainTime;
+
             // 1st sep ... \t
             // 2nd sep ... =
             //             ,
             // blendshape
             //             ,
             //            name=value
-
+            /*
             ret = "l," + LeftCurrentHand.ToString() + "," + LeftHandValue.ToString()
                     + "=" +
                     "r," + RightCurrentHand.ToString() + "," + RightHandValue.ToString()
@@ -1147,6 +1210,33 @@ namespace UserHandleSpace
                 movemode
 
             ;
+            */
+            string[] retarr =
+            {
+                "l," + LeftCurrentHand.ToString() + "," + LeftHandValue.ToString()
+                    + "=" +
+                    "r," + RightCurrentHand.ToString() + "," + RightHandValue.ToString(),
+                blendshape,
+                eflag.ToString(),
+                equipjs,
+                gravityjs,
+                GetHeadLock().ToString(),
+                matjs,
+                movemode,
+                //---VRMAnimation
+                pflag.ToString(),
+                playflag.ToString(),
+                seek.ToString(),
+                GetSpeedAnimation().ToString(),
+                GetMaxPosAnimation().ToString(),
+                GetWrapMode().ToString(),
+                jsclip,
+                GetTargetClip(),
+                VrmaFileName,
+                IsEnableVRMA() ? "1" : "0",
+            };
+            ret = string.Join(SEPSTR, retarr);
+
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(ret);
 #endif
@@ -2012,9 +2102,146 @@ namespace UserHandleSpace
                 }
             }
 
-
+            
             return seq;
         }
+        //===Auto Blendshape (lip sync) =====================================
+        public void GetAutoBlendShapeFromOuter()
+        {
+            string ret = "";
+            if (blink != null)
+            {
+                ret = (IsAutoBlendShape.ToString()) + "," + autoBlendShapeInterval.ToString() + "," + autoBlendShapeOpeningSeconds.ToString() + "," + autoBlendShapeClosingSeconds.ToString();
+            }
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+        public void AutoBlendShape(float duration)
+        {
+            autoBlendShapeSequence = DOTween.Sequence();
+            autoBlendShapeSequence.SetAutoKill(false);
+            IsKillAutoBlendShape = false;
+
+            autoBlendShapeSequence.Join(
+                DOTween.To(
+                    () => vrminstance.Runtime.Expression.GetWeight(ExpressionKey.CreateFromPreset(ExpressionPreset.aa)),
+                    x => vrminstance.Runtime.Expression.SetWeight(ExpressionKey.CreateFromPreset(ExpressionPreset.aa), x),
+                    0.5f, autoBlendShapeOpeningSeconds
+                )
+            );
+            autoBlendShapeSequence.Join(
+                DOTween.To(
+                    () => vrminstance.Runtime.Expression.GetWeight(ExpressionKey.CreateFromPreset(ExpressionPreset.aa)),
+                    x => vrminstance.Runtime.Expression.SetWeight(ExpressionKey.CreateFromPreset(ExpressionPreset.aa), x),
+                    0f, autoBlendShapeClosingSeconds
+                )
+            );
+            autoBlendShapeSequence.AppendInterval(autoBlendShapeInterval);
+
+            autoBlendShapeSequence.SetLoops(-1);
+
+            autoBlendShapeSequence.Pause();
+        }
+        IEnumerator AutoBlendShapeRoutine()
+        {
+            while (true)
+            {
+                if (IsAutoBlendShape != 1) break;
+                //yield return new WaitForSeconds(1.0f);
+
+                //var velocity = 0.1f;
+
+                for (var value = 0.0f; value <= 0.5f; value += autoBlendShapeOpeningSeconds)
+                {
+                    vrminstance.Runtime.Expression.SetWeight(ExpressionKey.CreateFromPreset(ExpressionPreset.aa), value);
+                    yield return null;
+                }
+                vrminstance.Runtime.Expression.SetWeight(ExpressionKey.CreateFromPreset(ExpressionPreset.aa), 1.0f);
+                //yield return new WaitForSeconds(wait);
+                for (var value = 0.5f; value >= 0; value -= autoBlendShapeClosingSeconds)
+                {
+                    vrminstance.Runtime.Expression.SetWeight(ExpressionKey.CreateFromPreset(ExpressionPreset.aa), value);
+                    yield return null;
+                }
+                vrminstance.Runtime.Expression.SetWeight(ExpressionKey.CreateFromPreset(ExpressionPreset.aa), 0);
+                yield return new WaitForSeconds(autoBlendShapeInterval);
+            }
+        }
+        public void PlayAutoBlendShape()
+        {
+            //autoBlendShapeSequence.Rewind();
+            //autoBlendShapeSequence.Play();
+
+            if (IsAutoBlendShape == 1) 
+                m_coroutine = StartCoroutine(AutoBlendShapeRoutine());
+        }
+        public void PauseAutoBlendShape()
+        {
+            if (autoBlendShapeSequence != null)
+            {
+                if (autoBlendShapeSequence.IsPlaying()) autoBlendShapeSequence.Pause();
+            }
+            
+        }
+        public void StopAutoBlendShape()
+        {
+            IsKillAutoBlendShape = true;
+            /*if (autoBlendShapeSequence != null)
+            {
+                DOTween.Kill(autoBlendShapeSequence, true);
+                autoBlendShapeSequence = null;
+            }*/
+            if (m_coroutine != null)
+            {
+                StopCoroutine(m_coroutine);
+            }
+            
+        }
+        public void SetPlayFlagAutoBlendShape(int flag)
+        {
+            IsAutoBlendShape = flag;
+        }
+
+        /// <summary>
+        /// Get Play flag for Auto blendshape
+        /// </summary>
+        /// <returns>int</returns>
+        public int GetPlayFlagAutoBlendShape()
+        {
+            return IsAutoBlendShape;
+        }
+        public void GetPlayFlagAutoBlendShapeFromOuter()
+        {
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveIntVal(IsAutoBlendShape);
+#endif
+        }
+        public float GetAutoBlendShapeOpeningSeconds()
+        {
+            return autoBlendShapeOpeningSeconds;
+        }
+        public void SetAutoBlendShapeOpeningSeconds(float v)
+        {
+            autoBlendShapeOpeningSeconds = v;
+        }
+        public float GetAutoBlendShapeCloseSeconds()
+        {
+            return autoBlendShapeClosingSeconds;
+        }
+        public void SetAutoBlendShapeCloseSeconds(float v)
+        {
+            autoBlendShapeClosingSeconds = v;
+        }
+        public float GetAutoBlendShapeInterval()
+        {
+            return autoBlendShapeInterval;
+        }
+        public void SetAutoBlendShapeInterval(float v)
+        {
+            autoBlendShapeInterval = v;
+        }
+
         //----- blink ----------------------------------------==================
         public void GetBlinkEye()
         {
@@ -2306,30 +2533,23 @@ namespace UserHandleSpace
 
             UnequipObject((HumanBodyBones)index, name);
         }
-        /*
-        public int GetFixMoving()
+        public IEnumerator SaveVRM()
         {
-            return isFixMoving ? 1 : 0;
+            //---Export VRM to byte array 
+            var bytes = ovrmex.ExportSimple(transform.gameObject);
+            
+
+            yield return null;
+            VVMDummyVrmaOutput vout = new VVMDummyVrmaOutput();
+            vout.data = bytes;
+
+            string ret = JsonUtility.ToJson(vout);
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+
         }
-        public void SetFixMoving(bool flag)
-        {
-            isFixMoving = flag;
-            if (flag)
-            {
-                transform.gameObject.GetComponent<CapsuleCollider>().enabled = false;
-                relatedHandleParent.SetActive(false);
-            }
-            else
-            {
-                transform.gameObject.GetComponent<CapsuleCollider>().enabled = true;
-                relatedHandleParent.SetActive(true);
-            }
-        }
-        public void SetFixMovingFromOuter(string param)
-        {
-            SetFixMoving(param == "1" ? true : false);
-        }
-        */
 
         //===============================================================================================================================
         //  IK handle
@@ -2576,12 +2796,35 @@ namespace UserHandleSpace
             else if (parts == IKBoneType.Aim)
             {
                 if (isIK == 1) bik.solvers.aim.target = target;
-                else if (isIK == 2) vik.Spine = target.transform;
+                else if (isIK == 2)
+                {
+                    vik.Spine = target.transform;
+                    if (name.ToLower() == "self")
+                    {
+                        vik.SpineReversed = Vector3.zero;
+                    }
+                    else
+                    {
+                        vik.SpineReversed = new Vector3(-1, 0, -1);
+                    }
+                }
             }
             else if (parts == IKBoneType.Chest)
             {
                 if (isIK == 1) bik.solvers.spine.target = target;
-                else if (isIK == 2) vik.UpperChest = target.transform;
+                else if (isIK == 2)
+                {
+                    vik.UpperChest = target.transform;
+                    if (name.ToLower() == "self")
+                    {
+                        vik.UpperChestReversed = Vector3.zero;
+                    }
+                    else
+                    {
+                        vik.UpperChestReversed = new Vector3(-1, 0, -1);
+                    }
+                    
+                }
             }
             else if (parts == IKBoneType.Pelvis)
             {
@@ -2712,470 +2955,521 @@ namespace UserHandleSpace
             }
             
         }
-
-
-        //======================================================================================================================
-        /*
-        public void RegisterUserMaterial()
+        public bool IsEnableVRMA()
         {
-            ManageAvatarTransform matra = GetComponent<ManageAvatarTransform>();
-            List<GameObject> meshcnt = matra.CheckSkinnedMeshAvailable();
-            meshcnt.ForEach(item =>
-            {
-                SkinnedMeshRenderer skn = null;
-                MeshRenderer mr = null;
-                Material[] mats = null;
-                if (item.TryGetComponent<SkinnedMeshRenderer>(out skn))
-                {
-                    mats = skn.materials;
-                }
-                if (item.TryGetComponent<MeshRenderer>(out mr))
-                {
-                    mats = mr.materials;
-                }
-                if (mats != null)
-                {
-                    foreach (Material mat in mats)
-                    {
-                        string name = item.name + "_" + mat.name;
-                        userSharedMaterials[name] = mat;
-                        MaterialProperties matp = new MaterialProperties();
-                        matp.texturePath = "";
-                        userSharedTextureFiles[name] = matp;
-
-                        MaterialProperties backmatp = new MaterialProperties();
-                        backmatp.realTexture = mat.GetTexture("_MainTex");
-                        backmatp.texturePath = matp.texturePath;
-                        backupTextureFiles[name] = backmatp;
-                    }
-                }
-            });
-
-        }
-        public List<MaterialProperties> ListUserMaterialObject()
-        {
-            List<MaterialProperties> ret = new List<MaterialProperties>();
-
-            foreach (KeyValuePair<string, Material> kvp in userSharedMaterials)
-            {
-                Material mat = kvp.Value;
-
-                //string texturePath = userSharedTextureFiles.ContainsKey(kvp.Key) ? userSharedTextureFiles[kvp.Key].texturePath : "";
-
-                MaterialProperties matp = new MaterialProperties();
-
-                matp.name = kvp.Key;
-                matp.color = mat.color;
-                matp.shaderName = mat.shader.name;
-                matp.emissioncolor = mat.GetColor("_EmissionColor");
-                if (mat.shader.name.ToLower() == "vrm/mtoon")
-                {
-                    matp.cullmode = mat.GetFloat("_CullMode");
-                    matp.blendmode = mat.GetFloat("_BlendMode");
-                    matp.shadetexcolor = mat.GetColor("_ShadeColor");
-                    matp.shadingtoony = mat.GetFloat("_ShadeToony");
-                    matp.rimcolor = mat.GetColor("_RimColor");
-                    matp.rimfresnel = mat.GetFloat("_RimFresnelPower");
-                    matp.srcblend = mat.GetFloat("_SrcBlend");
-                    matp.dstblend = mat.GetFloat("_DstBlend");
-                }
-                else
-                {
-                    matp.cullmode = 0;
-                    matp.blendmode = mat.GetFloat("_Mode");
-                    matp.metallic = mat.GetFloat("_Metallic");
-                    matp.glossiness = mat.GetFloat("_Glossiness");
-                }
-                matp.texturePath = userSharedTextureFiles[kvp.Key].texturePath;
-                matp.textureRole = userSharedTextureFiles[kvp.Key].textureRole;
-                matp.textureIsCamera = userSharedTextureFiles[kvp.Key].textureIsCamera;
-
-                ret.Add(matp);
-            }
-
-            return ret;
-        }
-        public string ListGetOneUserMaterial(string param)
-        {
-            string ret = "";
-
-            Debug.Log("param=" + param);
-            Debug.Log(userSharedMaterials.ContainsKey(param));
-            if (userSharedMaterials.ContainsKey(param))
-            {
-                Material mat = userSharedMaterials[param];
-                Debug.Log("material name=" + mat.name);
-                string texturePath = userSharedTextureFiles[param].texturePath;
-
-                if (mat.shader.name.ToLower() == "vrm/mtoon")
-                {
-                    ret = (
-                        param + "," +
-                        mat.shader.name + "," +
-                        ColorUtility.ToHtmlStringRGBA(mat.color) + "," +
-                        mat.GetFloat("_CullMode").ToString() + "," +
-                        mat.GetFloat("_BlendMode").ToString() + "," +
-                        texturePath + "," +
-
-                        "0" + "," +
-                        "0" + "," +
-                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_EmissionColor")) + "," +
-                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_ShadeColor")) + "," +
-                        mat.GetFloat("_ShadeToony").ToString() + "," +
-                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_RimColor")) + "," +
-                        mat.GetFloat("_RimFresnelPower").ToString()
-                    );
-                }
-                else
-                {
-                    ret = (
-                        param + "," +
-                        mat.shader.name + "," +
-                        ColorUtility.ToHtmlStringRGBA(mat.color) + "," +
-                        "0" + "," +
-                        mat.GetFloat("_Mode").ToString() + "," +
-                        texturePath + "," +
-
-                        mat.GetFloat("_Metallic").ToString() + "," +
-                        mat.GetFloat("_Glossiness").ToString() + "," +
-                        ColorUtility.ToHtmlStringRGBA(mat.GetColor("_EmissionColor")) + "," +
-                        ColorUtility.ToHtmlStringRGBA(Color.white) + "," +
-                        "0" + "," +
-                        ColorUtility.ToHtmlStringRGBA(Color.white) + "," +
-                        "0"
-                    );
-                }
-            }
-            Debug.Log("ret=" + ret);
-            // 0 - key name
-            // 1 - shader name
-            // 2 - material color
-            // 3 - Cull mode
-            // 4 - Blend mode
-            // 5 - Texture name
-            // 6 - Metallic (Standard)
-            // 7 - Glossiness (Standard)
-            // 8 - Emission Color 
-            // 9 - Shade Texture Color (VRM/MToon)
-            // 10- Shaing Toony (VRM/MToon)
-            // 11- Rim Color (VRM/MToon)
-            // 12- Rim Fresnel Power (VRM/MToon)
-
-            return ret;
-        }
-        public void ListGetOneUserMaterialFromOuter(string param)
-        {
-            string ret = ListGetOneUserMaterial(param);
-#if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveStringVal(ret);
-#endif
-        }
-
-        public void RegetTextureConfig()
-        {
-            ManageAvatarTransform mat = GetComponent<ManageAvatarTransform>();
-            List<GameObject> meshcnt = mat.CheckSkinnedMeshAvailable();
-            List<string> retarr = new List<string>();
-            GameObject item = meshcnt[0];
-            {
-                SkinnedMeshRenderer skn;
-                MeshRenderer mr;
-                Material[] mats = null;
-                if (item.TryGetComponent<SkinnedMeshRenderer>(out skn))
-                {
-                    mats = skn.materials;
-                }
-                else if (item.TryGetComponent<MeshRenderer>(out mr))
-                {
-                    mats = mr.materials;
-                }
-                if (mats != null)
-                {
-                    for (int i = 0; i < mats.Length; i++)
-                    {
-                        Material mate = mats[i];
-
-                        userSharedProperties.shaderName = mate.shader.name;
-                        userSharedProperties.color = mate.GetColor("_Color");
-                        userSharedProperties.blendmode = mate.GetFloat("_BlendMode");
-                        userSharedProperties.cullmode = mate.GetFloat("_CullMode");
-                        userSharedProperties.emissioncolor = mate.GetColor("_EmissionColor");
-                        userSharedProperties.shadetexcolor = mate.GetColor("_ShadeColor");
-                        userSharedProperties.shadingtoony = mate.GetFloat("_ShadeToony");
-                        userSharedProperties.rimcolor = mate.GetColor("_RimColor");
-                        userSharedProperties.rimfresnel = mate.GetFloat("_RimFresnelPower");
-                        userSharedProperties.srcblend = mate.GetFloat("_SrcBlend");
-                        userSharedProperties.dstblend = mate.GetFloat("_DstBlend");
-                    }
-                }
-                
-            }
-        }
-        public MaterialProperties GetTextureConfig(string gameObjectName, string materialName)
-        {
-            string name = gameObjectName + "_" + materialName;
-
-            return userSharedTextureFiles.ContainsKey(name) ? userSharedTextureFiles[name] : null;
+            bool ret = false;
             
-        }
-        public void GetTextureConfigFromOuter(string param)
-        {
-            string[] arr = param.Split(",");
-            MaterialProperties mat = GetTextureConfig(arr[0], arr[1]);
-
-            string ret = mat != null ? JsonUtility.ToJson(userSharedProperties) : "";
-#if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveStringVal(ret);
-#endif
-        }
-        public void SetTextureConfig(MaterialProperties vmat, bool isSaveOnly = false)
-        {
-            ManageAvatarTransform mat = GetComponent<ManageAvatarTransform>();
-            List<GameObject> meshcnt = mat.CheckSkinnedMeshAvailable();
-
-            meshcnt.ForEach(item =>
+            if (vrminstance.Runtime.VrmAnimation != null)
             {
-                SkinnedMeshRenderer skn = null;
-                MeshRenderer mr = null;
-                Material[] mats = null;
-                if (item.TryGetComponent<SkinnedMeshRenderer>(out skn))
+                ret = true;
+            }                                
+            
+            return ret;
+        }
+        public string GetVRMAFileName()
+        {
+            return VrmaFileName;
+        }
+        public void SetVRMAFileName(string param)
+        {
+            VrmaFileName = param;
+        }
+        public void SetVRMAnimation(string param)
+        {
+            if (param == VrmaFileName) return;
+
+            ClearVRMA();
+            //StartCoroutine(LoadVRMAbody(param));
+
+            //---ManageExternalAnimation
+            var vrma = manim.MexAnim.GetVRMA(param);
+            if (vrma != null )
+            {
+                VrmaFileName = param;
+                vrminstance.Runtime.VrmAnimation = vrma;
+                VrmaNativeAnimation = vrma.GetComponent<Animation>();
+
+                manim.MexAnim.CountAddVRMAReference(param);
+
+                //---change target of trueik
+                var oodik = relatedTrueIKParent.GetComponent<OtherObjectDummyIK>();
+                oodik.relatedAvatar = gameObject;
+                //oodik.transform.localRotation = Quaternion.Euler(oodik.transform.localRotation.eulerAngles + new Vector3(0, 180, 0));
+
+                //---get initial information: clip list, length
+                List<string> animclips = ListAnimationClips();
+                SetTargetClip(animclips[0]);
+                string jsclip = string.Join('=', animclips);
+                string clipname = GetTargetClip();
+                string[] retarr = {
+                    IsEnableVRMA() ? "1" : "0",
+                    jsclip,
+                    clipname,
+                    GetMaxPosAnimation().ToString()
+                };
+                string htmlret = string.Join("\t", retarr);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(htmlret);
+#endif
+            }
+        }
+        public void SetVRMAContinuously(string param)
+        {
+            if (param == VrmaFileName) return;
+            //---ManageExternalAnimation
+            var vrma = manim.MexAnim.GetVRMA(param);
+            if (vrma != null)
+            {
+                VrmaFileName = param;
+                vrminstance.Runtime.VrmAnimation = vrma;
+                VrmaNativeAnimation = vrma.GetComponent<Animation>();
+
+                manim.MexAnim.CountAddVRMAReference(param);
+
+                //---change target of trueik
+                var oodik = relatedTrueIKParent.GetComponent<OtherObjectDummyIK>();
+                oodik.relatedAvatar = gameObject;
+                //oodik.transform.localRotation = Quaternion.Euler(oodik.transform.localRotation.eulerAngles + new Vector3(0, 180, 0));
+
+            }
+        }
+        public void AdjustVRMAInitialRotation()
+        {
+            var oodik = relatedTrueIKParent.GetComponent<OtherObjectDummyIK>();
+            oodik.transform.localRotation = Quaternion.Euler(oodik.transform.localRotation.eulerAngles + new Vector3(0, 180, 0));
+        }
+        public IEnumerator LoadVRMAbody(string url)
+        {
+            using (UnityWebRequest www = UnityWebRequest.Get(url))
+            {
+                yield return www.SendWebRequest();
+                //if (www.isNetworkError || www.isHttpError)
+                if (www.result == UnityWebRequest.Result.ConnectionError)
                 {
-                    mats = skn.materials;
+                    Debug.LogError(www.error);
+                    yield break;
                 }
-                if (item.TryGetComponent<MeshRenderer>(out mr))
+                else
                 {
-                    mats = mr.materials;
+                    //StartCoroutine(LoadVRM_body(www.downloadHandler.data));
+                    StartLoadVRMAbody(www.downloadHandler.data).ConfigureAwait(false);
                 }
-                if (mats != null)
-                {
-                    for (int i = 0; i < mats.Length; i++)
-                    {
-                        if (!isSaveOnly) mats[i].SetFloat("_SrcBlend", vmat.srcblend);
-                        userSharedProperties.srcblend = vmat.srcblend;
+            }
+        }
+        public async Task<Vrm10AnimationInstance> StartLoadVRMAbody(byte[] data)
+        {
+            using GltfData gdata = new GlbBinaryParser(data, "test").Parse();
+            using var loader = new VrmAnimationImporter(gdata);
+            var instance = await loader.LoadAsync(new ImmediateCaller());
 
-                        if (!isSaveOnly) mats[i].SetFloat("_DstBlend", vmat.dstblend);
-                        userSharedProperties.dstblend = vmat.dstblend;
+            vrmaInst = instance.GetComponent<Vrm10AnimationInstance>();
+            vrminstance.Runtime.VrmAnimation = vrmaInst;
+            VrmaNativeAnimation = vrmaInst.GetComponent<Animation>();
+            vrminstance.Runtime.VrmAnimation.ShowBoxMan(false);
 
-                        if (!isSaveOnly) mats[i].SetColor("_Color", vmat.color);
-                        userSharedProperties.color = vmat.color;
+            //---change target of trueik
+            var oodik = relatedTrueIKParent.GetComponent<OtherObjectDummyIK>();
+            oodik.relatedAvatar = gameObject;
 
-                        if (!isSaveOnly) mats[i].SetFloat("_BlendMode", vmat.blendmode);
-                        userSharedProperties.blendmode = vmat.blendmode;
+            //---get initial information: clip list, length
+            List<string> animclips = ListAnimationClips();
+            SetTargetClip(animclips[0]);
+            string jsclip = string.Join('=', animclips);
+            string clipname = GetTargetClip();
+            string[] retarr = {
+                IsEnableVRMA() ? "1" : "0",
+                jsclip,
+                clipname,
+                GetMaxPosAnimation().ToString()
+            };
+            string htmlret = string.Join("\t", retarr);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(htmlret);
+#endif
 
-                        if (!isSaveOnly) mats[i].SetFloat("_CullMode", vmat.cullmode);
-                        userSharedProperties.cullmode = vmat.cullmode;
+            return vrmaInst;
+        }
+        public void ClearVRMA(int is_recover_pose = 0)
+        {
+            if (IsEnableVRMA())
+            {
+                if (is_recover_pose == 1) StartCoroutine("ApplyBoneTransformToIKTransform");
 
-                        if (!isSaveOnly) mats[i].EnableKeyword("EMISSION");
-                        if (!isSaveOnly) mats[i].SetColor("_EmissionColor", vmat.emissioncolor);
-                        userSharedProperties.emissioncolor = vmat.emissioncolor;
+                manim.MexAnim.CountDownVRMAReference(VrmaFileName);
 
-                        if (!isSaveOnly) mats[i].SetColor("_ShadeColor", vmat.shadetexcolor);
-                        userSharedProperties.shadetexcolor = vmat.shadetexcolor;
+                VrmaNativeAnimation = null;
+                vrminstance.Runtime.VrmAnimation = null;
+                VrmaFileName = "";
+                //vrmaInst.Dispose();
+                //vrmaInst = null;
 
-                        if (!isSaveOnly) mats[i].SetFloat("_ShadeToony", vmat.shadingtoony);
-                        userSharedProperties.shadingtoony = vmat.shadingtoony;
+                //---change target of trueik
+                // VRM own transform -> handle ikparent, 
+                relatedHandleParent.transform.position = gameObject.transform.position;
+                relatedHandleParent.transform.rotation = gameObject.transform.rotation;
+                gameObject.transform.position = Vector3.zero;
+                gameObject.transform.rotation = Quaternion.Euler(0, 0, 0);
 
-                        if (!isSaveOnly) mats[i].SetColor("_RimColor", vmat.rimcolor);
-                        userSharedProperties.rimcolor = vmat.rimcolor;
-
-                        if (!isSaveOnly) mats[i].SetFloat("_RimFresnelPower", vmat.rimfresnel);
-                        userSharedProperties.rimfresnel = vmat.rimfresnel;
-
-                    }
-                }
-                
-            });
+                var oodik = relatedTrueIKParent.GetComponent<OtherObjectDummyIK>();
+                oodik.relatedAvatar = relatedHandleParent;
+            }
         }
 
         /// <summary>
-        /// 
+        /// Enable VRMAnimation. IK target change to VRM own.
         /// </summary>
-        /// <param name="param">[0] = gameobject name in vrm, [1] = material name, [2] = property name, [3] = value</param>
-        public void SetTextureConfigFromOuter(string param)
+        public void EnableVRMA()
         {
-            string[] arr = param.Split(",");
-            string partsname = arr[0];
-            string matname = arr[1];
-            string propname = arr[2];
-
-            string fullkey = partsname + "_" + matname;
-
-            if (userSharedMaterials.ContainsKey(fullkey))
+            //if (IsEnableVRMA())
             {
-                Material mat = userSharedMaterials[fullkey];
+                vrminstance.Runtime.VrmAnimation = vrmaInst;
 
-                if (propname.ToLower() == "srcblend")
-                {
-                    float val = float.TryParse(arr[3], out val) ? val : 0f;
+                //---change target of trueik
+                var oodik = relatedTrueIKParent.GetComponent<OtherObjectDummyIK>();
+                oodik.relatedAvatar = gameObject;
+            }
+        }
 
-                    mat.SetFloat("_SrcBlend", val);
-                    userSharedTextureFiles[fullkey].srcblend = val;
+        /// <summary>
+        /// Disable VRMAnimation (not delete). IK target change to relatedHandleParent.
+        /// recover current pos/rot to it. VRM pos/rot set 0.
+        /// </summary>
+        public void DisableVRMA(int is_recover_pose = 0)
+        {
+            if (IsEnableVRMA())
+            {
+                if (is_recover_pose == 1) StartCoroutine("ApplyBoneTransformToIKTransform");
+
+                vrminstance.Runtime.VrmAnimation = null;
+
+                //---change target of trueik
+                // VRM own transform -> handle ikparent, 
+                relatedHandleParent.transform.position = gameObject.transform.position;
+                relatedHandleParent.transform.rotation = gameObject.transform.rotation;
+                gameObject.transform.position = Vector3.zero;
+                gameObject.transform.rotation = Quaternion.Euler(0, 0, 0);
+
+                var oodik = relatedTrueIKParent.GetComponent<OtherObjectDummyIK>();
+                oodik.relatedAvatar = relatedHandleParent;
+            }
+        }
+
+        public void PlayAnimation(int isfirst = 0)
+        {
+
+            if (IsEnableVRMA())
+            {
+                if (!VrmaNativeAnimation.clip.isLooping)
+                { //---manually finish flag is OFF
+                    triggerCurrentAnimOnFinished = false;
                 }
-                else if (propname.ToLower() == "dstblend")
+                foreach (AnimationState state in VrmaNativeAnimation)
                 {
-                    float val = float.TryParse(arr[3], out val) ? val : 0f;
+                    if (VrmaNativeAnimation.clip.name == state.clip.name)
+                    {
+                        state.time = animationRemainTime;
+                    }
 
-                    mat.SetFloat("_DstBlend", val);
-                    userSharedTextureFiles[fullkey].dstblend = val;
                 }
-                else if (propname.ToLower() == "color")
+
+                if (isfirst == 1) VrmaNativeAnimation.Rewind();
+                VrmaNativeAnimation.Play(VrmaNativeAnimation.clip.name);
+            }
+        }
+        public void PauseAnimation()
+        {
+            if (IsEnableVRMA())
+            {
+                if (VrmaNativeAnimation.isPlaying)
                 {
-                    Color cval = ColorUtility.TryParseHtmlString(arr[1], out cval) ? cval : Color.white;
-
-                    mat.SetColor("_Color", cval);
-                    userSharedTextureFiles[fullkey].color = cval;
+                    foreach (AnimationState state in VrmaNativeAnimation)
+                    {
+                        if (VrmaNativeAnimation.clip.name == state.clip.name)
+                        {
+                            animationRemainTime = state.time;
+                        }
+                    }
+                    VrmaNativeAnimation.Stop();
                 }
-                else if (propname.ToLower() == "renderingtype")
+                else
                 {
-                    float val = float.TryParse(arr[3], out val) ? val : 0f;
-
-                    mat.SetFloat("_BlendMode", val);
-                    userSharedTextureFiles[fullkey].blendmode = val;
+                    foreach (AnimationState state in VrmaNativeAnimation)
+                    {
+                        if (VrmaNativeAnimation.clip.name == state.clip.name)
+                        {
+                            state.time = animationRemainTime;
+                        }
+                    }
+                    VrmaNativeAnimation.Play();
                 }
-                else if (propname.ToLower() == "cullmode")
-                { //0 - off, 1 - front, 2 - back
-                    float val = float.TryParse(arr[3], out val) ? val : 0f;
 
-                    mat.SetFloat("_CullMode", val);
-                    userSharedTextureFiles[fullkey].cullmode = val;
-                }
-                else if (propname.ToLower() == "emissioncolor")
+            }
+
+        }
+        public void PauseAnimationFromOuter()
+        {
+            PauseAnimation();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(animationRemainTime);
+#endif
+        }
+        public void StopAnimation()
+        {
+            if (IsEnableVRMA())
+            {
+                VrmaNativeAnimation.Stop();
+                animationRemainTime = 0f;
+            }
+        }
+        //----------------------------------------------------------------------------
+        public List<string> ListAnimationClips()
+        {
+            List<string> arr = new List<string>();
+
+            if (IsEnableVRMA())
+            {
+                foreach (AnimationState state in VrmaNativeAnimation)
                 {
-                    Color cval = ColorUtility.TryParseHtmlString(arr[1], out cval) ? cval : Color.white;
-
-                    mat.EnableKeyword("EMISSION");
-                    mat.SetColor("_EmissionColor", cval);
-                    userSharedTextureFiles[fullkey].emissioncolor = cval;
+                    arr.Add(state.clip.name);
                 }
-                else if (propname.ToLower() == "shadetexcolor")
-                {
-                    Color cval = ColorUtility.TryParseHtmlString(arr[1], out cval) ? cval : Color.white;
+            }
 
-                    mat.SetColor("_ShadeColor", cval);
-                    userSharedTextureFiles[fullkey].shadetexcolor = cval;
+            return arr;
+        }
+        public void ListAnimationClipsFromOuter()
+        {
+            List<string> arr = ListAnimationClips();
+            string ret = string.Join(',', arr);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+        public void SetTargetClip(string param)
+        {
+            if (IsEnableVRMA())
+            {
+                if (VrmaNativeAnimation.clip == null)
+                {
+                    VrmaNativeAnimation.clip = VrmaNativeAnimation.GetClip(param);
                 }
-                else if (propname.ToLower() == "shadingtoony")
+                else
                 {
-                    float val = float.TryParse(arr[3], out val) ? val : 0f;
-
-                    mat.SetFloat("_ShadeToony", val);
-                    userSharedTextureFiles[fullkey].shadingtoony = val;
+                    if (param != VrmaNativeAnimation.clip.name)
+                    {
+                        VrmaNativeAnimation.clip = VrmaNativeAnimation.GetClip(param);
+                    }
                 }
-                else if (propname.ToLower() == "rimcolor")
-                {
-                    Color cval = ColorUtility.TryParseHtmlString(arr[1], out cval) ? cval : Color.white;
 
-                    mat.SetColor("_RimColor", cval);
-                    userSharedTextureFiles[fullkey].rimcolor = cval;
+
+            }
+        }
+        public string GetTargetClip()
+        {
+            string ret = "";
+
+            if (IsEnableVRMA())
+            {
+                if (VrmaNativeAnimation.clip != null)
+                {
+                    ret = VrmaNativeAnimation.clip.name;
                 }
-                else if (propname.ToLower() == "rimfresnel")
-                {
-                    float val = float.TryParse(arr[3], out val) ? val : 0f;
 
-                    mat.SetFloat("_RimFresnelPower", val);
-                    userSharedTextureFiles[fullkey].rimfresnel = val;
+            }
+            return ret;
+        }
+        public void GetTargetClipFromOuter()
+        {
+            string ret = GetTargetClip();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+        //-----------------------------------------------------
+        public int IsPlayingAnimation()
+        {
+            int ret = 0;
+
+            if (IsEnableVRMA())
+            {
+                ret = VrmaNativeAnimation.isPlaying ? 1 : 0;
+            }
+
+            return ret;
+        }
+        public void IsPlayingAnimationFromOuter()
+        {
+            int ret = IsPlayingAnimation();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveIntVal(ret);
+#endif
+        }
+        //------------------------------------------------
+        public void SetPlayFlagAnimation(UserAnimationState flag)
+        {
+            animationStartFlag = flag;
+        }
+        public void SetPlayFlagAnimationFromOuter(int flag)
+        {
+            animationStartFlag = (UserAnimationState)flag;
+        }
+
+        /// <summary>
+        /// Get Play flag for Motion
+        /// </summary>
+        /// <param name="is_contacthtml"></param>
+        /// <returns>UserAnimationState</returns>
+        public UserAnimationState GetPlayFlagAnimation()
+        {
+            return animationStartFlag;
+        }
+        public void GetPlayFlagAnimationFromOuter()
+        {
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveIntVal((int)animationStartFlag);
+#endif
+        }
+        //-----------------------------------------------------
+        public void SetSpeedAnimation(float to)
+        {
+            if (IsEnableVRMA())
+            {
+                foreach (AnimationState state in VrmaNativeAnimation)
+                {
+                    if (VrmaNativeAnimation.clip.name == state.clip.name)
+                    {
+                        state.speed = to;
+                    }
                 }
             }
         }
-        public Sequence SetMaterialTween(Sequence seq, string propname, MaterialProperties value, float duration)
+        public float GetSpeedAnimation()
         {
-            //string[] prm = param.Split(',');
-            string mat_name = name;
-            //string propname = prm[1];
-
-            ManageAvatarTransform mat = GetComponent<ManageAvatarTransform>();
-            List<GameObject> meshcnt = mat.CheckSkinnedMeshAvailable();
-            meshcnt.ForEach(item =>
+            float ret = 0f;
+            if (IsEnableVRMA())
             {
-                SkinnedMeshRenderer skn = null;
-                MeshRenderer mr = null;
-                Material[] mats = null;
-                if (item.TryGetComponent<SkinnedMeshRenderer>(out skn))
+                if (VrmaNativeAnimation.clip != null)
                 {
-                    mats = skn.materials;
-                }
-                if (item.TryGetComponent<MeshRenderer>(out mr))
-                {
-                    mats = mr.materials;
-                }
-                if (mats != null)
-                {
-                    for (int i = 0; i < mats.Length; i++)
+                    foreach (AnimationState state in VrmaNativeAnimation)
                     {
-                        Material cmat = mats[i];
-
-                        if (propname.ToLower() == "srcblend")
-                        { //SrcBlend
-
-                            seq.Join(mats[i].DOFloat(value.srcblend, "_SrcBlend", duration));
-                        }
-                        else if (propname.ToLower() == "dstblend")
-                        { //DstBlend
-
-                            seq.Join(mats[i].DOFloat(value.dstblend, "_DstBlend", duration));
-
-                        }
-                        else if (propname.ToLower() == "color")
+                        if (VrmaNativeAnimation.clip.name == state.clip.name)
                         {
-                            seq.Join(mats[i].DOColor(value.color, duration));
-                        }
-                        else if (propname.ToLower() == "renderingtype")
-                        {
-                            if (mats[i].shader.name.ToLower() == "standard")
-                            {
-                                seq.Join(mats[i].DOFloat(value.blendmode, "_Mode", duration));
-                            }
-                            else if (mats[i].shader.name.ToLower() == "vrm/mtoon")
-                            {
-                                seq.Join(mats[i].DOFloat(value.blendmode, "_BlendMode", duration));
-                            }
-                        }
-                        else if (propname.ToLower() == "cullmode")
-                        { //0 - off, 1 - front, 2 - back
-                            if (mats[i].shader.name.ToLower() == "vrm/mtoon")
-                            {
-                                seq.Join(mats[i].DOFloat(value.cullmode, "_CullMode", duration));
-                            }
-                        }
-                        else if (propname.ToLower() == "emissioncolor")
-                        { //emission color
-                            
-                            seq.Join(DOVirtual.DelayedCall(duration, () =>
-                            {
-                                cmat.EnableKeyword("EMISSION");
-                            },false));
-                            seq.Join(mats[i].DOColor(value.emissioncolor, "_EmissionColor", duration));
-                        }
-                        else if (propname.ToLower() == "shadetexcolor")
-                        { //shade texture color
-                            if (mats[i].shader.name.ToLower() == "vrm/mtoon")
-                            {
-                                seq.Join(mats[i].DOColor(value.shadetexcolor, "_ShadeColor", duration));
-                            }
-                        }
-                        else if (propname.ToLower() == "shadingtoony")
-                        { //shading toony
-                            seq.Join(mats[i].DOFloat(value.shadingtoony, "_ShadeToony", duration));
-                        }
-                        else if (propname.ToLower() == "rimcolor")
-                        { //rim color
-                            if (mats[i].shader.name.ToLower() == "vrm/mtoon")
-                            {
-                                seq.Join(mats[i].DOColor(value.rimcolor, "_RimColor", duration));
-                            }
-                        }
-                        else if (propname.ToLower() == "rimfresnel")
-                        { //rim fresnel power
-                            seq.Join(mats[i].DOFloat(value.rimfresnel, "_RimFresnelPower", duration));
+                            ret = state.speed;
                         }
                     }
                 }
-                
-            });
 
-            return seq;
+            }
+
+            return ret;
         }
-        */
+        public void GetSpeedAnimationFromOuter()
+        {
+            float ret = GetSpeedAnimation();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(ret);
+#endif
+        }
+        //-------------------------------------------------------
+        public float SeekPosition
+        {
+            set
+            {
+                if (IsEnableVRMA())
+                {
+                    if (value > -1f)
+                    {
+                        VrmaNativeAnimation.clip.SampleAnimation(VrmaNativeAnimation.gameObject, value);
+                        local_animRemainTime = value;
+                    }
+
+                }
+            }
+            get
+            {
+                return local_animRemainTime;
+            }
+        }
+        public float GetSeekPosAnimation()
+        {
+            return animationRemainTime;
+        }
+        public void GetSeekPosAnimationFromOuter()
+        {
+            float pos = GetSeekPosAnimation();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(animationRemainTime);
+#endif
+        }
+        public void SetSeekPosAnimation(float pos)
+        {
+            animationRemainTime = pos;
+        }
+        public virtual void SeekPlayAnimation(float value = -1f)
+        {
+
+            if (IsEnableVRMA())
+            {
+                if (value > -1f)
+                {
+                    animationRemainTime = value;
+                    //if (VrmaNativeAnimation.clip != null)
+                        VrmaNativeAnimation.clip.SampleAnimation(VrmaNativeAnimation.gameObject, animationRemainTime);
+                }
+
+            }
+        }
+        //-----------------------------------------------------
+        public float GetMaxPosAnimation()
+        {
+            float ret = 0f;
+
+            if (IsEnableVRMA())
+            {
+                if (VrmaNativeAnimation.clip != null)
+                {
+                    ret = VrmaNativeAnimation.clip.length;
+                }
+
+
+            }
+            return ret;
+        }
+        public void GetMaxPosAnimationFromOuter()
+        {
+            float ret = GetMaxPosAnimation();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(ret);
+#endif
+        }
+        //-------------------------------------------------------------
+        public void SetWrapMode(int flag)
+        {
+            if (IsEnableVRMA())
+            {
+                VrmaNativeAnimation.wrapMode = (WrapMode)flag;
+            }
+        }
+        public int GetWrapMode()
+        {
+            int ret = 0;
+
+            if (IsEnableVRMA())
+            {
+                ret = (int)VrmaNativeAnimation.wrapMode;
+            }
+            return ret;
+        }
+        public void GetWrapModeFromOuter()
+        {
+            int ret = GetWrapMode();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveIntVal(ret);
+#endif
+        }
+
+
+        //======================================================================================================================
+
         public IEnumerator SetupAdditionalExpression ()
         {
             //VRM10Expression ex2 = new VRM10Expression();
@@ -3238,8 +3532,10 @@ namespace UserHandleSpace
                     if (ishit == -1)
                     { //---current shape not found in the expression[]
                         VRM10Expression exi = ScriptableObject.CreateInstance<VRM10Expression>();
+                        Transform stran = smr.transform;
+                        string stran_path = UniVRM10.UnityExtensions.RelativePathFrom(stran, vrminstance.transform);
                         exi.MorphTargetBindings = new MorphTargetBinding[] {
-                            new MorphTargetBinding(smr.transform.RelativePathFrom(vrminstance.transform), i, 1.0f)
+                            new MorphTargetBinding(stran_path, i, 1.0f)
                         };
                         exi.name = smr.sharedMesh.GetBlendShapeName(i);
                         int ccinx = vrminstance.Vrm.Expression.CustomClips.FindIndex(match =>

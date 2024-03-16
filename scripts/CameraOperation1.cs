@@ -35,6 +35,7 @@ public class CameraOperation1 : MonoBehaviour
     public Camera ARCameraL;
     public Camera ARCameraR;
 
+    [SerializeField]
     private Camera mainCamera;
     private Vector3 lastMousePos;
     private Vector3 lastDragPos;
@@ -77,15 +78,15 @@ public class CameraOperation1 : MonoBehaviour
         //Debug.Log(RenderSettings.skybox.shader.name);
 
         configLab = GameObject.Find("Canvas").GetComponent<ConfigSettingLabs>();
-        mainCamera = GetComponent<Camera>(); // Camera.main;
+        //mainCamera = GetComponent<Camera>(); // Camera.main;
         //Dbg_diff = GameObject.Find("Dbg_diff").GetComponent<Text>();
         //Dbg_mouse = GameObject.Find("Dbg_mouse").GetComponent<Text>();
 
         distance_camera2viewpoint = configLab.GetFloatVal("distance_camera_viewpoint", 2.5f);
 #if !UNITY_EDITOR && UNITY_WEBGL
         WebGLInput.captureAllKeyboardInput = false;
-        GameObject futureHide = GameObject.Find("Canvas").transform.Find("futureHide").gameObject;
-        if (futureHide != null) futureHide.SetActive(false);
+        //GameObject futureHide = GameObject.Find("Canvas").transform.Find("futureHide").gameObject;
+        //if (futureHide != null) futureHide.SetActive(false);
 
         GameObject newUI = GameObject.Find("newUI").gameObject;
         if (newUI != null) newUI.SetActive(false);
@@ -101,6 +102,7 @@ public class CameraOperation1 : MonoBehaviour
     void Update()
     {
         if (!camxr.isActiveNormal()) return;
+        if (mainCamera == null) return;
 
         //distance_camera2viewpoint = configLab.GetFloatVal("distance_camera_viewpoint", 2.5f);
         //camera_keymove_speed = configLab.GetFloatVal("camera_keymove_speed", 0.1f);
@@ -842,15 +844,22 @@ public class CameraOperation1 : MonoBehaviour
     }
     public void SetClearFlag(CameraClearFlags param)
     {
-        Front3DCam.clearFlags = param;
-        VRCameraL.clearFlags = param;
-        VRCameraR.clearFlags = param;
-
-        List<NativeAnimationAvatar> list = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
-        list.ForEach(item =>
+        if (Front3DCam.enabled) Front3DCam.clearFlags = param;
+        
         {
-            item.avatar.GetComponent<OperateLoadedCamera>().SetClearFlag((int)param);
-        });
+            VRCameraL.clearFlags = param;
+            VRCameraR.clearFlags = param;
+        }
+
+        if (camxr.isActiveNormal())
+        {
+            List<NativeAnimationAvatar> list = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
+            list.ForEach(item =>
+            {
+                item.avatar.GetComponent<OperateLoadedCamera>().SetClearFlag((int)param);
+            });
+        }
+        
     }
     public void SetClearFlagFromOuter(int param)
     {
@@ -873,16 +882,23 @@ public class CameraOperation1 : MonoBehaviour
 
     public void SetSkyColor(Color param)
     {
-        Front3DCam.backgroundColor = param;
-        VRCameraL.backgroundColor = param;
-        VRCameraR.backgroundColor = param;
+        if (Front3DCam.enabled) Front3DCam.backgroundColor = param;
+        //if (camxr.isActiveVR())
+        {
+            VRCameraL.backgroundColor = param;
+            VRCameraR.backgroundColor = param;
+        }
         //Front3DCam.transform.GetChild(0).gameObject.GetComponent<Camera>().backgroundColor = param;
 
-        List<NativeAnimationAvatar> list = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
-        list.ForEach(item =>
+        if (camxr.isActiveNormal())
         {
-            item.avatar.GetComponent<Camera>().backgroundColor = param;
-        });
+            List<NativeAnimationAvatar> list = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
+            list.ForEach(item =>
+            {
+                item.avatar.GetComponent<Camera>().backgroundColor = param;
+            });
+        }
+        
 
     }
     public void SetSkyColorFromOuter(string param)
@@ -895,18 +911,22 @@ public class CameraOperation1 : MonoBehaviour
     }
     public Sequence SetSkyColorTween(Sequence seq, Color param, float duration)
     {
-        seq.Join(Front3DCam.DOColor(param, duration));
-        if (camxr.isActiveVR())
+        if (Front3DCam.enabled) seq.Join(Front3DCam.DOColor(param, duration));
+        //if (camxr.isActiveVR())
         {
             seq.Join(VRCameraL.DOColor(param, duration));
             seq.Join(VRCameraR.DOColor(param, duration));
         }
 
-        List<NativeAnimationAvatar> list = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
-        for (int i = 0; i < list.Count; i++) 
-        { 
-            list[i].avatar.GetComponent<Camera>().backgroundColor = param;
+        if (camxr.isActiveNormal())
+        {
+            List<NativeAnimationAvatar> list = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
+            for (int i = 0; i < list.Count; i++)
+            {
+                list[i].avatar.GetComponent<Camera>().backgroundColor = param;
+            }
         }
+        
 
         return seq;
     }

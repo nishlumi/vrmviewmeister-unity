@@ -36,7 +36,7 @@ namespace UserHandleSpace
         protected AF_TARGETTYPE targetType;
 
         private ManageAnimation animarea;
-        private BasicTransformInformation bti;
+        protected BasicTransformInformation bti;
 
         private void Awake()
         {
@@ -67,18 +67,21 @@ namespace UserHandleSpace
             oldRotation = rect.rotation;
 
         }
-
+        public string GetDimension()
+        {
+            return bti.dimension;
+        }
         public RectTransform GetRectTransform()
         {
             return transform.gameObject.GetComponent<RectTransform>();
         }
-        public void SaveDefaultTransform(bool ispos, bool isrotate)
+        public virtual void SaveDefaultTransform(bool ispos, bool isrotate)
         {
             RectTransform rect = GetRectTransform();
             if (ispos) defaultPosition = rect.anchoredPosition;
             if (isrotate) defaultRotation = rect.rotation;
         }
-        public void LoadDefaultTransform(bool ispos, bool isrotate)
+        public virtual void LoadDefaultTransform(bool ispos, bool isrotate)
         {
             RectTransform rect = GetRectTransform();
             if (ispos) rect.anchoredPosition = defaultPosition;
@@ -229,7 +232,7 @@ namespace UserHandleSpace
         }
 
         //--- 2D transform -------------------------------------------------------------------------------------------
-        public void GetCommonTransformFromOuter()
+        public virtual void GetCommonTransformFromOuter()
         {
             RectTransform rect = GetRectTransform();
 
@@ -249,6 +252,15 @@ namespace UserHandleSpace
             ReceiveStringVal(ret);
 #endif
         }
+        public Vector2 GetSize()
+        {
+            RectTransform rect = GetRectTransform();
+
+            Vector2 ret;
+            ret = rect.sizeDelta;
+
+            return ret;
+        }
         public Vector2 GetSizeFromOuter()
         {
             RectTransform rect = GetRectTransform();
@@ -262,18 +274,30 @@ namespace UserHandleSpace
 
             return ret;
         }
-        public void SetSizeFromOuter(string param)
+        public void SetSize(float x, float y)
         {
             RectTransform rect = GetRectTransform();
+
+            rect.sizeDelta = new Vector2(x, y);
+        }
+
+        /// <summary>
+        /// Set RectTransform painted area size
+        /// </summary>
+        /// <param name="param"></param>
+        public virtual void SetSizeFromOuter(string param)
+        {
+            
 
             string[] prm = param.Split(',');
             float x = float.TryParse(prm[0], out x) ? x : 0f;
             float y = float.TryParse(prm[1], out y) ? y : 0f;
             //float z = float.TryParse(prm[2], out z) ? z : 0f;
 
-            rect.sizeDelta = new Vector2(x, y);
+            SetSize(x, y);
 
         }
+        
         public Vector2 GetScaleFromOuter()
         {
             RectTransform rect = GetRectTransform();
@@ -286,6 +310,11 @@ namespace UserHandleSpace
 
             return ret;
         }
+
+        /// <summary>
+        /// Set RectTransform scale rate
+        /// </summary>
+        /// <param name="param"></param>
         public void SetScaleFromOuter(string param)
         {
             RectTransform rect = GetRectTransform();
@@ -306,6 +335,7 @@ namespace UserHandleSpace
             ret.y = currentPositionPercent.y;
             return ret;
         }
+        
         public Vector2 GetPositionFromOuter()
         {
             RectTransform rect = GetRectTransform();
@@ -321,7 +351,7 @@ namespace UserHandleSpace
 
             return ret;
         }
-        public void SetPositionFromOuter(string param)
+        public virtual void SetPositionFromOuter(string param)
         {
             RectTransform rect = GetRectTransform();
 
@@ -346,7 +376,15 @@ namespace UserHandleSpace
 
             rect.DOAnchorPos(new Vector2(neww * (currentPositionPercent.x / 100f), newh * (currentPositionPercent.y / 100f)), 0.1f).SetRelative(!isabs);
         }
-        public Vector3 GetRotationFromOuter()
+
+        public virtual Vector3 GetRotation()
+        {
+            RectTransform rect = GetRectTransform();
+
+            return rect.rotation.eulerAngles;
+        }
+
+        public virtual Vector3 GetRotationFromOuter()
         {
             RectTransform rect = GetRectTransform();
 
@@ -360,7 +398,7 @@ namespace UserHandleSpace
             return ret;
 
         }
-        public void SetRotationFromOuter(string param)
+        public virtual void SetRotationFromOuter(string param)
         {
             RectTransform rect = GetRectTransform();
 
@@ -402,6 +440,46 @@ namespace UserHandleSpace
 
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(ColorUtility.ToHtmlStringRGBA(col));
+#endif
+        }
+
+        //---------------------------------------------------------------------
+        private void SetLayerRecursive(GameObject self, int layer)
+        {
+            self.layer = layer;
+            RectTransform[] rects = self.GetComponentsInChildren<RectTransform>();
+            
+            foreach (RectTransform re in rects)
+            {
+                SetLayerRecursive(re.gameObject, layer);
+            }
+        }
+        public void SetVisibleAvatar(int flag)
+        {
+            const string TARGET_SHOWLAYER = "Player";
+            const string TARGET_HIDDENLAYER = "HiddenPlayer";
+
+            if (flag == 0)
+            { //---avatar hide!
+                //gameObject.layer = LayerMask.NameToLayer(TARGET_HIDDENLAYER);
+                SetLayerRecursive(gameObject, LayerMask.NameToLayer(TARGET_HIDDENLAYER));
+            }
+            else
+            { //---avatar show!
+                //gameObject.layer = LayerMask.NameToLayer(TARGET_SHOWLAYER);
+                SetLayerRecursive(gameObject, LayerMask.NameToLayer(TARGET_SHOWLAYER));
+            }
+        }
+        public bool GetVisibleAvatar()
+        {
+            string ret = LayerMask.LayerToName(gameObject.layer);
+            return ret == "HiddenLayer" ? false : true;
+        }
+        public void GetVisibleAvatarFromOuter()
+        {
+            string ret = LayerMask.LayerToName(gameObject.layer);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveIntVal(ret == "HiddenLayer" ? 0 : 1);
 #endif
         }
     }

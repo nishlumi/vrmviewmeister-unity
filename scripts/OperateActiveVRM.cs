@@ -32,9 +32,11 @@ namespace UserHandleSpace
 
         public GameObject ActiveAvatar;
         public GameObject ActiveIKHandle;
+        public GameObject ActiveTrueIK;
         public SkinnedMeshRenderer ActiveFace;
         [SerializeField] public GameObject OldActiveAvatar;
         public GameObject OldActiveIKHandle;
+        public GameObject OldActiveTrueIK;
         public string ActivePartsName;
         public AF_TARGETTYPE ActiveType;
         public AF_TARGETTYPE OldActiveType;
@@ -59,6 +61,8 @@ namespace UserHandleSpace
         private List<GameObject> HasAvatarList;
 
         public TMPro.TextMeshProUGUI KeyObjGlobalLocal;
+
+        private OperateLoadedVRM ovrm;
 
 
         // Start is called before the first frame update
@@ -90,13 +94,31 @@ namespace UserHandleSpace
         // Update is called once per frame
         void Update()
         {
+            if (manim == null) return;
+
             //---key operation for current selected avatar translation
             if (manim.keyOperationMode == KeyOperationMode.MoveAvatar)
             { //this avatar is active ?
                 if (ActiveAvatar != null)
                 {
                     akeyo.SetSpeed(manim.cfg_keymove_speed_rot, manim.cfg_keymove_speed_trans);
-                    akeyo.CallKeyOperation(ActiveIKHandle, KeyObjGlobalLocal);
+                    if (ActiveType == AF_TARGETTYPE.VRM)
+                    {
+                        if (ovrm.IsEnableVRMA())
+                        { //---when playing VRMAnimation, move VRM directly.
+                            akeyo.CallKeyOperation(ActiveAvatar, KeyObjGlobalLocal);
+                        }
+                        else
+                        {
+                            akeyo.CallKeyOperation(ActiveTrueIK, KeyObjGlobalLocal);
+                        }
+                        
+                    }
+                    else
+                    {
+                        akeyo.CallKeyOperation(ActiveIKHandle, KeyObjGlobalLocal);
+                    }
+                    
                 }
             }
         }
@@ -167,6 +189,7 @@ namespace UserHandleSpace
                 return ActiveAvatar;
             }
         }
+        /*
         public String GetActiveAvatarTitle()
         {
             string ret = "";
@@ -196,6 +219,7 @@ namespace UserHandleSpace
             }
             return ret;
         }
+        */
         public AF_TARGETTYPE ConvertTag2Type(GameObject avatar)
         {
             AF_TARGETTYPE ret = AF_TARGETTYPE.Unknown;
@@ -205,6 +229,7 @@ namespace UserHandleSpace
             else if (avatar.tag == "CameraPlayer") { ret = AF_TARGETTYPE.Camera; }
             else if (avatar.tag == "LightPlayer") { ret = AF_TARGETTYPE.Light; }
             else if (avatar.tag == "EffectDestination") { ret = AF_TARGETTYPE.Effect; }
+            else if (avatar.tag == "TextPlayer") { ret = AF_TARGETTYPE.Text3D; }
 
             return ret;
         }
@@ -324,6 +349,20 @@ namespace UserHandleSpace
                         }
                         //---hide IKHandles of all objects OTHER THAN this time object
                         //ActiveIKHandle.SetActive(false);
+
+                    }
+                }
+                else if (ActiveType == AF_TARGETTYPE.Text3D)
+                {
+                    if (GetEffectiveActiveAvatar().GetComponent<OperateLoadedText>().GetFixMoving() != 1)
+                    {
+                        BoxCollider boxc;
+                        if (GetEffectiveActiveAvatar().TryGetComponent<BoxCollider>(out boxc))
+                        {
+                            boxc.enabled = true;
+                        }
+                        //---hide IKHandles of all objects OTHER THAN this time object
+                        ActiveIKHandle.SetActive(false);
 
                     }
                 }
@@ -477,6 +516,24 @@ namespace UserHandleSpace
             if (isWebGL) ChangeActiveAvatarSelection(ActiveAvatar.name, "Effect");
 #endif
             }
+            else if (hitObject.tag == "TextPlayer")
+            {
+                //---turn off for operating IK Handle
+                BoxCollider col = hitObject.GetComponent<BoxCollider>();
+                if (!isEquipThisItem) col.enabled = false;
+
+                OperateLoadedText hitoll = hitObject.GetComponent<OperateLoadedText>();
+                if (!isEquipThisItem) hitoll.relatedHandleParent.SetActive(true);
+
+                //---set up current hit object
+                ActiveAvatar = hitObject;
+                ActiveIKHandle = hitoll.relatedHandleParent;
+                ActiveFace = null;
+                ActiveType = AF_TARGETTYPE.Text3D;
+#if !UNITY_EDITOR && UNITY_WEBGL
+            if (isWebGL) ChangeActiveAvatarSelection(ActiveAvatar.name, "Text");
+#endif
+            }
 
         }
         private bool _IsEquipped(string tag, GameObject item)
@@ -593,9 +650,17 @@ namespace UserHandleSpace
         /// <param name="isWebGL"></param>
         public void ActivateAvatar(string param, bool isWebGL)
         {
+            string[] names = { "Player", "OtherPlayer", "LightPlayer", "CameraPlayer", "EffectDestination", "TextPlayer" };
+
             //string name = ActiveAvatar.name;
             bool ret = false;
-            ret = _ActivateAvatarFunction("Player", param, isWebGL);
+
+            foreach (var name in names)
+            {
+                ret = _ActivateAvatarFunction(name, param, isWebGL);
+                if (ret) break;
+            }
+            /*ret = _ActivateAvatarFunction("Player", param, isWebGL);
             if (!ret)
             {
                 ret = _ActivateAvatarFunction("OtherPlayer", param, isWebGL);
@@ -611,7 +676,7 @@ namespace UserHandleSpace
                         }
                     }
                 }
-            }
+            }*/
 
         }
         public void ActivateAvatarFromOuter(string param)
@@ -701,7 +766,7 @@ namespace UserHandleSpace
             NativeAnimationAvatar nav = manim.GetCastByAvatar(name);
             if (nav == null) return;
 
-            EnableTransactionHandle(null, nav.ikparent);
+            EnableTransactionHandle(null, nav.ikparent, nav.type);
         }
         public void EnableHandle_Avatar(GameObject ikparent, AF_TARGETTYPE type = AF_TARGETTYPE.Unknown)
         {
@@ -709,11 +774,22 @@ namespace UserHandleSpace
             {
                 ActiveAvatar = null;
                 ActiveIKHandle = null;
+                ActiveTrueIK = null;
                 ActiveFace = null;
                 return;
             }
             const string TARGETLAYER = "Handle";
             ikparent.layer = LayerMask.NameToLayer(TARGETLAYER);
+
+            Transform trueiktransform = null;
+            if (type == AF_TARGETTYPE.VRM)
+            { //---search true ik parent from ikparent name, enable it.
+                trueiktransform = gameObject.transform.Find("true" + ikparent.name);
+                if (trueiktransform != null)
+                {
+                    trueiktransform.gameObject.layer = LayerMask.NameToLayer(TARGETLAYER);
+                }
+            }
 
             Transform[] bts = ikparent.GetComponentsInChildren<Transform>();
             int cnt = bts.Length; // ikparent.transform.childCount;
@@ -723,26 +799,28 @@ namespace UserHandleSpace
                 child = bts[i].gameObject;
                 child.layer = LayerMask.NameToLayer(TARGETLAYER);
             }
-
             
+
+
             UserGroundOperation ugo;
             OtherObjectDummyIK dik;
 
             ActiveIKHandle = ikparent;
-            if (ikparent.TryGetComponent<UserGroundOperation>(out ugo))
-            { //---VRM
+            if (type == AF_TARGETTYPE.VRM)
+            {
+                ActiveTrueIK = trueiktransform.gameObject;
+                ugo = ikparent.GetComponent<UserGroundOperation>();
+                dik = trueiktransform.GetComponent<OtherObjectDummyIK>();
+                //---ik parent has an effective avatar(VRM). 
                 ActiveAvatar = ugo.relatedAvatar;
-                ActiveType = ConvertTag2Type(ugo.relatedAvatar);
+                ActiveType = ConvertTag2Type(ActiveAvatar);
                 SetActiveFace();
 
                 //---Change enable/disable the ground handle.
                 OperateLoadedVRM hitolvrm = ActiveAvatar.GetComponent<OperateLoadedVRM>();
                 hitolvrm.ChangeToggleAvatarMoveFromOuter(-1);
-                /*hitolvrm.isMoveMode = isMoveMode;
-                if (isMoveMode)
-                {
-                    if (ActiveIKHandle) ShowHandleBody(true, ActiveIKHandle);
-                }*/
+                ovrm = hitolvrm;
+
                 //---change updateWhenOffscreen flag
                 ManageAvatarTransform mat = GetEffectiveActiveAvatar().GetComponent<ManageAvatarTransform>();
                 List<GameObject> meshcnt = mat.CheckSkinnedMeshAvailable();
@@ -759,7 +837,7 @@ namespace UserHandleSpace
                     GameObject hair = mat.GetHairMesh();
                     if (hair != null) hair.GetComponent<SkinnedMeshRenderer>().updateWhenOffscreen = true;
                 }
-            }
+            }            
             else if (ikparent.TryGetComponent<OtherObjectDummyIK>(out dik))
             { //---OtherObject, etc
                 ActiveAvatar = dik.relatedAvatar;
@@ -796,6 +874,7 @@ namespace UserHandleSpace
                     child.layer = LayerMask.NameToLayer(TARGETLAYER);
                 }
             }
+            
         }
 
         /// <summary>
@@ -817,13 +896,30 @@ namespace UserHandleSpace
 
                 DisableHandle_Avatar(child);
             }
+            
+
             //---check equipping item
             bool isEquip = false;
             OtherObjectDummyIK ooik;
+            GameObject nextavatar = null;
+            AF_TARGETTYPE nexttype = AF_TARGETTYPE.Unknown;
             if (ikparent.TryGetComponent(out ooik))
-            {
+            { //---this timing is other than VRM.
                 isEquip = ooik.isEquipping;
+                nextavatar = ooik.relatedAvatar;
+                nexttype = ooik.relatedType;
             }
+            Transform searchtrueik = gameObject.transform.Find("true" + ikparent.name);
+            if (searchtrueik != null)
+            {
+                if (searchtrueik.TryGetComponent(out ooik))
+                { //---this timing is VRM
+                    isEquip = ooik.isEquipping;
+                    nextavatar = ooik.relatedAvatar;
+                    nexttype = ooik.relatedType;
+                }
+            }
+            
 
             if (!isEquip)
             { //---current select object ( not equiped by VRM) enabled.
@@ -831,8 +927,9 @@ namespace UserHandleSpace
                 OldActiveAvatar = ActiveAvatar;
                 OldActiveType = ActiveType;
                 OldActiveIKHandle = ActiveIKHandle;
+                OldActiveTrueIK = ActiveTrueIK;
 
-                EnableHandle_Avatar(ikparent);
+                EnableHandle_Avatar(ikparent, nexttype);
             }
             
         }
@@ -1020,10 +1117,24 @@ namespace UserHandleSpace
             GameObject efv = GetEffectiveActiveAvatar();
             if ((efv.tag == "Player") || (efv.tag == "SampleData"))
             {
-                ActiveIKHandle.GetComponent<UserGroundOperation>().LoadDefaultTransform(true, false);
+                //ActiveIKHandle.GetComponent<UserGroundOperation>().LoadDefaultTransform(true, false);
+                ActiveTrueIK.GetComponent<OtherObjectDummyIK>().LoadDefaultTransform(true, false);
             }
-            else if ((efv.tag == "OtherPlayer") || (efv.tag == "LightPlayer") || (efv.tag == "CameraPlayer") || (efv.tag == "EffectDestination") )
+            else if ((efv.tag == "OtherPlayer") || (efv.tag == "LightPlayer") || (efv.tag == "CameraPlayer") || (efv.tag == "EffectDestination") ||
+                (efv.tag == "TextPlayer")
+            )
             {
+                if (efv.tag == "TextPlayer")
+                {
+                    OperateLoadedText olt = ActiveAvatar.GetComponent<OperateLoadedText>();
+                    if (olt != null)
+                    {
+                        if (olt.GetDimension() == "3d")
+                        {
+                            return;
+                        }
+                    }
+                }
                 ActiveIKHandle.GetComponent<OtherObjectDummyIK>().LoadDefaultTransform(true, false);
             }
 
@@ -1034,7 +1145,8 @@ namespace UserHandleSpace
             GameObject efv = GetEffectiveActiveAvatar();
             if ((efv.tag == "Player") || (efv.tag == "SampleData"))
             {
-                ActiveIKHandle.GetComponent<UserGroundOperation>().LoadDefaultTransform(false, true);
+                //ActiveIKHandle.GetComponent<UserGroundOperation>().LoadDefaultTransform(false, true);
+                ActiveTrueIK.GetComponent<OtherObjectDummyIK>().LoadDefaultTransform(false, true);
 
             }
             else if (efv.tag == "OtherPlayer")
@@ -1052,6 +1164,18 @@ namespace UserHandleSpace
             else if (efv.tag == "EffectDestination")
             {
                 ActiveIKHandle.GetComponent<OtherObjectDummyIK>().LoadDefaultTransform(false, true);
+            }
+            else if (efv.tag == "TextPlayer")
+            {
+                OperateLoadedText olt = ActiveAvatar.GetComponent<OperateLoadedText>();
+                if (olt != null)
+                {
+                    if (olt.GetDimension() == "3d")
+                    {
+                        return;
+                    }
+                }
+                ActiveIKHandle.GetComponent<OtherObjectDummyIK>().LoadDefaultTransform(true, false);
             }
         }
         public void ResetParentScale()

@@ -22,6 +22,7 @@ public class OtherObjectDummyIK : MonoBehaviour
     protected bool IKUseRotation;
 
     public GameObject relatedAvatar;
+    public AF_TARGETTYPE relatedType;
 
     public GameObject equippedAvatar;
     public bool isEquipping;
@@ -37,6 +38,9 @@ public class OtherObjectDummyIK : MonoBehaviour
 
     private OperateActiveVRM oavrm;
     private AvatarKeyOperator akeyo;
+
+    private bool HasRectTransform;
+    RectTransform rectTransform;
 
     private void Awake()
     {
@@ -55,6 +59,9 @@ public class OtherObjectDummyIK : MonoBehaviour
         GameObject ikhp = GameObject.FindGameObjectWithTag("IKHandleWorld");
         oavrm = ikhp.GetComponent<OperateActiveVRM>();
         akeyo = new AvatarKeyOperator(animarea.cfg_keymove_speed_rot, animarea.cfg_keymove_speed_trans);
+
+        HasRectTransform = false;
+        rectTransform = null;
     }
 
     // Update is called once per frame
@@ -73,8 +80,30 @@ public class OtherObjectDummyIK : MonoBehaviour
         {
             if ((transform.position != oldikposition) || (transform.rotation != oldikrotation))
             {
-                if (IKUsePosition) relatedAvatar.transform.position = transform.position;
-                if (IKUseRotation) relatedAvatar.transform.rotation = transform.rotation;
+                if (IKUsePosition)
+                {
+                    if (HasRectTransform)
+                    {
+                        rectTransform.position = transform.position;
+                    }
+                    else
+                    {
+                        relatedAvatar.transform.position = transform.position;
+                    }
+                    
+                }
+                if (IKUseRotation)
+                {
+                    if (HasRectTransform)
+                    {
+                        rectTransform.rotation = transform.rotation;
+                    }
+                    else
+                    {
+                        relatedAvatar.transform.rotation = transform.rotation;
+                    }
+                    
+                }
 
                 oldikposition = transform.position;
                 oldikrotation = transform.rotation;
@@ -125,5 +154,18 @@ public class OtherObjectDummyIK : MonoBehaviour
         if (ispos) transform.position = defaultPosition;
         if (isrotate) transform.rotation = defaultRotation;
     }
-
+    public void SetIKFlag(bool use_move, bool use_rotate)
+    {
+        IKUsePosition = use_move;
+        IKUseRotation = use_rotate;
+    }
+    public void SetRelateAvatar(GameObject avatar, bool IsRectTransform = false)
+    {
+        relatedAvatar = avatar;
+        if (IsRectTransform)
+        {
+            HasRectTransform = true;
+            rectTransform = avatar.GetComponent<RectTransform>();
+        }
+    }
 }

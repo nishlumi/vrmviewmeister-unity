@@ -13,6 +13,7 @@ using TriLibCore;
 using TriLibCore.General;
 using TriLibCore.SFB;
 
+using TMPro;
 
 namespace UserHandleSpace
 {
@@ -317,11 +318,19 @@ namespace UserHandleSpace
         public string ikname;
         public Vector3 position;
         public Vector3 rotation;
-        public AvatarSingleIKTransform(string name, Vector3 pos, Vector3 rot)
+        public int useCollision;
+        public int useGravity;
+        public float drag;
+        public float anglarDrag;
+        public AvatarSingleIKTransform(string name, Vector3 pos, Vector3 rot, int usecol, int usegra, float dra, float andra)
         {
             ikname = name;
             position = pos;
             rotation = rot;
+            useCollision = usecol;
+            useGravity = usegra;
+            drag = dra;
+            anglarDrag = andra;
         }
     }
     [Serializable]
@@ -547,6 +556,7 @@ namespace UserHandleSpace
         Effect,
         SystemEffect,
         Stage,
+        Text3D,
 
         Unknown = 99
     }
@@ -598,11 +608,18 @@ namespace UserHandleSpace
         Jump,
         Coloring,
         Collider,
+        Rigid,
 
         //---vrm
         GravityProperty = 50,
         VRMIKProperty = 51,
         VRMBlink = 52,
+        VRMAutoBlendShape = 53,
+        
+
+        //---reserved
+        AppCommand = 60,
+        Action,
 
         AllProperties = 88,
         Stop = 99
@@ -689,6 +706,10 @@ namespace UserHandleSpace
         public int jumpNum;
         public float jumpPower;
         public int isRotate360;
+        public int useCollision;
+        public float rigidDrag;
+        public float rigidAngularDrag;
+        public int useRigidGravity;
 
         //---vrm options
         public int isHandPose;
@@ -748,10 +769,18 @@ namespace UserHandleSpace
         public Vector2 renderTex;
 
         //---text options
+        public string dimension = "2d";
         public string text = "";
         public int fontSize;
         public FontStyle fontStyle;
+        public string fontStyles;
         public TextAnchor textAlignment;
+        public string textAlignmentOptions;
+        public int textOverflow;
+        public bool IsGradient;
+        public Color[] gradients;
+        public float fontOutlineWidth;
+        public Color fontOutlineColor;
 
         //---image options
 
@@ -802,6 +831,11 @@ namespace UserHandleSpace
             jumpNum = 0;
             jumpPower = 1f;
             isRotate360 = 0;
+            useCollision = 0;
+            rigidDrag = 10f;
+            rigidAngularDrag = 10f;
+            useRigidGravity = 0;
+
             isHandPose = 0;
             fingerpose = new AvatarFingerForHPC();
             isBlendShape = 0;
@@ -935,6 +969,7 @@ namespace UserHandleSpace
         public string key;
         public float duration;
         public Ease ease;
+        public string memo;
 
         public List<string> movingData = new List<string>();
         //public List<AnimationTargetParts> movingData = new List<AnimationTargetParts>();
@@ -946,6 +981,7 @@ namespace UserHandleSpace
             key = "";
             duration = 0.1f;
             ease = Ease.Linear;
+            memo = "";
         }
         public AnimationFrame SCopy()
         {
@@ -965,6 +1001,7 @@ namespace UserHandleSpace
             key = naf.key;
             duration = naf.duration;
             ease = naf.ease;
+            memo = naf.memo;
         }
     }
     [Serializable]
@@ -1001,7 +1038,7 @@ namespace UserHandleSpace
             key = af.key;
             duration = af.duration;
             ease = af.ease;
-
+            memo = af.memo;
         }
         public AnimationTargetParts FindMovingData(AF_MOVETYPE movetype, ParseIKBoneType bone = ParseIKBoneType.Unknown)
         {
@@ -1174,6 +1211,7 @@ namespace UserHandleSpace
         public string key;
         public float duration;
         public Ease ease;
+        public string memo;
 
         public List<string> movingData = new List<string>();
 
@@ -1184,6 +1222,7 @@ namespace UserHandleSpace
             key = "";
             duration = 0.1f;
             ease = Ease.Linear;
+            memo = "";
         }
         public AnimationSingleFrame SCopy()
         {
@@ -1489,10 +1528,38 @@ namespace UserHandleSpace
             return (AnimationProjectMetaInformation)MemberwiseClone();
         }
     }
+    //==============================================================
+    // AnimationProjectFixedProperties
+    //==============================================================
     [Serializable]
     public class AnimationProjectFixedProperties
     {
         
+    }
+    //==============================================================
+    // AnimationProjectPreloadFiles
+    //==============================================================
+    [Serializable]
+    public class AnimationProjectPreloadFiles
+    {
+        public string fileuri;
+
+        public string filename;
+
+        /// <summary>
+        /// File URI type (disk, internal, url)
+        /// </summary>
+        public string uritype;
+
+        /// <summary>
+        /// Option string for file
+        /// </summary>
+        public string options;
+
+        /// <summary>
+        /// File type
+        /// </summary>
+        public string filetype;
     }
     //==============================================================
     //  AnimationProjectOneMaterial
@@ -1942,6 +2009,7 @@ namespace UserHandleSpace
         public AnimationProjectMetaInformation meta;
         public AnimationProjectFixedProperties fixedProp;
         public AnimationProjectMaterialPackage materialManager;
+        public List<AnimationProjectPreloadFiles> preloadFiles;
         public bool isSharing;
         public bool isReadOnly;
         public bool isNew;
@@ -1959,6 +2027,7 @@ namespace UserHandleSpace
             meta = new AnimationProjectMetaInformation();
             fixedProp = new AnimationProjectFixedProperties();
             materialManager = new AnimationProjectMaterialPackage();
+            preloadFiles = new List<AnimationProjectPreloadFiles>();
             isSharing = false;
             isReadOnly = false;
             isNew = true;
@@ -2042,6 +2111,8 @@ namespace UserHandleSpace
         public int isCompileForLibrary = 0;
 
         public Ease ease = Ease.Linear;
+
+        public string memo = "";
 
         //public ParseIKBoneType registerBone = ParseIKBoneType.None;
         //public AF_MOVETYPE registerMove = AF_MOVETYPE.Rest;

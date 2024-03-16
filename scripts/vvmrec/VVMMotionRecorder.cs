@@ -5,7 +5,9 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 using DG.Tweening;
 
-
+using UniGLTF;
+using UniHumanoid;
+using UniVRM10;
 
 namespace UserHandleSpace
 {
@@ -271,6 +273,11 @@ namespace UserHandleSpace
         public string[] m_Events =  new string[] { };
 
     }
+    [Serializable]
+    public class VVMDummyVrmaOutput
+    {
+        public byte[] data;
+    }
 
 
     //==================================================================================================================================================//
@@ -334,6 +341,8 @@ namespace UserHandleSpace
             curve["r.w"] = new AnimationCurve();
         }
     }
+    //==================================================================================================================================================//
+    
 
     //#################################################################################################
     /// <summary> 
@@ -367,15 +376,29 @@ namespace UserHandleSpace
          */
         public AnimationClip clip;
 
+        //===VRMAnimation
+        //ExportingGltfData exportingGltfData;
+        //VrmAnimationExporter exportingGltfExporter;
+        CustomVrmaDataStore customVrmaDataStore;
+
+        
+
         protected void Awake()
         {
             //nameDB = new VVMMotionMuscleDB();
             //nameDB.Load(VVMMotionMuscleDB.CNS_VVMMuscleCSV);
+            //exportingGltfData = new ExportingGltfData();
+            //exportingGltfExporter = new VrmAnimationExporter(exportingGltfData, new GltfExportSettings());
+
+            customVrmaDataStore = new CustomVrmaDataStore();
+            //customExporter = new CustomVrmaExporter(exportingGltfData, new GltfExportSettings());
+
         }
         protected void Start()
         {
             BodyBonesCurves = new List<VVMMotionRecorderFrame>();
             //clip = new AnimationClip();
+
         }
 
         public void SetupTargetType(AF_TARGETTYPE type)
@@ -547,6 +570,9 @@ namespace UserHandleSpace
 #endif
             return ret;
         }
+
+        Vector3 vrmaInverted = new Vector3(1, -1, -1);
+
         public void AddKeyFrame(int frame, Ease ease, float duration)
         {
             Animator anim = GetComponent<Animator>();
@@ -580,7 +606,37 @@ namespace UserHandleSpace
                 }
                 */
                 BodyBonesCurves.Add(vfr);
+
+                
             }
+        }
+        public void AddKeyFrameVRMA(int frame, Ease ease, float duration)
+        {
+            //---VRMAnimation
+            string decimalstr = duration.ToString("0.0000");
+            string[] decstrs = decimalstr.Split(".");
+            //var time = default(TimeSpan);
+            //time.Add(new TimeSpan(0, 0, 0, int.Parse(decstrs[0]), int.Parse(decstrs[1])));
+            TimeSpan time = TimeSpan.FromMilliseconds(duration * 1000);
+
+            //Debug.Log(time.ToString());
+            //exportingGltfExporter.AddFrame(time, -1);
+            customVrmaDataStore.AddFrame(frame, duration, new Vector3(1, -1, -1));
+        }
+        public void InsertKeyFrame(int frame, float duration, int nearRightFrame)
+        {
+            string decimalstr = duration.ToString("0.0000");
+            string[] decstrs = decimalstr.Split(".");
+            //var time = default(TimeSpan);
+            //time.Add(new TimeSpan(0, 0, 0, int.Parse(decstrs[0]), int.Parse(decstrs[1])));
+            TimeSpan time = TimeSpan.FromMilliseconds(duration * 1000);
+            //exportingGltfExporter.InsertFrame(frame, time, 1);
+
+            
+        }
+        public void InsertKeyFrameVRMA(int frame, float duration, int nearRightFrame)
+        {
+            customVrmaDataStore.InsertFrame(frame, duration, vrmaInverted);
         }
         public void ModifyKeyFrame(int frame, Ease ease, float duration)
         {
@@ -621,6 +677,23 @@ namespace UserHandleSpace
                 {
                     BodyBonesCurves[index] = vfr;
                 }
+
+                
+            }
+        }
+        public void ModifyFrameVRMA(int frame, Ease ease, float duration)
+        {
+            if (TargetType == AF_TARGETTYPE.VRM)
+            {
+                //---VRMAnimation
+                /*string decimalstr = duration.ToString("0.0000");
+                string[] decstrs = decimalstr.Split(".");
+                //var time = default(TimeSpan);
+                //time.Add(new TimeSpan(0, 0, 0, int.Parse(decstrs[0]), int.Parse(decstrs[1])));
+                TimeSpan time = TimeSpan.FromMilliseconds(duration * 1000);
+                //exportingGltfExporter.ModifyFrame(index, time, -1);
+                */
+                customVrmaDataStore.ModifyFrame(frame, duration, vrmaInverted);
             }
         }
         public void RemoveKeyFrame(int frame, bool toleft = false)
@@ -642,6 +715,26 @@ namespace UserHandleSpace
             {
                 BodyBonesCurves.RemoveAt(index);
             }
+
+            
+        }
+        public void RemoveKeyFrameVRMA(int frame, bool toleft = false)
+        {
+            //---VRMAnimation
+            //exportingGltfExporter.DeleteFrame(index);
+            if (toleft == true)
+            {
+                customVrmaDataStore.DeleteRowFrame(frame);
+            }
+            else
+            {
+                customVrmaDataStore.DeleteFrame(frame);
+            }
+            
+        }
+        public void ClearKeyFrameVRMA()
+        {
+            customVrmaDataStore.ClearFrames();
         }
         public void InsertBlankFrame(int frame)
         {
@@ -658,6 +751,12 @@ namespace UserHandleSpace
                     BodyBonesCurves[i].frameIndex += 1;
                 }
             }
+            
+        }
+        public void InsertBlankFrameVRMA(int frame)
+        {
+            //---VRMAnimation
+            customVrmaDataStore.InsertFrame(frame, 0, vrmaInverted);
         }
         public bool IsExistFrame(int frame)
         {
@@ -667,6 +766,154 @@ namespace UserHandleSpace
                 return false;
             });
             return index > -1;
+        }
+        public bool IsExistFrameVRMA(int frame)
+        {
+            int ishit = customVrmaDataStore.GetFrameByIndex(frame);
+            return (ishit > -1);
+        }
+        public void CopyHierarchy(Transform source, Transform dest)
+        {
+            // コピー元のGameObjectの子オブジェクトを取得
+            Transform[] sourceChildren = source.gameObject.GetComponentsInChildren<Transform>();
+            
+
+            // コピー元のGameObjectの子オブジェクトをループ処理
+            for (int i = 0; i < sourceChildren.Length; i++)
+            {
+                // コピー元のGameObjectの子オブジェクトをコピー
+                GameObject child = GameObject.Instantiate(sourceChildren[i].gameObject);
+                //dest.transform.GetChildren().Add(child);
+                child.transform.SetParent(dest);
+
+                // 再帰処理
+                CopyHierarchy(child.transform, dest);
+            }
+        }
+        public void PrepareExportVRMA(Transform rootparent, Vrm10Instance vinst)
+        {
+            Transform GetParentBone(Dictionary<HumanBodyBones, Transform> map, Vrm10HumanoidBones bone)
+            {
+                while (true)
+                {
+                    if (bone == Vrm10HumanoidBones.Hips)
+                    {
+                        break;
+                    }
+                    var parentBone = Vrm10HumanoidBoneSpecification.GetDefine(bone).ParentBone.Value;
+                    var unityParentBone = Vrm10HumanoidBoneSpecification.ConvertToUnityBone(parentBone);
+                    if (map.TryGetValue(unityParentBone, out var found))
+                    {
+                        return found;
+                    }
+                    bone = parentBone;
+                    //Debug.Log(bone);
+                }
+
+                // hips has no parent
+                return null;
+            }
+            GameObject tmpobj = new GameObject();
+            tmpobj.name = "vrma_" + transform.gameObject.name;
+            tmpobj.transform.SetParent(rootparent);
+            tmpobj.transform.rotation = Quaternion.Euler(new Vector3(0, -180f, 0));
+            Debug.Log(vinst.Runtime.ControlRig.Bones);
+            Transform hips = vinst.Runtime.ControlRig.GetBoneTransform(HumanBodyBones.Hips);
+            Debug.Log(hips.parent.name);
+            Transform tmpvrmroot = hips.parent;
+            //GameObject[] srcChildren = tmpvrmroot.GetComponentsInChildren<GameObject>();
+            GameObject copyedHipsParent = GameObject.Instantiate(hips.parent.gameObject);
+            copyedHipsParent.transform.SetParent(tmpobj.transform);
+
+            //CopyHierarchy(tmpvrmroot, tmpobj.transform);
+
+
+
+            //exportingGltfExporter.Prepare(tmpobj);
+            customVrmaDataStore.pointerObject = tmpobj;
+            //customExporter.Prepare(tmpobj);
+
+            //
+            // setup
+            //
+            var map = new Dictionary<HumanBodyBones, Transform>();
+            Animator anim = GetComponent<Animator>();
+            foreach (HumanBodyBones bone in Enum.GetValues(typeof(HumanBodyBones)))
+            {
+                if ((bone == HumanBodyBones.LastBone) 
+                    || (bone == HumanBodyBones.UpperChest) //---if not neccesary...?
+                )
+                {
+                    continue;
+                }
+                var t = anim.GetBoneTransform(bone);
+                if (t == null)
+                {
+                    continue;
+                }
+                map.Add(bone, t);
+            }
+
+            //exportingGltfExporter.SetPositionBoneAndParent(map[HumanBodyBones.Hips], transform);
+            customVrmaDataStore.SetPositionBoneAndParent(map[HumanBodyBones.Hips], transform);
+
+            foreach (var kv in map)
+            {
+                var vrmBone = Vrm10HumanoidBoneSpecification.ConvertFromUnityBone(kv.Key);
+                var parent = GetParentBone(map, vrmBone) ?? transform;
+                //exportingGltfExporter.AddRotationBoneAndParent(kv.Key, kv.Value, parent);
+                customVrmaDataStore.AddRotationBoneAndParent(kv.Key, kv.Value, parent);
+            }
+            //---Look At bone
+            var lookatmap = new Dictionary<HumanBodyBones, Transform>();
+            lookatmap[HumanBodyBones.LeftEye] = vinst.Humanoid.LeftEye.transform;
+            lookatmap[HumanBodyBones.RightEye] = vinst.Humanoid.RightEye.transform;
+            foreach (var kv in lookatmap) {
+                var vrmBone = Vrm10HumanoidBoneSpecification.ConvertFromUnityBone(kv.Key);
+                var parent = GetParentBone(lookatmap, vrmBone) ?? transform;
+                customVrmaDataStore.AddRotationLookAtBone(kv.Key, kv.Value, parent);
+            }
+            
+            
+        }
+        public void ExportVRMA(string param)
+        {
+            ExportingGltfData edata = new ExportingGltfData();
+            CustomVrmaExporter vexport = new CustomVrmaExporter(edata, new GltfExportSettings());
+            vexport.Prepare(customVrmaDataStore.pointerObject);
+            vexport.ExportCustom(customVrmaDataStore, customVrmaDataStore.m_frames, param);
+
+            Byte[] outdata = edata.ToGlbBytes();
+
+
+            /*exportingGltfExporter.Export((VrmAnimationExporter vrma) =>
+            {
+                int count = vrma.GetFrameCount();
+                for (int i = 0; i < count; i++)
+                {
+                    Debug.Log($"Frm: {i} = {vrma.GetFrameTime(i)}");
+                }
+                vrma.GenerateTotalSeconds();
+            });*/
+            /*
+            customExporter.ExportCustom();
+
+            Byte[] outdata = exportingGltfData.ToGlbBytes();
+            */            
+            VVMDummyVrmaOutput vvmao = new();
+            vvmao.data = outdata;
+            
+
+            string ret = JsonUtility.ToJson(vvmao);
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+        public void ClearAllFrames4VRMA()
+        {
+            customVrmaDataStore.ClearFrames();
+            
         }
     }
 }

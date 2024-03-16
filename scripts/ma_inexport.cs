@@ -57,7 +57,7 @@ namespace UserHandleSpace
             catmats.Add(mat.shaderName);
 
             //---standard
-            if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_STD)
+            if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_STD.ToLower())
             {
                 /*ln += "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
                     mat.blendmode.ToString() + CST_SEPSTR_PROP +
@@ -74,7 +74,7 @@ namespace UserHandleSpace
                 catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.emissioncolor));
             }
             //---VRM/MToon
-            else if ((mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM10))
+            else if ((mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM.ToLower()) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM10.ToLower()))
             {
                 /*ln += "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
                     mat.cullmode.ToString() + CST_SEPSTR_PROP +
@@ -116,7 +116,7 @@ namespace UserHandleSpace
 
             }
             //---FX/Water4
-            else if ( (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_WT) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_SWT) )
+            else if ( (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_WT.ToLower()) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_SWT.ToLower()) )
             {
                 /*ln += "#" + ColorUtility.ToHtmlStringRGBA(mat.color) + CST_SEPSTR_PROP +
                     mat.fresnelScale.ToString() + CST_SEPSTR_PROP +
@@ -162,7 +162,7 @@ namespace UserHandleSpace
                 catmats.Add(mat.waveScale.ToString());
 
             }
-            else if ((mat.shaderName.ToLower() == OperateLoadedBase.SHAD_SKE) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_PSKE))
+            else if ((mat.shaderName.ToLower() == OperateLoadedBase.SHAD_SKE.ToLower()) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_PSKE.ToLower()))
             {
                 catmats.Add(mat.outlinewidth.ToString());
                 catmats.Add(mat.strokedensity.ToString());
@@ -171,7 +171,7 @@ namespace UserHandleSpace
                 catmats.Add(mat.shadowbrightness.ToString());
 
             }
-            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_REALTOON)
+            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_REALTOON.ToLower())
             {
                 catmats.Add(mat.enableTexTransparent.ToString());
                 catmats.Add(mat.mainColorInAmbientLightOnly.ToString());
@@ -180,14 +180,14 @@ namespace UserHandleSpace
                 catmats.Add(mat.thresHold.ToString());
                 catmats.Add(mat.shadowHardness.ToString());
             }
-            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_COMIC)
+            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_COMIC.ToLower())
             {
                 catmats.Add(mat.enableTexTransparent.ToString());
                 catmats.Add(mat.lineWidth.ToString());
                 catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.lineColor));
                 catmats.Add(mat.tone1Threshold.ToString());
             }
-            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_ICE)
+            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_ICE.ToLower())
             {
                 catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.iceColor));
                 catmats.Add(mat.transparency.ToString());
@@ -196,11 +196,11 @@ namespace UserHandleSpace
                 catmats.Add(mat.distortion.ToString());
 
             }
-            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_MICRA)
+            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_MICRA.ToLower())
             {
                 catmats.Add(mat.pixelSize.ToString());
             }
-            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_CUSTOMCUTOUT)
+            else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_CUSTOMCUTOUT.ToLower())
             {
                 catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.color));
             }
@@ -229,7 +229,7 @@ namespace UserHandleSpace
                 }
                 mat.shaderName = matc[inx++];
 
-                if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_STD)
+                if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_STD.ToLower())
                 {
                     //---most less is 8 items.
                     if (matc.Length < 8) continue;
@@ -244,7 +244,7 @@ namespace UserHandleSpace
                     mat.emissioncolor = ColorUtility.TryParseHtmlString(matc[inx++], out mat.emissioncolor) ? mat.emissioncolor : Color.white;
 
                 }
-                else if ((mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM10))
+                else if ((mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM.ToLower()) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM10.ToLower()))
                 {
                     //---most less is 13 items.
                     if (matc.Length < 13) continue;
@@ -275,7 +275,7 @@ namespace UserHandleSpace
                     
 
                 }
-                else if ( (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_WT) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_SWT) )
+                else if ( (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_WT.ToLower()) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_SWT.ToLower()) )
                 {
                     //---most less is 31 items.
                     if (matc.Length < 31) continue;
@@ -351,7 +351,7 @@ namespace UserHandleSpace
                     // v1 = 2, v2 = 3
                     mat.waveScale = float.TryParse(matc[inx++], out mat.waveScale) ? mat.waveScale : 0;
                 }
-                else if ((mat.shaderName.ToLower() == OperateLoadedBase.SHAD_SKE) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_PSKE))
+                else if ((mat.shaderName.ToLower() == OperateLoadedBase.SHAD_SKE.ToLower()) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_PSKE.ToLower()))
                 {
                     //---most less is 3 items.
                     if (matc.Length < 5) continue;
@@ -364,7 +364,7 @@ namespace UserHandleSpace
                     mat.shadowbrightness = float.TryParse(matc[inx++], out mat.shadowbrightness) ? mat.shadowbrightness : 1;
 
                 }
-                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_REALTOON)
+                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_REALTOON.ToLower())
                 {
                     mat.enableTexTransparent = float.TryParse(matc[inx++], out mat.enableTexTransparent) ? mat.enableTexTransparent : 0;
                     mat.mainColorInAmbientLightOnly = float.TryParse(matc[inx++], out mat.mainColorInAmbientLightOnly) ? mat.mainColorInAmbientLightOnly : 0;
@@ -374,7 +374,7 @@ namespace UserHandleSpace
                     mat.shadowHardness = float.TryParse(matc[inx++], out mat.shadowHardness) ? mat.shadowHardness : 1;
 
                 }
-                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_COMIC)
+                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_COMIC.ToLower())
                 {
                     mat.enableTexTransparent = float.TryParse(matc[inx++], out mat.enableTexTransparent) ? mat.enableTexTransparent : 0;
                     mat.lineWidth = float.TryParse(matc[inx++], out mat.lineWidth) ? mat.lineWidth : 0.01f;
@@ -382,7 +382,7 @@ namespace UserHandleSpace
                     mat.tone1Threshold = float.TryParse(matc[inx++], out mat.tone1Threshold) ? mat.tone1Threshold : 0.1f;
                     
                 }
-                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_ICE)
+                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_ICE.ToLower())
                 {
                     mat.iceColor = ColorUtility.TryParseHtmlString(matc[inx++], out mat.iceColor) ? mat.iceColor : Color.white;
                     mat.transparency = float.TryParse(matc[inx++], out mat.transparency) ? mat.transparency : 1.5f;
@@ -391,11 +391,11 @@ namespace UserHandleSpace
                     mat.distortion = float.TryParse(matc[inx++], out mat.distortion) ? mat.distortion : 1;
                    
                 }
-                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_MICRA)
+                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_MICRA.ToLower())
                 {
                     mat.pixelSize = float.TryParse(matc[inx++], out mat.pixelSize) ? mat.pixelSize : 0.01f;
                 }
-                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_CUSTOMCUTOUT)
+                else if (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_CUSTOMCUTOUT.ToLower())
                 {
                     mat.color = ColorUtility.TryParseHtmlString(matc[inx++], out mat.color) ? mat.color : Color.white;
                 }
@@ -476,7 +476,7 @@ namespace UserHandleSpace
         /// <returns></returns>
         private AnimationTargetParts CsvToFrameData(NativeAnimationFrameActor actor, AF_TARGETTYPE targetType, string param, AnimationTargetParts atp, int file_version)
         {
-            string[] lst = param.Split(',');
+            string[] lst = param.Split(',',StringSplitOptions.None);
             const string CST_SEPSTR_PROP = "=";
             const string CST_SEPSTR_ITEM = "%";
 
@@ -537,6 +537,16 @@ namespace UserHandleSpace
                 atp.effectShake.fadeOut = (int)vec3[4];
 
             }
+            else if (movetype == "rigid")
+            { //---version >= 5
+                float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+
+                atp.animationType = AF_MOVETYPE.Rigid;
+                atp.rigidDrag = vec3[0];
+                atp.rigidAngularDrag = vec3[1];
+                atp.useCollision = (int)vec3[2];
+                atp.useRigidGravity = (int)vec3[3];
+            }
 
             //---start each type 
             if (targetType == AF_TARGETTYPE.VRM)
@@ -560,10 +570,18 @@ namespace UserHandleSpace
                             atp.jumpNum = (int)vec3[3];
                             atp.jumpPower = vec3[4];
                         }
-                        else if (movetype == "rotation")
+                        else if ((movetype == "rotation") || (movetype == "rotation:v5"))
                         {
                             atp.animationType = AF_MOVETYPE.Rotate;
-                            atp.rotation = new Vector3(vec3[0], vec3[1], vec3[2]);
+                            if ((movetype == "rotation") && (atp.vrmBone == ParseIKBoneType.Aim))
+                            { //---if before version 5, Y-axis minus 180 angles.
+                                atp.rotation = new Vector3(vec3[0], vec3[1], vec3[2]);
+                            }
+                            else
+                            {
+                                atp.rotation = new Vector3(vec3[0], vec3[1], vec3[2]);
+                            }
+                            
                             if (valueCount > 3)
                             { //---add for rotate 360. (2023.05.05)
                                 atp.isRotate360 = (int)vec3[3];
@@ -679,6 +697,19 @@ namespace UserHandleSpace
                         //atp.blendshapes.Add(new BasicStringFloatList(optParts, vec3[0]));
                     }
                 }
+                else if (movetype == "autoblendshape")
+                {
+                    if (valueCount > 0)
+                    {
+                        atp.animationType = AF_MOVETYPE.VRMAutoBlendShape;
+                        float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+                        atp.isblink = (int)vec3[0];
+                        atp.interval = vec3[1];
+                        atp.openingSeconds = vec3[2];
+                        atp.closeSeconds = vec3[3];
+
+                    }
+                }
                 else if (movetype == "head_options")
                 {
                     if (valueCount > 0)
@@ -772,7 +803,83 @@ namespace UserHandleSpace
                     //---Open and set material properties from raw-string
                     SetObjectMaterial(lst[4], atp.matProp, CST_SEPSTR_PROP, CST_SEPSTR_ITEM);
 
+                }
+                else if (movetype == "animstart")
+                {
+                    atp.animationType = AF_MOVETYPE.AnimStart;
+                    atp.animPlaying = UserAnimationState.Play;
+                    string[] arr = optParts.Split(CST_SEPSTR_PROP);
+                    atp.text = arr[0];
+                    if (arr.Length > 1) atp.animName = arr[1];
+                    float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+                    atp.animSeek = vec3[0];
+                    if (vec3.Length > 1) atp.animSpeed = vec3[1];
+                    if (vec3.Length > 2) atp.animLoop = (int)vec3[2];
+                }
+                else if (movetype == "animstop")
+                {
+                    atp.animationType = AF_MOVETYPE.AnimStart;// AnimStop;
+                    atp.animPlaying = UserAnimationState.Stop;
+                    string[] arr = optParts.Split(CST_SEPSTR_PROP);
+                    atp.text = arr[0];
+                    if (arr.Length > 1) atp.animName = arr[1];
+                    float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+                    atp.animSeek = vec3[0];
+                    if (vec3.Length > 1) atp.animSpeed = vec3[1];
+                    if (vec3.Length > 2) atp.animLoop = (int)vec3[2];
+                }
+                else if (movetype == "animseek")
+                {
+                    atp.animationType = AF_MOVETYPE.AnimStart;// AnimSeek;
+                    atp.animPlaying = UserAnimationState.Seeking;
+                    string[] arr = optParts.Split(CST_SEPSTR_PROP);
+                    atp.text = arr[0];
+                    if (arr.Length > 1) atp.animName = arr[1];
+                    float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+                    atp.animSeek = vec3[0];
+                    if (vec3.Length > 1) atp.animSpeed = vec3[1];
+                    if (vec3.Length > 2) atp.animLoop = (int)vec3[2];
+                }
+                else if (movetype == "animpause")
+                {
+                    atp.animationType = AF_MOVETYPE.AnimStart;// AnimPause;
+                    atp.animPlaying = UserAnimationState.Pause;
+                    string[] arr = optParts.Split(CST_SEPSTR_PROP);
+                    atp.text = arr[0];
+                    if (arr.Length > 1) atp.animName = arr[1];
+                    float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+                    atp.animSeek = vec3[0];
+                    if (vec3.Length > 1) atp.animSpeed = vec3[1];
+                    if (vec3.Length > 2) atp.animLoop = (int)vec3[2];
+                }
+                else if (movetype == "rest")
+                {
+                    atp.animationType = AF_MOVETYPE.AnimStart;// Rest;
+                    atp.animPlaying = UserAnimationState.Playing;
+                    string[] arr = optParts.Split(CST_SEPSTR_PROP);
+                    atp.text = arr[0];
+                    if (arr.Length > 1) atp.animName = arr[1];
+                    float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+                    atp.animSeek = vec3[0];
+                    if (vec3.Length > 1) atp.animSpeed = vec3[1];
+                    if (vec3.Length > 2) atp.animLoop = (int)vec3[2];
+                }
+                else if (movetype == "vrmaanimstop")
+                {
+                    atp.animationType = AF_MOVETYPE.AnimStop;
+                    atp.animPlaying = UserAnimationState.Stop;
 
+
+                }
+                else if (movetype == "animprop")
+                {
+                    atp.animationType = AF_MOVETYPE.AnimProperty;
+                    float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+                    //atp.animPlaying = (UserAnimationState)vec3[0];
+                    atp.animSpeed = vec3[0];
+                    atp.color = new Color(vec3[1], vec3[2], vec3[3], vec3[4]);
+                    atp.animName = optParts;
+                    atp.animLoop = (int)vec3[5];
                 }
             }
             else
@@ -813,11 +920,17 @@ namespace UserHandleSpace
                         atp.animPlaying = UserAnimationState.Play;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
                         atp.animSeek = vec3[0];
+                        if (vec3.Length > 1) atp.animSpeed = vec3[1];
+                        if (vec3.Length > 2) atp.animLoop = (int)vec3[2];
                     }
                     else if (movetype == "animstop")
                     {
                         atp.animationType = AF_MOVETYPE.AnimStart;// AnimStop;
                         atp.animPlaying = UserAnimationState.Stop;
+                        float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+                        atp.animSeek = vec3[0];
+                        if (vec3.Length > 1) atp.animSpeed = vec3[1];
+                        if (vec3.Length > 2) atp.animLoop = (int)vec3[2];
                     }
                     else if (movetype == "animseek")
                     {
@@ -825,16 +938,26 @@ namespace UserHandleSpace
                         atp.animPlaying = UserAnimationState.Seeking;
                         float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
                         atp.animSeek = vec3[0];
+                        if (vec3.Length > 1) atp.animSpeed = vec3[1];
+                        if (vec3.Length > 2) atp.animLoop = (int)vec3[2];
                     }
                     else if (movetype == "animpause")
                     {
                         atp.animationType = AF_MOVETYPE.AnimStart;// AnimPause;
                         atp.animPlaying = UserAnimationState.Pause;
+                        float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+                        atp.animSeek = vec3[0];
+                        if (vec3.Length > 1) atp.animSpeed = vec3[1];
+                        if (vec3.Length > 2) atp.animLoop = (int)vec3[2];
                     }
                     else if (movetype == "rest")
                     {
                         atp.animationType = AF_MOVETYPE.AnimStart;// Rest;
                         atp.animPlaying = UserAnimationState.Playing;
+                        float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+                        atp.animSeek = vec3[0];
+                        if (vec3.Length > 1) atp.animSpeed = vec3[1];
+                        if (vec3.Length > 2) atp.animLoop = (int)vec3[2];
                     }
                     else if (movetype == "animprop")
                     {
@@ -913,15 +1036,23 @@ namespace UserHandleSpace
                         atp.clearFlag = (int)vec3[13];
                     }
                 }
-                else if (targetType == AF_TARGETTYPE.Text)
+                else if ((targetType == AF_TARGETTYPE.Text) || (targetType == AF_TARGETTYPE.Text3D))
                 {
                     if (movetype == "text")
                     {
                         atp.animationType = AF_MOVETYPE.Text;
-                        for (int i = CSV_BEGINVAL; i < lst.Length; i++)
-                        {
-                            atp.text = lst[i];
+                        string tmptext = lst[CSV_BEGINVAL];
+                        if (lst.Length > 1)
+                        { //---if lst is multiple, split , . re-join by ,.
+                            List<string> tmps = new List<string>();
+                            for (int i = CSV_BEGINVAL; i < lst.Length; i++)
+                            {
+                                tmps.Add(lst[i]);
+                            }
+                            tmptext = String.Join(',', tmps);
                         }
+                        
+                        atp.text = tmptext;
                     }
                     else if (movetype == "textprop")
                     {
@@ -930,8 +1061,63 @@ namespace UserHandleSpace
                         atp.animationType = AF_MOVETYPE.TextProperty;
                         atp.color = new Color(vec3[0], vec3[1], vec3[2], vec3[3]);
                         atp.fontSize = (int)vec3[4];
-                        atp.fontStyle = (FontStyle)vec3[5];
+                        //---version >= 5
+                        if (file_version < 5)
+                        { //---convert text fontstyleto TextMeshPro styles string(original)
+                            if (vec3[5] == 0) atp.fontStyles = "-----";
+                            if (vec3[5] == 1) atp.fontStyles = "b----";
+                            if (vec3[5] == 2) atp.fontStyles = "-i---";
+                            if (vec3[5] == 3) atp.fontStyles = "bi---";
+
+                        }
                     }
+                    else if (movetype == "textprop:v5")
+                    {
+                        float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+
+                        atp.animationType = AF_MOVETYPE.TextProperty;
+                        atp.color = new Color(vec3[0], vec3[1], vec3[2], vec3[3]);
+                        atp.fontSize = (int)vec3[4];
+
+
+                        int floatedPos = CSV_BEGINVAL + valueCount;
+                        if ((file_version >= 5) && (lst.Length > (floatedPos)))
+                        {
+                            //---index: start from 4 + 5(float parameters max) + 1 ~ n
+                            atp.fontStyles = lst[floatedPos];
+
+                            atp.textAlignmentOptions = lst[floatedPos + 1];
+
+                            int cnv_textOverflow = 0;
+                            atp.textOverflow = int.TryParse(lst[floatedPos + 2], out cnv_textOverflow) ? cnv_textOverflow : -1;
+
+                            if (targetType == AF_TARGETTYPE.Text)
+                            {
+                                atp.dimension = lst[floatedPos + 3];
+                            }
+                            else if (targetType == AF_TARGETTYPE.Text3D)
+                            {
+                                atp.dimension = lst[floatedPos + 3];
+                            }
+
+                            bool isgradient = lst[floatedPos + 4] == "1" ? true : false;
+                            atp.IsGradient = isgradient;
+
+                            string[] strcolors = lst[floatedPos + 5].Split(CST_SEPSTR_ITEM);
+                            atp.gradients = new Color[4];
+                            for (int i = 0; i < strcolors.Length; i++)
+                            {
+                                ColorUtility.TryParseHtmlString(strcolors[i], out atp.gradients[i]);
+                            }
+
+                            float.TryParse(lst[floatedPos + 6], out atp.fontOutlineWidth);
+
+                            ColorUtility.TryParseHtmlString(lst[floatedPos + 7], out atp.fontOutlineColor);
+
+                        }
+
+
+                    }                    
 
                 }
                 else if (targetType == AF_TARGETTYPE.Image)
@@ -1286,12 +1472,25 @@ namespace UserHandleSpace
                 {
                     ret.Add("");
                 }
-                ret.Add("rotation");
-                ret.Add("4");
-                ret.Add(atp.rotation.x.ToString());
-                ret.Add(atp.rotation.y.ToString());
-                ret.Add(atp.rotation.z.ToString());
-                ret.Add(atp.isRotate360.ToString());
+                if (atp.vrmBone == ParseIKBoneType.Aim)
+                {
+                    ret.Add("rotation:v5");
+                    ret.Add("4");
+                    ret.Add(atp.rotation.x.ToString());
+                    ret.Add(atp.rotation.y.ToString());
+                    ret.Add(atp.rotation.z.ToString());
+                    ret.Add(atp.isRotate360.ToString());
+                }
+                else
+                {
+                    ret.Add("rotation");
+                    ret.Add("4");
+                    ret.Add(atp.rotation.x.ToString());
+                    ret.Add(atp.rotation.y.ToString());
+                    ret.Add(atp.rotation.z.ToString());
+                    ret.Add(atp.isRotate360.ToString());
+                }
+                
             }
             else if (atp.animationType == AF_MOVETYPE.Scale)
             {
@@ -1335,6 +1534,17 @@ namespace UserHandleSpace
                 ret.Add(atp.effectShake.randomness.ToString());
                 ret.Add(atp.effectShake.fadeOut.ToString());
             }
+            else if (atp.animationType == AF_MOVETYPE.Rigid)
+            { //---version >= 5
+                ret.Add(((int)atp.vrmBone).ToString());
+                ret.Add("");
+                ret.Add("rigid");
+                ret.Add("4");
+                ret.Add(atp.rigidDrag.ToString());
+                ret.Add(atp.rigidAngularDrag.ToString());
+                ret.Add(atp.useCollision.ToString());
+                ret.Add(atp.useRigidGravity.ToString());
+            }
             else
             {
                 //---each object converting
@@ -1375,6 +1585,17 @@ namespace UserHandleSpace
                             //---version >= 4
                             ret.Add(atp.blendshapes[i].text + "=" + atp.blendshapes[i].value);
                         }
+                    }
+                    else if (atp.animationType == AF_MOVETYPE.VRMAutoBlendShape)
+                    {
+                        ret.Add(((int)atp.vrmBone).ToString());
+                        ret.Add("");
+                        ret.Add("autoblendshape");
+                        ret.Add("4");
+                        ret.Add(atp.isblink.ToString());
+                        ret.Add(atp.interval.ToString());
+                        ret.Add(atp.openingSeconds.ToString());
+                        ret.Add(atp.closeSeconds.ToString());
                     }
                     else if (atp.animationType == AF_MOVETYPE.VRMBlink)
                     {
@@ -1458,6 +1679,61 @@ namespace UserHandleSpace
                         }
                         ret.Add(string.Join(CST_SEPSTR_ITEM, lst));
                     }
+                    else if (atp.animationType == AF_MOVETYPE.AnimStart)
+                    {
+                        ret.Add(((int)atp.vrmBone).ToString());
+                        ret.Add(atp.text + CST_SEPSTR_PROP + atp.animName);
+                        switch (atp.animPlaying)
+                        {
+                            case UserAnimationState.Play:
+                                ret.Add("animstart");
+                                //ret.Add("1");
+                                //ret.Add(atp.animSeek.ToString());
+                                break;
+                            case UserAnimationState.Playing:
+                                ret.Add("rest");
+                                //ret.Add("0");
+                                break;
+                            case UserAnimationState.Pause:
+                                ret.Add("animpause");
+                                //ret.Add("0");
+                                break;
+                            case UserAnimationState.Stop:
+                                ret.Add("animstop");
+                                //ret.Add("0");
+                                break;
+                            case UserAnimationState.Seeking:
+                                ret.Add("animseek");
+                                //ret.Add("1");
+                                //ret.Add(atp.animSeek.ToString());
+                                break;
+                            default:
+                                break;
+                        }
+                        ret.Add("3");
+                        ret.Add(atp.animSeek.ToString());
+                        ret.Add(atp.animSpeed.ToString());
+                        ret.Add(atp.animLoop.ToString());
+                    }
+                    else if (atp.animationType == AF_MOVETYPE.AnimStop)
+                    {
+                        ret.Add(((int)atp.vrmBone).ToString());
+                        ret.Add("");
+                        ret.Add("vrmaanimstop");
+                        ret.Add("0");
+                    }
+                    else if (atp.animationType == AF_MOVETYPE.AnimProperty)
+                    {
+                        ret.Add(((int)atp.vrmBone).ToString());
+                        ret.Add(atp.animName);
+                        ret.Add("animprop");
+                        ret.Add("6");
+                        //ret.Add(atp.animPlaying.ToString());
+                        ret.Add(atp.animSpeed.ToString());
+                        
+                        ret.Add(atp.animLoop.ToString());
+
+                    }
                 }
                 else if (targetType == AF_TARGETTYPE.OtherObject)
                 {
@@ -1469,30 +1745,36 @@ namespace UserHandleSpace
                         {
                             case UserAnimationState.Play:
                                 ret.Add("animstart");
-                                ret.Add("1");
-                                ret.Add(atp.animSeek.ToString());
+                                //ret.Add("3");
+                                //ret.Add(atp.animSeek.ToString());
+                                //ret.Add(atp.animSpeed.ToString());
+                                //ret.Add(atp.animLoop.ToString());
                                 break;
                             case UserAnimationState.Playing:
                                 ret.Add("rest");
-                                ret.Add("0");
+                                //ret.Add("0");
                                 break;
                             case UserAnimationState.Pause:
                                 ret.Add("animpause");
-                                ret.Add("0");
+                                //ret.Add("0");
                                 break;
                             case UserAnimationState.Stop:
                                 ret.Add("animstop");
-                                ret.Add("0");
+                                //ret.Add("0");
                                 break;
                             case UserAnimationState.Seeking:
                                 ret.Add("animseek");
-                                ret.Add("1");
-                                ret.Add(atp.animSeek.ToString());
+                                //ret.Add("1");
+                                //ret.Add(atp.animSeek.ToString());
                                 break;
                             default:
                                 break;
                         }
-                        
+                        ret.Add("3");
+                        ret.Add(atp.animSeek.ToString());
+                        ret.Add(atp.animSpeed.ToString());
+                        ret.Add(atp.animLoop.ToString());
+
                     }
                     /*
                     else if (atp.animationType == AF_MOVETYPE.AnimStop)
@@ -1637,8 +1919,9 @@ namespace UserHandleSpace
                     }
 
                 }
-                else if (targetType == AF_TARGETTYPE.Text)
+                else if ((targetType == AF_TARGETTYPE.Text) || (targetType == AF_TARGETTYPE.Text3D))
                 {
+                    
                     ret.Add(((int)atp.vrmBone).ToString());
                     ret.Add("");
 
@@ -1651,14 +1934,32 @@ namespace UserHandleSpace
                     }
                     else if (atp.animationType == AF_MOVETYPE.TextProperty)
                     {
-                        ret.Add("textprop");
-                        ret.Add("6");
+
+                        ret.Add("textprop:v5");
+                        ret.Add("5");
                         ret.Add(atp.color.r.ToString());
                         ret.Add(atp.color.g.ToString());
                         ret.Add(atp.color.b.ToString());
                         ret.Add(atp.color.a.ToString());
                         ret.Add(atp.fontSize.ToString());
-                        ret.Add(atp.fontStyle.ToString());
+
+                        //---version >= 5
+                        //ret.Add(atp.fontStyle.ToString());
+                        ret.Add(atp.fontStyles); //4+5+1 = 10
+
+                        //---4 + 5 + 2~n (11~n)
+                        ret.Add(atp.textAlignmentOptions);
+                        ret.Add(atp.textOverflow.ToString());
+                        ret.Add(atp.dimension);
+                        ret.Add(atp.IsGradient ? "1" : "0");
+                        ret.Add(
+                            "#" + ColorUtility.ToHtmlStringRGBA(atp.gradients[0]) + CST_SEPSTR_ITEM +
+                            "#" + ColorUtility.ToHtmlStringRGBA(atp.gradients[1]) + CST_SEPSTR_ITEM +
+                            "#" + ColorUtility.ToHtmlStringRGBA(atp.gradients[2]) + CST_SEPSTR_ITEM +
+                            "#" + ColorUtility.ToHtmlStringRGBA(atp.gradients[3])
+                        );
+                        ret.Add(atp.fontOutlineWidth.ToString());
+                        ret.Add("#" + ColorUtility.ToHtmlStringRGBA(atp.fontOutlineColor));
                     }
 
                 }
@@ -2112,13 +2413,13 @@ namespace UserHandleSpace
                 }
             }
         }
-        public void LoadProject(string param)
+        public async void LoadProject(string param)
         {
             //---reset current project (do not merge)
             NewProject();
 
             AnimationProject proj = JsonUtility.FromJson<AnimationProject>(param);
-            currentProject = ConvertProjectNative(proj);
+            currentProject = await ConvertProjectNative(proj);
 
             //---after settings
             //SetFps(currentProject.fps);
@@ -2131,7 +2432,7 @@ namespace UserHandleSpace
 #endif
 
         }
-        private NativeAnimationProject ConvertProjectNative(AnimationProject proj)
+        private async System.Threading.Tasks.Task<NativeAnimationProject> ConvertProjectNative(AnimationProject proj)
         {
             OpennigAnimationProject oapro = new OpennigAnimationProject();
 
@@ -2188,9 +2489,9 @@ namespace UserHandleSpace
             //---load from the file
             foreach (AnimationAvatar avatar in proj.casts) 
             {
-
+                
                 //---normal use input
-                nproj.casts.Add(ParseEffectiveAvatar(avatar));
+                nproj.casts.Add(await ParseEffectiveAvatar(avatar));
                 cur++;
                 curval = percentv * cur;
 #if !UNITY_EDITOR && UNITY_WEBGL
@@ -2206,7 +2507,8 @@ namespace UserHandleSpace
                     (chara.targetType == AF_TARGETTYPE.VRM) || (chara.targetType == AF_TARGETTYPE.OtherObject) ||
                     (chara.targetType == AF_TARGETTYPE.Light) || (chara.targetType == AF_TARGETTYPE.Camera) ||
                     (chara.targetType == AF_TARGETTYPE.Image) || (chara.targetType == AF_TARGETTYPE.UImage) ||
-                    (chara.targetType == AF_TARGETTYPE.Text) || (chara.targetType == AF_TARGETTYPE.Effect)
+                    (chara.targetType == AF_TARGETTYPE.Text) || (chara.targetType == AF_TARGETTYPE.Effect) ||
+                    (chara.targetType == AF_TARGETTYPE.Text3D)
                 )
                 {
                     nproj.timeline.characters.Add(chara);
@@ -2249,7 +2551,7 @@ namespace UserHandleSpace
         /// </summary>
         /// <param name="avatar"></param>
         /// <returns></returns>
-        private NativeAnimationAvatar ParseEffectiveAvatar(AnimationAvatar avatar)
+        private async System.Threading.Tasks.Task<NativeAnimationAvatar> ParseEffectiveAvatar(AnimationAvatar avatar)
         {
             NativeAnimationAvatar nav = new NativeAnimationAvatar(); // GetTargetObjects(avatar.avatarId, avatar.type);
 
@@ -2293,7 +2595,7 @@ namespace UserHandleSpace
             }
 
             //---finally, Open and recover effective object.
-            OpeningNativeAnimationAvatar oap = GenerateEachTypeObject(nav);
+            OpeningNativeAnimationAvatar oap = await GenerateEachTypeObject(nav);
 
             if ((oap != null) && (oap.cast != null))
             {
@@ -2312,7 +2614,7 @@ namespace UserHandleSpace
         /// Open and recover the effective object, finally link role with avatar.
         /// </summary>
         /// <param name="nav"></param>
-        private OpeningNativeAnimationAvatar GenerateEachTypeObject(NativeAnimationAvatar nav)
+        private async System.Threading.Tasks.Task<OpeningNativeAnimationAvatar> GenerateEachTypeObject(NativeAnimationAvatar nav)
         {
             FileMenuCommands fmc = GetComponent<FileMenuCommands>();
             OpeningNativeAnimationAvatar ret = null;
@@ -2423,10 +2725,14 @@ namespace UserHandleSpace
                     
                     break;
                 case AF_TARGETTYPE.Text:
-                    ret = fmc.Body_OpenText("ABC,tl");
+                    //ret = await fmc.Body_OpenText("ABC,tl,2");
+                    ret = await fmc.OpenRecoveryText("ABC,tl,2");
                     break;
                 case AF_TARGETTYPE.Effect:
                     ret = fmc.Body_CreateSingleEffect();
+                    break;
+                case AF_TARGETTYPE.Text3D:
+                    ret = await fmc.OpenRecoveryText("ABC,tl,3");
                     break;
 
             }
@@ -2450,6 +2756,7 @@ namespace UserHandleSpace
             naframe.finalizeIndex = frame.finalizeIndex;
             naframe.key = frame.key;
             naframe.ease = frame.ease;
+            naframe.memo = frame.memo;
 
             //---for Translate only
             for (int i = 0; i < (int)ParseIKBoneType.LeftHandPose; i++)
@@ -2702,6 +3009,13 @@ namespace UserHandleSpace
 
                     naf.frames.Clear();
 
+                    if (naf.avatar.type == AF_TARGETTYPE.VRM)
+                    {
+                        var vvmrec = naf.avatar.avatar.GetComponent<VVMMotionRecorder>();
+                        vvmrec.ClearAllFrames4VRMA();
+                        vvmrec.ClearCurves();
+                    }
+
                     //---For returning HTML
                     AnimationFrameActor afa = new AnimationFrameActor();
                     afa.SetFromNative(naf);
@@ -2716,6 +3030,7 @@ namespace UserHandleSpace
                             naframe.duration = fr.duration;
                             naframe.key = fr.key;
                             naframe.ease = fr.ease;
+                            naframe.memo = fr.memo;
                             naframe.useBodyInfo = UseBodyInfoType.TimelineCharacter;
 
                             AnimationFrame aframe = new AnimationFrame();
@@ -2838,6 +3153,7 @@ namespace UserHandleSpace
                     afg.index = frame.index;
                     afg.key = frame.key;
                     afg.ease = frame.ease;
+                    afg.memo = frame.memo;
                     //---translate to csv
                     foreach (AnimationTranslateTargetParts tmv in frame.translateMovingData)
                     {

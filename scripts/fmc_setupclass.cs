@@ -906,13 +906,18 @@ namespace UserVRMSpace
         /// <param name="vik"></param>
         /// <param name="cik"></param>
         /// <param name="bnd"></param>
-        void SetupVVMIK(GameObject ikhandles, Animator animator, VvmIk vik, CCDIK cik, Vector3 bnd)
+        void SetupVVMIK(GameObject ikhandles, Animator animator, VvmIk vik, CCDIK cik, Vector3 bnd, bool IsReparent = false)
         {
             Transform[] bts = ikhandles.GetComponentsInChildren<Transform>();
 
             int cnt = bts.Length; // ikhandles.transform.childCount;
             Vector3 baseReverse = new Vector3(0, 0, 0);
             Vector3 secondReverse = new Vector3(-1, 0, -1);
+            if (IsReparent)
+            {
+                secondReverse.x = 1;
+                secondReverse.z = 1;
+            }
 
             for (int i = 0; i < cnt; i++)
             {

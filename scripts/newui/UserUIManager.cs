@@ -114,6 +114,8 @@ namespace UserUISpace
             Button btn_syseff_addkey = rootElement.Q<Button>("btn_syseff_addkey");
             btn_syseff_addkey.clicked += btn_syseff_addkey_OnClick;
 
+            Button btn_exporttest = rootElement.Q<Button>("btn_exporttest");
+            btn_exporttest.clicked += btn_exporttest_OnClick;
 
 
 
@@ -133,6 +135,7 @@ namespace UserUISpace
             menu_new_strlst.Add("Blank Object Sphere");
             menu_new_strlst.Add("Blank Object Plane");
             menu_new_strlst.Add("Blank Water level");
+            menu_new_strlst.Add("3D Text");
             ListView tlb_menunew_listview = CreateVListView(menu_new_strlst, tlb_menu_new, "tlb_menunew_listview");
             tlb_menunew_listview.onSelectedIndicesChange += inx =>
             {
@@ -168,6 +171,8 @@ namespace UserUISpace
                             Newobj_Blank_OnClick(UserPrimitiveType.Plane); break;
                         case 12:
                             Newobj_Blank_OnClick(UserPrimitiveType.WaterLevel); break;
+                        case 13:
+                            Newobj_3DText_OnClick(); break;
                     }
                 }
             };
@@ -338,6 +343,15 @@ namespace UserUISpace
 
             Newobj_OnClick();
         }
+        void Newobj_3DText_OnClick()
+        {
+            GameObject animatearea = GameObject.Find("AnimateArea");
+            UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
+            fmc.OpenSample2Text();
+            animatearea.GetComponent<ManageAnimation>().ikArea.GetComponent<OperateLoadedObj>().ChangeIKMarkerStyle(0.1f);
+
+            Newobj_OnClick();
+        }
         void Newobj_Image_OnClick()
         {
             GameObject animatearea = GameObject.Find("AnimateArea");
@@ -370,7 +384,7 @@ namespace UserUISpace
             //ShowHideToolbarMenu(panel);
             panel.style.display = (panel.style.display == DisplayStyle.Flex) ? DisplayStyle.None : DisplayStyle.Flex;
         }
-        void OpenProj_OnClick()
+        async void OpenProj_OnClick()
         {
             Label lab_proj_title = rootElement.Q<Label>("lab_proj_title");
             Label lab_proj_description = rootElement.Q<Label>("lab_proj_description");
@@ -475,6 +489,32 @@ namespace UserUISpace
         void wateropt1_OnClick()
         {
             OperateActiveVRM oav =  GameObject.Find("IKHandleParent").GetComponent<OperateActiveVRM>();
+
+            //---2023/02/12
+            VVMMotionRecorder vmrec = oav.ActiveAvatar.GetComponent<VVMMotionRecorder>();
+            //Debug.Log(vmrec.GenerateAnimationCurve());
+            vmrec.ExportVRMA("hgoe");
+            return;
+
+            //---2024/01/20
+            OperateLoadedOther olo = oav.ActiveAvatar.GetComponent<OperateLoadedOther>();
+            olo.SetShaderCutoutForce(true);
+            return;
+
+            //---2024/01/19
+            ManageAvatarTransform mat = oav.ActiveAvatar.GetComponent<ManageAvatarTransform>();
+            mat.MirrorPose();
+            return;
+
+            //---start 2024/01/18
+            OperateLoadedText olt = oav.ActiveAvatar.GetComponent<OperateLoadedText>();
+            olt.SetColorGradientFromOuter("tl,#00FF00FF");
+            olt.SetColorGradientFromOuter("tr,#FFFFFFFF");
+            olt.SetColorGradientFromOuter("bl,#20F945FF");
+            olt.SetColorGradientFromOuter("br,#FF0000FF");
+            return;
+            //---until 2024/01/18
+
             OperateLoadedVRM ovrm = oav.ActiveAvatar.GetComponent<OperateLoadedVRM>();
 
             ovrm.RotateFingerFromOuter("r,i,0&0.88&1.2399999856948853&-0.7599999904632568&-0.7599999904632568");
@@ -493,13 +533,10 @@ namespace UserUISpace
 
             return;
             //---2023/02/16
-            ManageAvatarTransform mat = oav.ActiveAvatar.GetComponent<ManageAvatarTransform>();
-            Debug.Log(mat.recbvh.genBVH());
-            return;
+            //ManageAvatarTransform mat = oav.ActiveAvatar.GetComponent<ManageAvatarTransform>();
+            //Debug.Log(mat.recbvh.genBVH());
+            //return;
 
-            //---2023/02/12
-            VVMMotionRecorder vmrec = oav.ActiveAvatar.GetComponent<VVMMotionRecorder>();
-            Debug.Log(vmrec.GenerateAnimationCurve());
 
             //---2023/02/08
             List<string> lum = ovrm.ListUserMaterial();
@@ -781,7 +818,11 @@ namespace UserUISpace
             }
             else if (currentSelectedRole.type == AF_TARGETTYPE.Text)
             {
-                nav = fmc.OpenText(",tl");
+                nav = fmc.OpenSample1Text();
+            }
+            else if (currentSelectedRole.type == AF_TARGETTYPE.Text3D)
+            {
+                nav = fmc.OpenSample2Text();
             }
 
             //manim.DetachAvatarFromRole(nav.roleName + ",role");
@@ -832,7 +873,7 @@ namespace UserUISpace
 
             if (ovrm != null)
             {
-                StartCoroutine(ovrm.ApplyBoneTransformToIKTransform());
+                StartCoroutine(ovrm.ApplyBoneTransformToIKTransform(oav.ActiveAvatar.GetComponent<Animator>()));
                 
             }
         }
@@ -862,10 +903,18 @@ namespace UserUISpace
             aro.targetType = oav.ActiveType;
             aro.isCompileForLibrary = 0;
             aro.isRegisterAppend = 1;
-            for (int i = (int)ParseIKBoneType.IKParent; i < (int)ParseIKBoneType.LeftHandPose; i++)
+            if (aro.targetType == AF_TARGETTYPE.VRM)
             {
-                aro.registerBoneTypes.Add(i);
+                for (int i = (int)ParseIKBoneType.IKParent; i < (int)ParseIKBoneType.LeftHandPose; i++)
+                {
+                    aro.registerBoneTypes.Add(i);
+                }
             }
+            else
+            {
+                aro.registerBoneTypes.Add((int)ParseIKBoneType.IKParent);
+            }
+            
             aro.registerMoveTypes.Add((int)AF_MOVETYPE.Translate);
             aro.registerMoveTypes.Add((int)AF_MOVETYPE.NormalTransform);
             aro.registerMoveTypes.Add((int)AF_MOVETYPE.AllProperties);
@@ -964,6 +1013,14 @@ namespace UserUISpace
             */
             //manim.RegisterFrameFromOuter(JsonUtility.ToJson(aro));
             manim.RegisterFrame(aro);
+        }
+        void btn_exporttest_OnClick()
+        {
+            OperateActiveVRM oav = GameObject.Find("IKHandleParent").GetComponent<OperateActiveVRM>();
+            OperateLoadedVRM ovrm = oav.ActiveAvatar.GetComponent<OperateLoadedVRM>();
+
+            VVMMotionRecorder vvmrec = oav.ActiveAvatar.GetComponent<VVMMotionRecorder>();
+            vvmrec.ExportVRMA("");
         }
     }
 }

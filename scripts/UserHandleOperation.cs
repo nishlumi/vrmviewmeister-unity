@@ -24,6 +24,8 @@ namespace UserHandleSpace
         public Vector3 defaultPosition;
         public Quaternion defaultRotation;
 
+        public Transform RootTransform;
+
         private ConfigSettingLabs cnf;
 
         private OperateLoadedVRM ovrm;
@@ -96,8 +98,14 @@ namespace UserHandleSpace
                 {
                     Transform leftlowerleg = animator.GetBoneTransform(HumanBodyBones.LeftLowerLeg);
                     Transform rightlowerleg = animator.GetBoneTransform(HumanBodyBones.RightLowerLeg);
-                    GameObject ll = transform.parent.Find("LeftLowerLeg").gameObject;
-                    GameObject rl = transform.parent.Find("RightLowerLeg").gameObject;
+                    GameObject ll = null; // transform.parent.Find("LeftLowerLeg").gameObject;
+                    GameObject rl = null; // transform.parent.Find("RightLowerLeg").gameObject;
+                    Transform[] childTransforms = RootTransform.GetComponentsInChildren<Transform>();
+                    foreach (Transform childTransform in childTransforms)
+                    {
+                        if (childTransform.name == "LeftLowerLeg") ll = childTransform.gameObject;
+                        if (childTransform.name == "RightLowerLeg") rl = childTransform.gameObject;
+                    }
 
                     Vector3 llnewpos = transform.parent.InverseTransformPoint(leftlowerleg.position);
                     Vector3 rlnewpos = transform.parent.InverseTransformPoint(rightlowerleg.position);
@@ -164,7 +172,12 @@ namespace UserHandleSpace
                 if (PartsName == "leftarm")
                 {
                     Transform leftlowerarm = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
-                    GameObject ll = transform.parent.Find("LeftLowerArm").gameObject;
+                    GameObject ll = null; // transform.parent.Find("LeftLowerArm").gameObject;
+                    Transform[] childTransforms = RootTransform.GetComponentsInChildren<Transform>();
+                    foreach (Transform childTransform in childTransforms)
+                    {
+                        if (childTransform.name == "LeftLowerArm") ll = childTransform.gameObject;
+                    }
 
                     Vector3 llnewpos = transform.parent.InverseTransformPoint(leftlowerarm.position);
 
@@ -201,7 +214,12 @@ namespace UserHandleSpace
                 else if (PartsName == "rightarm")
                 {
                     Transform rightlowerarm = animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
-                    GameObject rl = transform.parent.Find("RightLowerArm").gameObject;
+                    GameObject rl = null; // transform.parent.Find("RightLowerArm").gameObject;
+                    Transform[] childTransforms = RootTransform.GetComponentsInChildren<Transform>();
+                    foreach (Transform childTransform in childTransforms)
+                    {
+                        if (childTransform.name == "RightLowerArm") rl = childTransform.gameObject;
+                    }
 
                     Vector3 rlnewpos = transform.parent.InverseTransformPoint(rightlowerarm.position);
 
@@ -247,7 +265,12 @@ namespace UserHandleSpace
                     Vector3 dist_upper2lower = dist_hip2upper + leftlowerleg.localPosition;
                     Vector3 dist_lower2foot = dist_upper2lower + leftfoot.localPosition;
 
-                    GameObject ll = transform.parent.Find("LeftLowerLeg").gameObject;
+                    GameObject ll = null; // transform.parent.Find("LeftLowerLeg").gameObject;
+                    Transform[] childTransforms = RootTransform.GetComponentsInChildren<Transform>();
+                    foreach (Transform childTransform in childTransforms)
+                    {
+                        if (childTransform.name == "LeftLowerLeg") ll = childTransform.gameObject;
+                    }
                     UserHandleOperation uholl = ll.GetComponent<UserHandleOperation>();
 
                     Vector3 calcLeg = this.transform.localPosition - oldPosition;
@@ -348,7 +371,12 @@ namespace UserHandleSpace
                     float adjustZ = cnf.GetFloatVal("ikbone_adjust_leg_z");
                     Transform rightlowerleg = animator.GetBoneTransform(HumanBodyBones.RightLowerLeg);
 
-                    GameObject rl = transform.parent.Find("RightLowerLeg").gameObject;
+                    GameObject rl = null; // transform.parent.Find("RightLowerLeg").gameObject;
+                    Transform[] childTransforms = RootTransform.GetComponentsInChildren<Transform>();
+                    foreach (Transform childTransform in childTransforms)
+                    {
+                        if (childTransform.name == "RightLowerLeg") rl = childTransform.gameObject;
+                    }
                     Vector3 calcLeg = this.transform.localPosition - oldPosition;
 
                     Vector3 rrot = new Vector3(rl.transform.localRotation.eulerAngles.x, rl.transform.localRotation.eulerAngles.y, rl.transform.localRotation.eulerAngles.z);
@@ -452,14 +480,19 @@ namespace UserHandleSpace
                         //Transform ikright = ugo.RightShoulderIK;
 
                         Transform neck = animator.GetBoneTransform(HumanBodyBones.Neck);
-                        GameObject chest = transform.parent.Find("Chest").gameObject;
+                        GameObject chest = null; // transform.parent.Find("Chest").gameObject;
+                        Transform[] childTransforms = RootTransform.GetComponentsInChildren<Transform>();
+                        foreach (Transform childTransform in childTransforms)
+                        {
+                            if (childTransform.name == "Chest") chest = childTransform.gameObject;
+                        }
 
                         if ((neck != null) && (chest != null))
                         {
                             Vector3 necknewpos = transform.parent.InverseTransformPoint(neck.position);
 
                             //seq.Join(chest.transform.DOLocalMoveX(necknewpos.x, 0.01f));
-                            seq.Join(chest.transform.DOLocalMoveZ(necknewpos.z, 0.01f));
+                            //seq.Join(chest.transform.DOLocalMoveZ(necknewpos.z, 0.01f));
                         }
                     }
                 }
@@ -472,15 +505,23 @@ namespace UserHandleSpace
             {
                 if (manim.IsLimitedChest)
                 {
-                    if (manim.camxr.isActiveNormal())
+                    //if (manim.camxr.isActiveNormal())
                     {
                         Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
                         Transform leftlowerarm = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
                         Transform rightlowerarm = animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
-                        GameObject hd = transform.parent.Find("Head").gameObject;
-                        GameObject ll = transform.parent.Find("LeftLowerArm").gameObject;
-                        GameObject rl = transform.parent.Find("RightLowerArm").gameObject;
 
+                        GameObject hd = null; // transform.parent.Find("Head").gameObject;
+                        GameObject ll = null; // transform.parent.Find("LeftLowerArm").gameObject;
+                        GameObject rl = null; // transform.parent.Find("RightLowerArm").gameObject;
+
+                        Transform[] childTransforms = RootTransform.GetComponentsInChildren<Transform>();
+                        foreach (var childTransform in childTransforms)
+                        {
+                            if (childTransform.name == "Head") hd = childTransform.gameObject;
+                            if (childTransform.name == "LeftLowerArm") ll = childTransform.gameObject;
+                            if (childTransform.name == "RightLowerArm") rl = childTransform.gameObject;
+                        }
                         Vector3 hdnewpos = transform.parent.InverseTransformPoint(head.position);
                         Vector3 llnewpos = transform.parent.InverseTransformPoint(leftlowerarm.position);
                         Vector3 rlnewpos = transform.parent.InverseTransformPoint(rightlowerarm.position);
@@ -488,13 +529,13 @@ namespace UserHandleSpace
 
                         if (this.transform.localPosition != oldPosition)
                         {
-                            seq.Join(ll.transform.DOLocalMoveX(llnewpos.x, 0.01f));
-                            //seq.Join(ll.transform.DOLocalMoveY(llnewpos.y, 0.01f));
-                            seq.Join(ll.transform.DOLocalMoveZ(llnewpos.z + cns_lowerleg_z, 0.01f));
+                            //seq.Join(ll.transform.DOLocalMoveX(llnewpos.x, 0.01f));
+                            ////seq.Join(ll.transform.DOLocalMoveY(llnewpos.y, 0.01f));
+                            //seq.Join(ll.transform.DOLocalMoveZ(llnewpos.z + cns_lowerleg_z, 0.01f));
 
-                            seq.Join(rl.transform.DOLocalMoveX(rlnewpos.x, 0.01f));
-                            //seq.Join(rl.transform.DOLocalMoveY(rlnewpos.y, 0.01f));
-                            seq.Join(rl.transform.DOLocalMoveZ(rlnewpos.z + cns_lowerleg_z, 0.01f));
+                            //seq.Join(rl.transform.DOLocalMoveX(rlnewpos.x, 0.01f));
+                            ////seq.Join(rl.transform.DOLocalMoveY(rlnewpos.y, 0.01f));
+                            //seq.Join(rl.transform.DOLocalMoveZ(rlnewpos.z + cns_lowerleg_z, 0.01f));
 
                             seq.Join(hd.transform.DOLocalMoveX(hdnewpos.x, 0.01f));
                             //seq.Join(hd.transform.DOLocalMoveY(hdnewpos.y, 0.01f));

@@ -115,7 +115,7 @@ public class ownscr_MoveUIBox : MonoBehaviour
 
         //oload.EquipObject(HumanBodyBones.RightHand, GameObject.Find(inpf.text));
         //oload.EquipObjectFromOuter(inpf.text);
-        GameObject tex = ikhp.GetComponent<OperateLoadedObj>().CreateText("‚Ù‚°‚¥test","bl");
+        ////GameObject[] tex = ikhp.GetComponent<OperateLoadedObj>().CreateText("‚Ù‚°‚¥test","bl",2);
 
     }
     

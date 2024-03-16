@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.Networking;
 using DG.Tweening;
+using TMPro;
 
 namespace UserHandleSpace
 {
@@ -103,8 +104,12 @@ namespace UserHandleSpace
             
         }
         // Update is called once per frame
-        void Update()
+        override protected void Update()
         {
+            base.Update();
+
+            if (manim == null) return;
+
             if (manim.IsVRAR() && !manim.IsPlaying)
             {
                 //If VR/AR mode, directly move OtherObject, and apply the transform to IK marker after.
@@ -1002,6 +1007,16 @@ namespace UserHandleSpace
             }
 
             return ret;
+        }
+
+        //---3D text label========================================================
+        public void CreateLabel(string param)
+        {
+
+        }
+        public void CreateLabel(string label, Vector3 pos, Vector3 rot, float fontsize, int fontstyle, Color color)
+        {
+            
         }
     }
 

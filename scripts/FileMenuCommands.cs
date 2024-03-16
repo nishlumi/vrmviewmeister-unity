@@ -29,6 +29,9 @@ using TriLibCore.SFB;
 using TriLibCore.Mappers;
 using System;
 using System.Linq;
+using TMPro;
+using DG.Tweening;
+
 
 namespace UserVRMSpace
 {
@@ -996,6 +999,12 @@ namespace UserVRMSpace
 
             Vrm10Instance vinst = contextRoot.GetComponent<Vrm10Instance>();
             OperateLoadedVRM olvrm = contextRoot.AddComponent<OperateLoadedVRM>();
+
+            var testanim = contextRoot.GetComponent<Animator>();
+            Debug.Log("eye name=" + testanim.GetBoneTransform(HumanBodyBones.LeftEye).name);
+            Debug.Log("         " + vinst.Runtime.ControlRig.GetBoneTransform(HumanBodyBones.LeftEye).name);
+            Debug.Log("         " + vinst.Runtime.ControlRig.Bones[HumanBodyBones.LeftEye].ControlBone.name);
+            Debug.Log("         " + vinst.Humanoid.LeftEye.name);
             
             olvrm.SaveDefaultColliderPosition(bc.center);
             olvrm.Title = pendingVRMmeta.Name; // contextRoot.GetComponent<VRMMeta>().Meta.Title;
@@ -1014,7 +1023,7 @@ namespace UserVRMSpace
 
             //VRMLookAtHead vlook = contextRoot.GetComponent<VRMLookAtHead>();
             VRM10LookTarget vlook = contextRoot.GetComponent<VRM10LookTarget>();
-            vinst.LookAtTargetType = VRM10ObjectLookAt.LookAtTargetTypes.CalcYawPitchToGaze;
+            vinst.LookAtTargetType = VRM10ObjectLookAt.LookAtTargetTypes.CalcYawPitchToGaze;          
 
             //---for VRIK
             /*
@@ -1053,19 +1062,21 @@ namespace UserVRMSpace
             }
             else
             {
+                bool IsReparentBone = true;
                 if (useVVMIK)
                 {
                     //---for VVM IK
-                    ikparent = ikworld.GetComponent<OperateLoadedObj>().CreateVVMIKHandle(contextRoot);
+                    ikparent = ikworld.GetComponent<OperateLoadedObj>().CreateVVMIKHandle(contextRoot, IsReparentBone);
                     //vlook.Target = ikparent.transform.GetChild(0);
-                	vinst.Gaze = ikparent.transform.Find("EyeViewHandle");
+                	//vinst.Gaze = ikparent.transform.Find("EyeViewHandle");
+                    vinst.LookAtTarget = ikparent.transform.Find("EyeViewHandle");
                     ikparent.GetComponent<UserGroundOperation>().relatedAvatar = contextRoot;
 
                     RuntimeAnimatorController ruanim = Instantiate<RuntimeAnimatorController>((RuntimeAnimatorController)Resources.Load("vvmik_anicon"));
                     conanime.runtimeAnimatorController = ruanim;
 
                     VvmIk vik = contextRoot.AddComponent<VvmIk>();
-                    SetupVVMIK(ikparent, conanime, vik, null, bodyBounds);
+                    SetupVVMIK(ikparent, conanime, vik, null, bodyBounds, IsReparentBone);
                 }
                 else
                 {
@@ -1101,7 +1112,6 @@ namespace UserVRMSpace
 
             }
             //---material
-            contextRoot.AddComponent<VVMMotionRecorder>();
 
             //---for hand IK
             SetupHand(contextRoot, conanime);
@@ -1173,6 +1183,8 @@ namespace UserVRMSpace
                 Debug.Log(HumanTrait.MuscleName[i] + "=" + hp.muscles[i].ToString());
             }
             */
+            VVMMotionRecorder vvmrec = contextRoot.AddComponent<VVMMotionRecorder>();
+            vvmrec.PrepareExportVRMA(managa.transform.Find("tmpVRMA"), vinst);
 
             
 
@@ -1188,6 +1200,7 @@ namespace UserVRMSpace
                 if (vrm[i].name == param)
                 {
                     GameObject ik = vrm[i].GetComponent<OperateLoadedVRM>().relatedHandleParent;
+                    GameObject truik = vrm[i].GetComponent<OperateLoadedVRM>().relatedTrueIKParent;
 
                     OperateLoadedVRM olvrm = vrm[i].GetComponent<OperateLoadedVRM>();
 
@@ -1204,6 +1217,7 @@ namespace UserVRMSpace
 
                     managa.DetachAvatarFromRole(param + ",avatar");
 
+                    Destroy(truik);
                     Destroy(ik);
                     //olvrm.GetContext().Dispose();
                     Destroy(vrm[i]);
@@ -1307,7 +1321,9 @@ namespace UserVRMSpace
 
             GameObject copycube = (GameObject)Resources.Load("IKHandleCube");
             GameObject ikcube = Instantiate(copycube, copycube.transform.position, Quaternion.identity, ikhp.transform);
-            ikcube.GetComponent<OtherObjectDummyIK>().relatedAvatar = oth;
+            OtherObjectDummyIK oodk = ikcube.GetComponent<OtherObjectDummyIK>();
+            oodk.relatedAvatar = oth;
+            oodk.relatedType = AF_TARGETTYPE.OtherObject;
             ikcube.tag = "IKHandle";
             ikcube.transform.rotation = Quaternion.Euler(orirot); // Quaternion.Euler(0f, 0f, 0f);
 
@@ -1397,7 +1413,7 @@ namespace UserVRMSpace
             Debug.LogError(ErrorContext.GetInnerException());
 
         }
-        public OtherObjectInformation OnShowedOtherObject(GameObject oth)
+        public OtherObjectInformation OnShowedOtherObject(GameObject oth, bool isLoadedObject = true)
         {
             //GameObject oth = _loadedGameObject;
 
@@ -1541,39 +1557,42 @@ namespace UserVRMSpace
 
             //_loadedGameObject = null;
 
-            BoxCollider boxc;
-            if (oth.TryGetComponent<BoxCollider>(out boxc))
+            if (isLoadedObject == true)
             {
-                boxc.isTrigger = true;
-                //boxc.size = Vector3.zero;
-                
-                boxc.isTrigger = true;
-                // すべての子のBoxColliderの位置とサイズを取得する
-                List<Bounds> bounds = new List<Bounds>();
-                foreach (Transform child in oth.transform)
+                BoxCollider boxc;
+                if (oth.TryGetComponent<BoxCollider>(out boxc))
                 {
-                    BoxCollider tmpcol;
-                    if (child.TryGetComponent<BoxCollider>(out tmpcol))
+                    boxc.isTrigger = true;
+                    //boxc.size = Vector3.zero;
+
+                    // すべての子のBoxColliderの位置とサイズを取得する
+                    List<Bounds> bounds = new List<Bounds>();
+                    foreach (Transform child in oth.transform)
                     {
-                        bounds.Add(tmpcol.bounds);
+                        BoxCollider tmpcol;
+                        if (child.TryGetComponent<BoxCollider>(out tmpcol))
+                        {
+                            bounds.Add(tmpcol.bounds);
+                        }
+
                     }
-                    
-                }
-                // MinとMaxを取得する
-                Vector3 min = Vector3.zero;
-                Vector3 max = Vector3.zero;
-                foreach (Bounds bound in bounds)
-                {
-                    min = Vector3.Min(min, bound.min);
-                    max = Vector3.Max(max, bound.max);
-                }
+                    // MinとMaxを取得する
+                    Vector3 min = Vector3.zero;
+                    Vector3 max = Vector3.zero;
+                    foreach (Bounds bound in bounds)
+                    {
+                        min = Vector3.Min(min, bound.min);
+                        max = Vector3.Max(max, bound.max);
+                    }
 
-                // 親のBoxColliderのサイズを設定する
-                boxc.size = new Vector3(max.x - min.x, max.y - min.y, max.z - min.z);
+                    // 親のBoxColliderのサイズを設定する
+                    boxc.size = new Vector3(max.x - min.x, max.y - min.y, max.z - min.z);
 
-                // 親のBoxColliderの位置を設定する
-                boxc.center = new Vector3(0, boxc.size.y * 0.5f, 0);
+                    // 親のBoxColliderの位置を設定する
+                    boxc.center = new Vector3(0, boxc.size.y * 0.5f, 0);
+                }
             }
+            
             
 
 
@@ -1697,7 +1716,7 @@ namespace UserVRMSpace
             string[] prm = url.Split('\t');
             string uri = prm[0];
             string filename = prm[1];
-            string ext = TriLibCore.Utils.FileUtils.GetFileExtension(filename, false); // System.IO.Path.GetExtension(filename);
+            string ext = prm[2]; // TriLibCore.Utils.FileUtils.GetFileExtension(filename, false); // System.IO.Path.GetExtension(filename);
             _loadedObjectFileName = filename;
 
             using (UnityWebRequest www = UnityWebRequest.Get(uri))
@@ -1884,6 +1903,7 @@ namespace UserVRMSpace
                 boxc.isTrigger = true;
                 BoxCollider copyboxc = copyoth.GetComponent<BoxCollider>();
                 boxc.size = copyboxc.size;
+                boxc.center = Vector3.zero;
             }
             else if (
                 (ptype == UserPrimitiveType.Cylinder) ||
@@ -1926,7 +1946,9 @@ namespace UserVRMSpace
             ol.relatedHandleParent = ikcube;
             ol.Title = ptype.ToString();
             ol.objectType = ptype.ToString();
-            ikcube.GetComponent<OtherObjectDummyIK>().relatedAvatar = oth;
+            OtherObjectDummyIK oodk = ikcube.GetComponent<OtherObjectDummyIK>();
+            oodk.relatedAvatar = oth;
+            oodk.relatedType = AF_TARGETTYPE.OtherObject;
 
             int existCnt = managa.CheckRoleTitleExist(ptype.ToString(), AF_TARGETTYPE.OtherObject);
             if (existCnt > 0)
@@ -1935,7 +1957,7 @@ namespace UserVRMSpace
             }
 
             //---material save
-            OtherObjectInformation obi = OnShowedOtherObject(oth);
+            OtherObjectInformation obi = OnShowedOtherObject(oth,false);
             obi.id = oth.name;
             obi.Title = ol.Title;
             obi.fileExt = ((int)ptype).ToString();
@@ -2259,36 +2281,114 @@ namespace UserVRMSpace
         //=============================================================================================================================
         public NativeAnimationAvatar OpenSample1Text()
         {
-            return OpenText ("ABC,tl");
+            NativeAnimationAvatar avatar = null;
+            DOVirtual.DelayedCall(0.0001f, async () =>
+            {
+                avatar = await OpenText("ABC,tl,2");
+            });
+            return avatar;
         }
-        public OpeningNativeAnimationAvatar Body_OpenText(string param)
+        public NativeAnimationAvatar OpenSample2Text()
         {
+            NativeAnimationAvatar avatar = null;
+            DOVirtual.DelayedCall(0.0001f, async () =>
+            {
+                avatar = await OpenText("ABCabc,tl,3");
+            });
+            return avatar;
+        }
+        public async System.Threading.Tasks.Task<OpeningNativeAnimationAvatar> OpenRecoveryText(string param)
+        {
+            
+            var task = await Body_OpenText(param);
+
+            return task;
+        }
+        public async System.Threading.Tasks.Task<OpeningNativeAnimationAvatar> Body_OpenText(string param)
+        {
+            GameObject ikhp = managa.ikArea;
+            OperateActiveVRM ovrm = ikhp.GetComponent<OperateActiveVRM>();
+
             OpeningNativeAnimationAvatar onav = new OpeningNativeAnimationAvatar();
 
             string[] prm = param.Split(',');
 
+            int dimension = int.TryParse(prm[2], out dimension) ? dimension : 2;
+
             GameObject ikworld = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
-            GameObject txt = ikworld.GetComponent<OperateLoadedObj>().CreateText(prm[0], prm[1]);
+            
+            GameObject[] txt = await ikworld.GetComponent<OperateLoadedObj>().CreateText(prm[0], prm[1], dimension);
+
+            OperateLoadedText olt = txt[0].GetComponent<OperateLoadedText>();
+
+            txt[0].tag = "TextPlayer";
+            if (dimension == 2)
+            {
+                txt[0].name = managa.CheckAndSetAvatarId("txt_", txt[0].GetInstanceID()); // + DateTime.Now.ToFileTime().ToString();
+                txt[0].layer = LayerMask.NameToLayer("UserUI");
+            }
+            else if (dimension == 3)
+            {
+                txt[0].name = managa.CheckAndSetAvatarId("txt3d_", txt[0].GetInstanceID()); // + DateTime.Now.ToFileTime().ToString();
+                txt[0].layer = LayerMask.NameToLayer("Player");
+
+            }
+
+            txt[0].AddComponent<ManageAvatarTransform>();
+            
+            //RectTransform rectra = txt[0].GetComponent<RectTransform>();
+            //rectra.anchoredPosition3D = new Vector3(0f, 0f, 0f);
+            //rectra.localScale = new Vector3(1f, 1f, 1f);
 
 
-            txt.name = managa.CheckAndSetAvatarId("txt_",txt.GetInstanceID()); // + DateTime.Now.ToFileTime().ToString();
-            txt.tag = "TextPlayer";
-            txt.layer = LayerMask.NameToLayer("UserUI");
-            txt.AddComponent<ManageAvatarTransform>();
-            RectTransform rectra = txt.GetComponent<RectTransform>();
-            rectra.anchoredPosition3D = new Vector3(0f, 0f, 0f);
-            rectra.localScale = new Vector3(1f, 1f, 1f);
+            
 
-            txt.GetComponent<OperateLoadedText>().Title = "Text";
+            //---setup ik marker (if dimension is 3D)
+            if (dimension == 3)
+            {
+                txt[1].name = "ikparent_" + txt[0].name;
+                txt[1].tag = "IKHandle";
+                txt[1].layer = LayerMask.NameToLayer("Handle");
 
-            Text text = txt.GetComponent<Text>();
+                txt[1].AddComponent<MouseOperationXR>();
+
+                olt.relatedHandleParent = txt[1];
+                olt.Title = "Text3D";
+
+                ovrm.EnableTransactionHandle(null, txt[1]);
+                ovrm.AddAvatarBox(txt[0].name, null, txt[1]);
+
+            }else if (dimension == 2)
+            {
+                olt.Title = "Text";
+            }
+
+
+            //---basic information
+            //Text text = txt.GetComponent<Text>();
+            //TextMeshProUGUI text = txt[0].GetComponent<TextMeshProUGUI>();
             TextObjectInformation toi = new TextObjectInformation();
-            toi.id = txt.name;
-            toi.Title = "Text";
-            toi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.Text);
-            toi.motion.fontSize = text.fontSize;
-            toi.motion.fontStyle = text.fontStyle;
-            toi.motion.textAlignment = text.alignment;
+            toi.id = txt[0].name;
+            
+            if (dimension == 2)
+            {
+                toi.Title = "Text";
+                toi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.Text);
+            }
+            else if (dimension == 3)
+            {
+                toi.Title = "Text3D";
+                toi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.Text3D);
+            }
+            
+            toi.motion.fontSize = olt.GetFontSize();
+            //toi.motion.fontStyle = text.fontStyle;
+            toi.motion.fontStyles = olt.GetFontStyles();
+            //toi.motion.textAlignment = text.alignment;
+            toi.motion.textAlignmentOptions = "tl";
+            toi.motion.textOverflow = (int)TMPro.TextOverflowModes.Overflow;
+            toi.motion.dimension = dimension.ToString() + "d";
+            
 
             int existCnt = managa.CheckRoleTitleExist(toi.Title, AF_TARGETTYPE.Text);
             if (existCnt > 0)
@@ -2297,41 +2397,49 @@ namespace UserVRMSpace
             }
 
             NativeAnimationAvatar nav = new NativeAnimationAvatar();
-            nav.avatar = txt;
-            nav.ikparent = null;
-            nav.avatarId = txt.name;
+            nav.avatar = txt[0];
+            if (dimension == 2)
+            {
+                nav.ikparent = null;
+            }
+            else if (dimension == 3)
+            {
+                nav.ikparent = txt[1];
+            }
+            nav.roleTitle = toi.Title;            
+            nav.avatarId = txt[0].name;
             nav.avatarTitle = toi.Title;
-            nav.roleTitle = toi.Title;
 
 
             onav.cast = nav;
             onav.baseInfo = toi;
+
+            
 
             return onav;
         }
         /// <summary>
         /// Create and Show Text UI
         /// </summary>
-        /// <param name="param">CSV-string: 0=text label, 1=anchor position(tl=TopLeft, bl=BottomLeft, tr=TopRight, br=BottomRight)</param>
-        public NativeAnimationAvatar OpenText(string param)
+        /// <param name="param">CSV-string: 0=text label, 1=anchor position(tl=TopLeft, bl=BottomLeft, tr=TopRight, br=BottomRight), 2=dimension(2, 3)</param>
+        public async System.Threading.Tasks.Task<NativeAnimationAvatar> OpenText(string param)
         {
 
-            OpeningNativeAnimationAvatar tmpnav = Body_OpenText(param);
+            OpeningNativeAnimationAvatar tmpnav = await Body_OpenText(param);
 
-            /*
-            Text text = tmpnav.avatar.GetComponent<Text>();
-            TextObjectInformation toi = new TextObjectInformation();
-            toi.id = tmpnav.avatar.name;
-            toi.Title = "Text";
-            toi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.Text);
-            toi.motion.fontSize = text.fontSize;
-            toi.motion.fontStyle = text.fontStyle;
-            toi.motion.textAlignment = text.alignment;
-            */
 
-            
             //ManageAnimation mana = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
-            NativeAnimationAvatar nav = managa.FirstAddAvatar(tmpnav.cast.avatar.name, tmpnav.cast.avatar, null, "Text", AF_TARGETTYPE.Text);
+            NativeAnimationAvatar nav = null;
+            
+            if (tmpnav.baseInfo.motion.dimension == "2d")
+            {
+                nav = managa.FirstAddAvatar(tmpnav.cast.avatar.name, tmpnav.cast.avatar, tmpnav.cast.ikparent, "Text", AF_TARGETTYPE.Text);
+            }
+            else if (tmpnav.baseInfo.motion.dimension == "3d")
+            {
+                nav = managa.FirstAddAvatar(tmpnav.cast.avatar.name, tmpnav.cast.avatar, tmpnav.cast.ikparent, "Text", AF_TARGETTYPE.Text3D);
+            }
+                
             tmpnav.baseInfo.roleName = nav.roleName;
             tmpnav.baseInfo.roleTitle = nav.roleTitle;
 
@@ -2355,9 +2463,46 @@ namespace UserVRMSpace
                 {
                     managa.DetachAvatarFromRole(param + ",avatar");
 
+                    managa.ikArea.GetComponent<OperateLoadedObj>().RelaseGeneralAssetRef(vrm);
                     Destroy(vrm);
 #if !UNITY_EDITOR && UNITY_WEBGL
                     ReceiveStringVal(vrm.name);
+#endif
+                    break;
+                }
+            }
+
+            //---3D text
+            GameObject ikhp = managa.ikArea;
+            OperateActiveVRM ovrm = ikhp.GetComponent<OperateActiveVRM>();
+            GameObject[] vrms = GameObject.FindGameObjectsWithTag("TextPlayer");
+            for (var i = 0; i < vrms.Length; i++)
+            {
+                if (vrms[i].name == param)
+                {
+                    OperateLoadedText olt = vrms[i].GetComponent<OperateLoadedText>();
+
+                    GameObject ik = olt.relatedHandleParent;
+                    
+
+                    ovrm.RemoveAvatarBox(ik);
+
+                    if (ovrm.ActiveAvatar.name == vrms[i].name)
+                    {
+                        ovrm.ActiveAvatar = null;
+                    }
+                    if (ovrm.ActiveIKHandle.name == ik.name)
+                    {
+                        ovrm.ActiveIKHandle = null;
+                    }
+
+                    managa.DetachAvatarFromRole(param + ",avatar");
+
+                    Destroy(ik);
+                    managa.ikArea.GetComponent<OperateLoadedObj>().RelaseGeneralAssetRef(vrms[i]);
+                    Destroy(vrms[i]);
+#if !UNITY_EDITOR && UNITY_WEBGL
+                    ReceiveStringVal(vrms[i].name);
 #endif
                     break;
                 }
@@ -2623,6 +2768,11 @@ namespace UserVRMSpace
                 plat.tag = "OtherPlayerCollider";
                 plat.layer = LayerMask.NameToLayer("Player");
             }
+            BoxCollider boxc;
+            if (plat.TryGetComponent<BoxCollider>(out boxc))
+            { //---physical effect off
+                boxc.isTrigger = true;
+            }
 
             //---create dummy 3D object for operating
             GameObject empt = new GameObject();
@@ -2636,7 +2786,13 @@ namespace UserVRMSpace
             //---Set up IK handle
             OperateLoadedOther ol = empt.AddComponent<OperateLoadedOther>();
             empt.AddComponent<ManageAvatarTransform>();
+
+            //---call common other object editing
             OnShowedOtherObject(empt);
+            BoxCollider emptbox = empt.GetComponent<BoxCollider>();
+            emptbox.size = new Vector3(plat.transform.localScale.x, plat.transform.localScale.y, plat.transform.localScale.z);
+            emptbox.center = Vector3.zero;
+
             Rigidbody rbody = empt.AddComponent<Rigidbody>();
             MouseOperationXR moxr = empt.AddComponent<MouseOperationXR>();
             rbody.drag = 10;
@@ -2652,7 +2808,9 @@ namespace UserVRMSpace
 
             ol.relatedHandleParent = ikcube;
             ol.Title = "Image object";
-            ikcube.GetComponent<OtherObjectDummyIK>().relatedAvatar = empt;
+            OtherObjectDummyIK oodk = ikcube.GetComponent<OtherObjectDummyIK>();
+            oodk.relatedAvatar = empt;
+            oodk.relatedType = AF_TARGETTYPE.Image;
 
             OperateActiveVRM ovrm = managa.ikArea.GetComponent<OperateActiveVRM>();
             ovrm.EnableTransactionHandle(null, ikcube);

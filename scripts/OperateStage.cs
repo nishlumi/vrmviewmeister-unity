@@ -117,6 +117,8 @@ namespace UserHandleSpace
         protected MaterialProperties finalMatprop;
         protected MaterialProperties finalUserStageMatprop;
 
+        [SerializeField]
+        GameObject wxrCamSet;
         ManageAnimation manim;
 
         // Start is called before the first frame update
@@ -183,7 +185,11 @@ namespace UserHandleSpace
             Vector3 rot = GetRotationFromOuter(0);
             Vector3 sca = GetScale(0);
             string ret = "";
-            ret = pos.x + "," + pos.y + "," + pos.z + "%" + rot.x + "," + rot.y + "," + rot.z + "%" + sca.x + "," + sca.y + "," + sca.z;
+            ret = pos.x + "," + pos.y + "," + pos.z + "%" +
+                rot.x + "," + rot.y + "," + rot.z + "%" +
+                sca.x + "," + sca.y + "," + sca.z + "%" +
+                "0,0,0"
+            ;
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(ret);
 #endif
@@ -1649,7 +1655,8 @@ namespace UserHandleSpace
         //------------------------------------------------------------------------------------------------------------------------
         public CameraOperation1 GetCameraOperation()
         {
-            return Camera.main.gameObject.GetComponent<CameraOperation1>();
+            //return Camera.main.gameObject.GetComponent<CameraOperation1>();
+            return wxrCamSet.GetComponent<CameraOperation1>();
         }
         //------------------------------------------------------------------------------------------------------------------------
         //   Directional light

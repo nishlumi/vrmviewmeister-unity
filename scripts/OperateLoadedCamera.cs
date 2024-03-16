@@ -44,7 +44,7 @@ namespace UserHandleSpace
             base.Start();
 
             manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
-            CameraClearFlags flg =  Camera.main.gameObject.GetComponent<CameraOperation1>().GetClearFlag();
+            CameraClearFlags flg =  manim.camxr.transform.GetComponent<CameraOperation1>().GetClearFlag();
             SetClearFlag((int)flg);
         }
 

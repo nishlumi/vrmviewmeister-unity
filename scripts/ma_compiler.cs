@@ -341,6 +341,9 @@ namespace UserHandleSpace
             if (targetObjects.targetType == AF_TARGETTYPE.VRM)
             {
                 Transform[] bts = naa.ikparent.GetComponentsInChildren<Transform>();
+                OperateLoadedVRM olvrm = naa.avatar.GetComponent<OperateLoadedVRM>();
+                GameObject trueik = olvrm.relatedTrueIKParent;
+
                 
                 int index = (int)movedata.vrmBone;
 
@@ -369,7 +372,7 @@ namespace UserHandleSpace
                     }
                     //---IK marker based
                     if (movedata.jumpNum >= 1) seq.Join(naa.ikparent.transform.DOJump(movedatavalues[movedatavalues.Count - 1], movedata.jumpPower, movedata.jumpNum, frame.duration));
-                    seq.Join(naa.ikparent.transform.DOPath(movedatavalues.ToArray(), frame.duration, PathType.CatmullRom));
+                    seq.Join(trueik.transform.DOPath(movedatavalues.ToArray(), frame.duration, PathType.CatmullRom));
                     /*
                     //---Path version
                     if (movedatavalues.Count > 1)
@@ -406,7 +409,7 @@ namespace UserHandleSpace
                             //---Position (absorb a distance of height)
                             if (movedata.animationType == AF_MOVETYPE.Translate)
                             {
-                                List<Vector3> curList = naa.avatar.GetComponent<OperateLoadedVRM>().GetTPoseBodyList();
+                                List<Vector3> curList = olvrm.GetTPoseBodyList();
                                 int vbone = (int)movedata.vrmBone;
 
                                 //---another version: Multiple height diff percentage to the pose value.
@@ -503,7 +506,7 @@ namespace UserHandleSpace
 
             }
             else
-            { //---OtherLight, Light, Camera, Effect
+            { //---OtherLight, Light, Camera, Effect, Text3D
                 if (targetObjects.compiled == 1)
                 {
                     if (movedata.jumpNum >= 1) seq.Join(naa.avatar.transform.DOJump(movedata.values[movedatavalues.Count - 1], movedata.jumpPower, movedata.jumpNum, frame.duration));
@@ -538,6 +541,10 @@ namespace UserHandleSpace
                     }*/
                 }
 
+                if (options.isBuildDoTween == 0)
+                { //---when not motion, directly set last indexed movedatavalues
+                    naa.avatar.transform.position = movedatavalues[movedatavalues.Count - 1];
+                }
             }
             return seq;
         }
@@ -555,6 +562,7 @@ namespace UserHandleSpace
             */
 
 
+            //===Common type======================================###
             RotateMode rotrm = RotateMode.Fast;
             if (movedata.isRotate360 == 1)
             {
@@ -577,25 +585,54 @@ namespace UserHandleSpace
                 {
                     if (movedata.effectPunch.isEnable == 1)
                     {
-                        if (movedata.effectPunch.translationType == AF_MOVETYPE.Translate)
+                        /*if (naa.type == AF_TARGETTYPE.Text)
                         {
-                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOPunchPosition(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
+                            RectTransform rectt = naa.avatar.GetComponent<RectTransform>();
+
+                            if (movedata.effectPunch.translationType == AF_MOVETYPE.Translate)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(rectt.DOPunchAnchorPos(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
+                            }
+                            else if (movedata.effectPunch.translationType == AF_MOVETYPE.Rotate)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(rectt.DOPunchRotation(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
+                            }
+                            else if (movedata.effectPunch.translationType == AF_MOVETYPE.Scale)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(rectt.DOPunchScale(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
+                            }
                         }
-                        else if (movedata.effectPunch.translationType == AF_MOVETYPE.Rotate)
+                        else*/
                         {
-                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOPunchRotation(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
+                            if (movedata.effectPunch.translationType == AF_MOVETYPE.Translate)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOPunchPosition(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
+                            }
+                            else if (movedata.effectPunch.translationType == AF_MOVETYPE.Rotate)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOPunchRotation(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
+                            }
+                            else if (movedata.effectPunch.translationType == AF_MOVETYPE.Scale)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOPunchScale(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
+                            }
                         }
-                        else if (movedata.effectPunch.translationType == AF_MOVETYPE.Scale)
-                        {
-                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOPunchScale(movedata.effectPunch.punch, frame.duration, movedata.effectPunch.vibrato, movedata.effectPunch.elasiticity));
-                        }
+                        
                     }
 
                 }
 
                 if (options.isBuildDoTween == 0)
                 {
-                    olb.SetPunch(movedata.effectPunch);
+                    if ((naa.type == AF_TARGETTYPE.Text) || (naa.type == AF_TARGETTYPE.Text3D))
+                    {
+                        OperateLoadedText olt = naa.avatar.GetComponent<OperateLoadedText>();
+                        olt.SetPunch(movedata.effectPunch);
+                    }
+                    else
+                    {
+                        olb.SetPunch(movedata.effectPunch);
+                    }
                 }
             }
             else if (movedata.animationType == AF_MOVETYPE.Shake)
@@ -611,31 +648,116 @@ namespace UserHandleSpace
                 {
                     if (movedata.effectShake.isEnable == 1)
                     {
-                        if (movedata.effectShake.translationType == AF_MOVETYPE.Translate)
-                        {
-                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOShakePosition(frame.duration, movedata.effectShake.strength, movedata.effectShake.vibrato, movedata.effectShake.randomness, false, movedata.effectShake.fadeOut == 1 ? true : false));
+                        /*if (naa.type == AF_TARGETTYPE.Text)
+                        { //---3D text
+                            RectTransform rectt = naa.avatar.GetComponent<RectTransform>();
+
+                            if (movedata.effectShake.translationType == AF_MOVETYPE.Translate)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(rectt.DOShakeAnchorPos(frame.duration, movedata.effectShake.strength, movedata.effectShake.vibrato, movedata.effectShake.randomness, false, movedata.effectShake.fadeOut == 1 ? true : false));
+                            }
+                            else if (movedata.effectShake.translationType == AF_MOVETYPE.Rotate)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(rectt.DOShakeRotation(frame.duration, movedata.effectShake.strength, movedata.effectShake.vibrato, movedata.effectShake.randomness, movedata.effectShake.fadeOut == 1 ? true : false));
+                            }
+                            else if (movedata.effectShake.translationType == AF_MOVETYPE.Scale)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(rectt.DOShakeScale(frame.duration, movedata.effectShake.strength, movedata.effectShake.vibrato, movedata.effectShake.randomness, movedata.effectShake.fadeOut == 1 ? true : false));
+                            }
                         }
-                        else if (movedata.effectShake.translationType == AF_MOVETYPE.Rotate)
+                        else*/
                         {
-                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOShakeRotation(frame.duration, movedata.effectShake.strength, movedata.effectShake.vibrato, movedata.effectShake.randomness, movedata.effectShake.fadeOut == 1 ? true : false));
-                        }
-                        else if (movedata.effectShake.translationType == AF_MOVETYPE.Scale)
-                        {
-                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOShakeScale(frame.duration, movedata.effectShake.strength, movedata.effectShake.vibrato, movedata.effectShake.randomness, movedata.effectShake.fadeOut == 1 ? true : false));
+                            if (movedata.effectShake.translationType == AF_MOVETYPE.Translate)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOShakePosition(frame.duration, movedata.effectShake.strength, movedata.effectShake.vibrato, movedata.effectShake.randomness, false, movedata.effectShake.fadeOut == 1 ? true : false));
+                            }
+                            else if (movedata.effectShake.translationType == AF_MOVETYPE.Rotate)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOShakeRotation(frame.duration, movedata.effectShake.strength, movedata.effectShake.vibrato, movedata.effectShake.randomness, movedata.effectShake.fadeOut == 1 ? true : false));
+                            }
+                            else if (movedata.effectShake.translationType == AF_MOVETYPE.Scale)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOShakeScale(frame.duration, movedata.effectShake.strength, movedata.effectShake.vibrato, movedata.effectShake.randomness, movedata.effectShake.fadeOut == 1 ? true : false));
+                            }
                         }
                     }
+                        
 
                 }
 
                 if (options.isBuildDoTween == 0)
                 {
-                    olb.SetShake(movedata.effectShake);
+                    if ((naa.type == AF_TARGETTYPE.Text) || (naa.type == AF_TARGETTYPE.Text3D))
+                    {
+                        OperateLoadedText olt = naa.avatar.GetComponent<OperateLoadedText>();
+                        olt.SetShake(movedata.effectShake);
+                    }
+                    else
+                    {
+                        olb.SetShake(movedata.effectShake);
+                    }
+                    
+                }
+            }
+            else if (movedata.animationType == AF_MOVETYPE.Rigid)
+            {
+                if (options.isBuildDoTween == 1)
+                {
+                    Rigidbody rb = null;
+                    if ((naa.type == AF_TARGETTYPE.OtherObject) || (naa.type == AF_TARGETTYPE.Image) || (naa.type == AF_TARGETTYPE.Text3D))
+                    { //---Rigidbody is the object itself.
+                        rb = naa.avatar.GetComponent<Rigidbody>();
+                    }
+                    else if ((naa.type == AF_TARGETTYPE.Camera) || (naa.type == AF_TARGETTYPE.Light) || (naa.type == AF_TARGETTYPE.Effect))
+                    { //---Rigidbody is the IKParent;
+                        rb = naa.ikparent.GetComponent<Rigidbody>();
+                    }
+                    else if (naa.type == AF_TARGETTYPE.VRM)
+                    { //---Rigidbody is the True IKParent;
+                        rb = olb.relatedTrueIKParent.GetComponent<Rigidbody>();
+                    }
+                    
+                    seq.Join(DOTween.To(() => rb.drag, x => rb.drag = x, movedata.rigidDrag, frame.duration));
+                    seq.Join(DOTween.To(() => rb.angularDrag, x => rb.angularDrag = x, movedata.rigidAngularDrag, frame.duration));
+                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                    {
+                        if (naa.type == AF_TARGETTYPE.Text3D)
+                        {
+                            OperateLoadedText olt = naa.avatar.GetComponent<OperateLoadedText>();
+                            olt.SetEasyCollision(movedata.useCollision);
+                            olt.SetUseGravity(movedata.useRigidGravity);
+                        }
+                        else
+                        {
+                            olb.SetEasyCollision(movedata.useCollision);
+                            olb.SetUseGravity(movedata.useRigidGravity);
+                        }
+                    }, false));
+                }
+                else
+                {
+                    
+                    if (naa.type == AF_TARGETTYPE.Text3D)
+                    {
+                        OperateLoadedText olt = naa.avatar.GetComponent<OperateLoadedText>();
+                        olt.SetDrag(movedata.rigidDrag, movedata.rigidAngularDrag);
+                        olt.SetEasyCollision(movedata.useCollision);
+                        olt.SetUseGravity(movedata.useRigidGravity);
+                    }
+                    else
+                    {
+                        olb.SetDrag(movedata.rigidDrag, movedata.rigidAngularDrag);
+                        olb.SetEasyCollision(movedata.useCollision);
+                        olb.SetUseGravity(movedata.useRigidGravity);
+                    }
                 }
             }
 
+            //===Each type======================================###
             if (targetObjects.targetType == AF_TARGETTYPE.VRM)
             {
                 Transform[] bts = naa.ikparent.GetComponentsInChildren<Transform>();
+                GameObject trueik = naa.avatar.GetComponent<OperateLoadedVRM>().relatedTrueIKParent;
 
                 int index = (int)movedata.vrmBone;
 
@@ -660,12 +782,12 @@ namespace UserHandleSpace
                         { //---IK marker based
                             if (movedata.jumpNum >= 1)
                             {
-                                if (options.isExecuteForDOTween == 1) seq.Join(naa.ikparent.transform.DOJump(movedata.position, movedata.jumpPower, movedata.jumpNum, frame.duration));
+                                if (options.isExecuteForDOTween == 1) seq.Join(trueik.transform.DOJump(movedata.position, movedata.jumpPower, movedata.jumpNum, frame.duration));
                             }
                             else
                             {
-                                if (options.isExecuteForDOTween == 1) seq.Join(naa.ikparent.transform.DOMove(movedata.position, frame.duration));
-                                else naa.ikparent.transform.position = movedata.position;
+                                if (options.isExecuteForDOTween == 1) seq.Join(trueik.transform.DOMove(movedata.position, frame.duration));
+                                else trueik.transform.position = movedata.position;
                             }
                                 
                         }
@@ -684,9 +806,9 @@ namespace UserHandleSpace
                         }
 
                         {
-                            if (options.isExecuteForDOTween == 1) seq.Join(naa.ikparent.transform.DORotate(movedata.rotation, frame.duration, rotrm));
+                            if (options.isExecuteForDOTween == 1) seq.Join(trueik.transform.DORotate(movedata.rotation, frame.duration, rotrm));
                             //if (options.isExecuteForDOTween == 1) seq.Join(naa.ikparent.transform.DOBlendableRotateBy(movedata.rotation, frame.duration, rotrm).SetRelative(false));
-                            else naa.ikparent.transform.rotation = Quaternion.Euler(movedata.rotation);
+                            else trueik.transform.rotation = Quaternion.Euler(movedata.rotation);
 
                         }
                     }
@@ -792,12 +914,12 @@ namespace UserHandleSpace
                                 AnimationTranslateTargetParts attp = frame.FindTranslateMoving(AF_MOVETYPE.Translate, ParseIKBoneType.IKParent);
                                 if (attp.values.Count > 1)
                                 {
-                                    seq.Join(naa.ikparent.transform.DOPath(attp.values.ToArray(), frame.duration, PathType.CatmullRom));
+                                    seq.Join(trueik.transform.DOPath(attp.values.ToArray(), frame.duration, PathType.CatmullRom));
                                 }
                                 else if (attp.values.Count == 1)
                                 {
-                                    if (options.isExecuteForDOTween == 1) seq.Join(naa.ikparent.transform.DOMove(attp.values[0], frame.duration));
-                                    else naa.ikparent.transform.position = attp.values[0];
+                                    if (options.isExecuteForDOTween == 1) seq.Join(trueik.transform.DOMove(attp.values[0], frame.duration));
+                                    else trueik.transform.position = attp.values[0];
                                 }
 
 
@@ -829,7 +951,34 @@ namespace UserHandleSpace
                                     else realObject.transform.rotation = Quaternion.Euler(movedata.rotation);
                                 }*/
                                     
+                            }
+
+                            //---Rigidbody and Collision
+                            if (movedata.animationType == AF_MOVETYPE.Rigid)
+                            {
+                                Collider col = realObject.GetComponent<Collider>();
+                                Rigidbody rig = realObject.GetComponent<Rigidbody>();
+
+                                if (options.isBuildDoTween == 1)
+                                {
                                     
+
+                                    seq.Join(DOTween.To(() => rig.drag, x => rig.drag = x, movedata.rigidDrag, frame.duration));
+                                    seq.Join(DOTween.To(() => rig.angularDrag, x => rig.angularDrag = x, movedata.rigidAngularDrag, frame.duration));
+                                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                                    {
+                                        col.isTrigger = movedata.useCollision == 1 ? false : true;
+                                        rig.useGravity = movedata.useRigidGravity == 1 ? true : false;
+                                    }, false));
+                                }
+                                else
+                                {
+                                    rig.drag = movedata.rigidDrag;
+                                    rig.angularDrag = movedata.rigidAngularDrag;
+                                    col.isTrigger = movedata.useCollision == 1 ? false : true;
+                                    rig.useGravity = movedata.useRigidGravity == 1 ? true : false;
+
+                                }
                             }
                         }
 
@@ -837,37 +986,111 @@ namespace UserHandleSpace
                 }
 
             }
-            else if ((targetObjects.targetType == AF_TARGETTYPE.Text) || (targetObjects.targetType == AF_TARGETTYPE.UImage))
+            else if ((targetObjects.targetType == AF_TARGETTYPE.Text) || (targetObjects.targetType == AF_TARGETTYPE.Text3D) || (targetObjects.targetType == AF_TARGETTYPE.UImage))
             {
-                RectTransform rectt = targetObjects.avatar.avatar.GetComponent<RectTransform>();
-                OperateLoadedUImage olui = targetObjects.avatar.avatar.GetComponent<OperateLoadedUImage>();
 
-                if (movedata.animationType == AF_MOVETYPE.Translate)
+                if (targetObjects.targetType == AF_TARGETTYPE.Text3D)
                 {
-                    
-                    Vector2 v2 = new Vector2(Screen.width * (movedata.position.x/100f), Screen.height * (movedata.position.y/100f));
-                    if (options.isExecuteForDOTween == 1) seq.Join(rectt.DOAnchorPos(v2, frame.duration));
-                    else rectt.anchoredPosition = v2;
+                    Transform tran3d = naa.avatar.transform;
+                    OperateLoadedText olt = naa.avatar.GetComponent<OperateLoadedText>();
 
-                    if (options.isBuildDoTween == 0)
+                    if (movedata.animationType == AF_MOVETYPE.Translate)
                     {
-                        olui.currentPositionPercent = new Vector2(movedata.position.x, movedata.position.y);
+                        if (targetObjects.compiled == 1)
+                        {
+                            if (movedata.jumpNum >= 1)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOJump(movedata.position, movedata.jumpPower, movedata.jumpNum, frame.duration));
+                            }
+                            else
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DOMove(movedata.position, frame.duration));
+                                else naa.avatar.transform.position = movedata.position;
+                            }
+                        }
+
+
+                        {
+                            if (movedata.jumpNum >= 1)
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(naa.ikparent.transform.DOJump(movedata.position, movedata.jumpPower, movedata.jumpNum, frame.duration));
+                            }
+                            else
+                            {
+                                if (options.isExecuteForDOTween == 1) seq.Join(naa.ikparent.transform.DOMove(movedata.position, frame.duration));
+                                else naa.ikparent.transform.position = movedata.position;
+                            }
+
+                        }
+
+
+                        if (options.isBuildDoTween == 0)
+                        {
+                            olt.SetJump(movedata.jumpPower.ToString() + "," + movedata.jumpNum.ToString());
+                            
+                        }
+                    }
+                    else if (movedata.animationType == AF_MOVETYPE.Rotate)
+                    {
+                        if (targetObjects.compiled == 1)
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(naa.avatar.transform.DORotate(movedata.rotation, frame.duration, rotrm));
+                            else naa.avatar.transform.rotation = Quaternion.Euler(movedata.rotation);
+
+                        }
+
+                        {
+                            if (options.isExecuteForDOTween == 1) seq.Join(naa.ikparent.transform.DORotate(movedata.rotation, frame.duration, rotrm));
+                            else naa.ikparent.transform.rotation = Quaternion.Euler(movedata.rotation);
+
+                        }
+                        if (options.isBuildDoTween == 0)
+                        {
+                            naa.avatar.transform.rotation = Quaternion.Euler(movedata.rotation);
+                        }
+                    }
+                    else if (movedata.animationType == AF_MOVETYPE.Scale)
+                    {
+
+                        olt.TextAnimationTween(seq, movedata, options, frame.duration);
+
                     }
                 }
-                else if (movedata.animationType == AF_MOVETYPE.Rotate)
+                else
                 {
-                    //---2D object is Z-dimension only.
-                    Vector3 v3 = new Vector3(movedata.rotation.x, movedata.rotation.y, movedata.rotation.z);
-                    if (options.isExecuteForDOTween == 1) seq.Join(rectt.DORotate(v3, frame.duration));
-                    else rectt.rotation = Quaternion.Euler(v3);
-                }
-                else if (movedata.animationType == AF_MOVETYPE.Scale)
-                {
-                    Vector2 v2 = new Vector2(movedata.scale.x, movedata.scale.y);
-                    if (options.isExecuteForDOTween == 1) seq.Join(rectt.DOSizeDelta(v2, frame.duration));
-                    else rectt.sizeDelta = v2;
+                    RectTransform rectt = targetObjects.avatar.avatar.GetComponent<RectTransform>();
+                    OperateLoadedUImage olui = targetObjects.avatar.avatar.GetComponent<OperateLoadedUImage>();
 
+
+                    if (movedata.animationType == AF_MOVETYPE.Translate)
+                    {
+
+                        Vector2 v2 = new Vector2(Screen.width * (movedata.position.x / 100f), Screen.height * (movedata.position.y / 100f));
+                        if (options.isExecuteForDOTween == 1) seq.Join(rectt.DOAnchorPos(v2, frame.duration));
+                        else rectt.anchoredPosition = v2;
+
+                        if (options.isBuildDoTween == 0)
+                        {
+                            olui.currentPositionPercent = new Vector2(movedata.position.x, movedata.position.y);
+                        }
+                    }
+                    else if (movedata.animationType == AF_MOVETYPE.Rotate)
+                    {
+                        //---2D object is Z-dimension only.
+                        Vector3 v3 = new Vector3(movedata.rotation.x, movedata.rotation.y, movedata.rotation.z);
+                        if (options.isExecuteForDOTween == 1) seq.Join(rectt.DORotate(v3, frame.duration));
+                        else rectt.rotation = Quaternion.Euler(v3);
+                    }
+                    else if (movedata.animationType == AF_MOVETYPE.Scale)
+                    {
+                        Vector2 v2 = new Vector2(movedata.scale.x, movedata.scale.y);
+                        if (options.isExecuteForDOTween == 1) seq.Join(rectt.DOSizeDelta(v2, frame.duration));
+                        else rectt.sizeDelta = v2;
+
+                    }
                 }
+
+                
             }
             else if (targetObjects.targetType == AF_TARGETTYPE.Stage)
             {
@@ -943,6 +1166,11 @@ namespace UserHandleSpace
                         else naa.ikparent.transform.rotation = Quaternion.Euler(movedata.rotation);
 
                     }
+
+                    if (options.isBuildDoTween == 0)
+                    {
+                        naa.avatar.transform.rotation = Quaternion.Euler(movedata.rotation);
+                    }
                 }
                 else if (movedata.animationType == AF_MOVETYPE.Scale)
                 {
@@ -958,6 +1186,7 @@ namespace UserHandleSpace
                         else naa.avatar.transform.localScale = movedata.scale;
 
                     }
+                    
                 }
             }
             
@@ -1182,6 +1411,50 @@ namespace UserHandleSpace
                         }
                     }
                 }
+            }
+            if (movedata.animationType == AF_MOVETYPE.VRMAutoBlendShape)
+            {
+                if (options.isBuildDoTween == 1)
+                {
+                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                    {
+                        ovrm.SetAutoBlendShapeInterval(movedata.interval);
+                        ovrm.SetAutoBlendShapeOpeningSeconds(movedata.openingSeconds);
+                        ovrm.SetAutoBlendShapeCloseSeconds(movedata.closeSeconds);
+                        ovrm.SetPlayFlagAutoBlendShape(movedata.isblink);
+                        if (movedata.isblink == 1)
+                        {
+                            //ovrm.AutoBlendShape(0);
+                            ovrm.PlayAutoBlendShape();
+                        }
+                        else
+                        { //---already pause/stop, is not meaning...
+                            //ovrm.PauseAutoBlendShape();
+                            ovrm.StopAutoBlendShape();
+                        }
+
+                    }, false));
+                }
+                else
+                {
+                    //---Auto BlendShape
+                    ovrm.SetAutoBlendShapeInterval(movedata.interval);
+                    ovrm.SetAutoBlendShapeOpeningSeconds(movedata.openingSeconds);
+                    ovrm.SetAutoBlendShapeCloseSeconds(movedata.closeSeconds);
+                    ovrm.SetPlayFlagAutoBlendShape(movedata.isblink);
+                    if (movedata.isblink == 1)
+                    {
+                        //ovrm.AutoBlendShape(0);
+                        ovrm.PlayAutoBlendShape();
+                    }
+                    else
+                    { //---already pause/stop, is not meaning...
+                        //ovrm.PauseAutoBlendShape();
+                        ovrm.StopAutoBlendShape();
+                    }
+
+                }
+
             }
             if (movedata.animationType == AF_MOVETYPE.VRMBlink)
             {
@@ -1426,6 +1699,195 @@ namespace UserHandleSpace
                     
                 }
             }
+            //---VRMAnimation
+
+            if (movedata.animationType == AF_MOVETYPE.AnimStart)
+            {
+                switch (movedata.animPlaying)
+                {
+                    case UserAnimationState.Play:
+                        if (options.isBuildDoTween == 1)
+                        {
+                            seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                            {
+                                ovrm.SetVRMAContinuously(movedata.text);
+                                ovrm.SetTargetClip(movedata.animName);
+                                ovrm.SetWrapMode(movedata.animLoop);
+                                ovrm.SetSpeedAnimation(movedata.animSpeed);
+
+                                ovrm.SeekPlayAnimation(movedata.animSeek);
+                                ovrm.PlayAnimation(0);
+                                ovrm.SetPlayFlagAnimation(UserAnimationState.Play);
+                            }, false));
+                        }
+                        if (options.isBuildDoTween == 0)
+                        {
+                            ovrm.SetVRMAContinuously(movedata.text);
+                            ovrm.SetTargetClip(movedata.animName);
+                            ovrm.SetWrapMode(movedata.animLoop);
+                            ovrm.SetSpeedAnimation(movedata.animSpeed);
+
+                            ovrm.PlayAnimation(0);
+                            ovrm.SeekPlayAnimation(movedata.animSeek);
+                            ovrm.SetPlayFlagAnimation(movedata.animPlaying);
+                        }
+                        break;
+                    case UserAnimationState.Pause:
+                        if (options.isBuildDoTween == 1)
+                        {
+                            seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                            {
+                                ovrm.SetVRMAContinuously(movedata.text);
+                                ovrm.SetTargetClip(movedata.animName);
+                                ovrm.SetWrapMode(movedata.animLoop);
+                                ovrm.SetSpeedAnimation(movedata.animSpeed);
+
+                                ovrm.PauseAnimation();
+                                ovrm.SetPlayFlagAnimation(UserAnimationState.Pause);
+                            }, false));
+                        }
+                        if (options.isBuildDoTween == 0)
+                        {
+                            ovrm.SetVRMAContinuously(movedata.text);
+                            ovrm.SetTargetClip(movedata.animName);
+                            ovrm.SetWrapMode(movedata.animLoop);
+                            ovrm.SetSpeedAnimation(movedata.animSpeed);
+                            ovrm.SetSeekPosAnimation(movedata.animSeek);
+
+                            ovrm.PauseAnimation();
+                            ovrm.SetPlayFlagAnimation(movedata.animPlaying);
+                        }
+                        break;
+                    case UserAnimationState.Seeking:
+                        if (options.isBuildDoTween == 1)
+                        {
+                            seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                            {
+                                ovrm.SetVRMAContinuously(movedata.text);
+                                ovrm.SetTargetClip(movedata.animName);
+                                ovrm.SetWrapMode(movedata.animLoop);
+                                ovrm.SetSpeedAnimation(movedata.animSpeed);
+
+                                ovrm.SetPlayFlagAnimation(UserAnimationState.Seeking);
+                            }, false));
+                            //seq.Join(DOTween.To(() => ovrm.SeekPosition, x => ovrm.SeekPosition = x, movedata.animSeek, frame.duration));
+                        }
+
+                        if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => ovrm.SeekPosition, x => ovrm.SeekPosition = x, movedata.animSeek, frame.duration));
+                        else ovrm.SeekPosition = movedata.animSeek;
+
+                        if (options.isBuildDoTween == 0)
+                        {
+                            ovrm.SetVRMAContinuously(movedata.text);
+                            ovrm.SetTargetClip(movedata.animName);
+                            ovrm.SetWrapMode(movedata.animLoop);
+                            ovrm.SetSpeedAnimation(movedata.animSpeed);
+                            ovrm.SetSeekPosAnimation(movedata.animSeek);
+
+                            ovrm.SeekPlayAnimation(movedata.animSeek);
+                            ovrm.SetPlayFlagAnimation(movedata.animPlaying);
+                        }
+                        break;
+                    case UserAnimationState.Stop:
+                        if (options.isBuildDoTween == 1)
+                        {
+                            seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                            {
+                                ovrm.SetVRMAContinuously(movedata.text);
+                                ovrm.SetTargetClip(movedata.animName);
+                                ovrm.SetWrapMode(movedata.animLoop);
+                                ovrm.SetSpeedAnimation(movedata.animSpeed);
+
+                                ovrm.StopAnimation();
+                                ovrm.SetPlayFlagAnimation(UserAnimationState.Stop);
+                            }, false));
+                        }
+                        if (options.isBuildDoTween == 0)
+                        {
+                            ovrm.SetVRMAContinuously(movedata.text);
+                            ovrm.SetTargetClip(movedata.animName);
+                            ovrm.SetWrapMode(movedata.animLoop);
+                            ovrm.SetSpeedAnimation(movedata.animSpeed);
+
+                            ovrm.StopAnimation();
+                            ovrm.SetPlayFlagAnimation(movedata.animPlaying);
+                        }
+                        break;
+                    default:
+                        if (options.isBuildDoTween == 1)
+                        {
+                            seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                            {
+                                ovrm.SetVRMAContinuously(movedata.text);
+                                ovrm.SetTargetClip(movedata.animName);
+                                ovrm.SetWrapMode(movedata.animLoop);
+                                ovrm.SetSpeedAnimation(movedata.animSpeed);
+
+                                ovrm.SetPlayFlagAnimation(UserAnimationState.Playing);
+                            }, false));
+                        }
+                        if (options.isBuildDoTween == 0)
+                        {
+                            ovrm.SetVRMAContinuously(movedata.text);
+                            ovrm.SetTargetClip(movedata.animName);
+                            ovrm.SetWrapMode(movedata.animLoop);
+                            ovrm.SetSpeedAnimation(movedata.animSpeed);
+
+                            ovrm.SetSeekPosAnimation(movedata.animSeek);
+                            ovrm.SetPlayFlagAnimation(movedata.animPlaying);
+                        }
+                        break;
+                }
+
+
+            }
+            else if (movedata.animationType == AF_MOVETYPE.AnimStop)
+            { //---AnimStop is ClearVRMA function
+                if (options.isBuildDoTween == 1)
+                {
+                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                    {
+                        ovrm.ClearVRMA();
+                        
+                        ovrm.SetPlayFlagAnimation(UserAnimationState.Playing);
+                    }, false));
+                }
+                if (options.isBuildDoTween == 0)
+                {
+                    ovrm.ClearVRMA();
+
+                    ovrm.SetPlayFlagAnimation(movedata.animPlaying);
+                }
+            }
+            else if (movedata.animationType == AF_MOVETYPE.AnimProperty)
+            {
+                if (options.isExecuteForDOTween == 1)
+                {
+                    seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
+                    {
+                        ovrm.SetTargetClip(movedata.animName);
+                        ovrm.SetWrapMode(movedata.animLoop);
+                    }, false));
+                }
+                if (options.isBuildDoTween == 0)
+                {
+                    ovrm.SetTargetClip(movedata.animName);
+                    ovrm.SetWrapMode(movedata.animLoop);
+                    ovrm.SetSpeedAnimation(movedata.animSpeed);
+                    ovrm.SetSeekPosAnimation(movedata.animSeek);
+                }
+
+                if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => ovrm.GetSpeedAnimation(), x => ovrm.SetSpeedAnimation(x), movedata.animSpeed, frame.duration));
+                else ovrm.SetSpeedAnimation(movedata.animSpeed);
+
+            }
+            else if (movedata.animationType == AF_MOVETYPE.Rest)
+            {
+
+            }
+            
+            
+
             return seq;
         }
         private Sequence ParseForOtherObject(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationParsingOptions options)
@@ -1439,7 +1901,7 @@ namespace UserHandleSpace
                     switch (movedata.animPlaying)
                     {
                         case UserAnimationState.Play:
-                            if (options.isExecuteForDOTween == 1)
+                            if (options.isBuildDoTween == 1)
                             {
                                 seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
                                 {
@@ -1464,10 +1926,14 @@ namespace UserHandleSpace
                             }
                             break;
                         case UserAnimationState.Pause:
-                            if (options.isExecuteForDOTween == 1)
+                            if (options.isBuildDoTween == 1)
                             {
                                 seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
                                 {
+                                    olo.SetTargetClip(movedata.animName);
+                                    olo.SetWrapMode(movedata.animLoop);
+                                    olo.SetSpeedAnimation(movedata.animSpeed);
+
                                     olo.PauseAnimation();
                                     olo.SetPlayFlagAnimation(UserAnimationState.Pause);
                                 }, false));
@@ -1484,7 +1950,7 @@ namespace UserHandleSpace
                             }
                             break;
                         case UserAnimationState.Seeking:
-                            if (options.isExecuteForDOTween == 1)
+                            if (options.isBuildDoTween == 1)
                             {
                                 seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
                                 {
@@ -1511,10 +1977,14 @@ namespace UserHandleSpace
                             }
                             break;
                         case UserAnimationState.Stop:
-                            if (options.isExecuteForDOTween == 1)
+                            if (options.isBuildDoTween == 1)
                             {
                                 seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
                                 {
+                                    olo.SetTargetClip(movedata.animName);
+                                    olo.SetWrapMode(movedata.animLoop);
+                                    olo.SetSpeedAnimation(movedata.animSpeed);
+
                                     olo.StopAnimation();
                                     olo.SetPlayFlagAnimation(UserAnimationState.Stop);
                                 }, false));
@@ -1530,10 +2000,14 @@ namespace UserHandleSpace
                             }
                             break;
                         default:
-                            if (options.isExecuteForDOTween == 1)
+                            if (options.isBuildDoTween == 1)
                             {
                                 seq.Join(DOVirtual.DelayedCall(frame.duration, () =>
                                 {
+                                    olo.SetTargetClip(movedata.animName);
+                                    olo.SetWrapMode(movedata.animLoop);
+                                    olo.SetSpeedAnimation(movedata.animSpeed);
+
                                     olo.SetPlayFlagAnimation(UserAnimationState.Playing);
                                 }, false));
                             }
@@ -1829,8 +2303,41 @@ namespace UserHandleSpace
         private Sequence ParseForText(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationParsingOptions options)
         {
             NativeAnimationAvatar naa = targetObjects.avatar;
+            OperateLoadedText olt = naa.avatar.GetComponent<OperateLoadedText>();
 
-            Text ui = naa.avatar.GetComponent<Text>();
+            if (options.isBuildDoTween == 1)
+            {
+                olt.TextAnimationTween(seq, movedata, options, frame.duration);
+            }
+            else
+            { //---when preview 
+                if (movedata.animationType == AF_MOVETYPE.Text)
+                {
+                    olt.SetVVMText(movedata.text);
+                }
+                if (movedata.animationType == AF_MOVETYPE.TextProperty)
+                {
+                    olt.SetFontSize(movedata.fontSize);
+                    olt.SetFontStyles(movedata.fontStyles);
+                    olt.SetFontColor(movedata.color);
+                    olt.SetTextAlignment(movedata.textAlignmentOptions);
+                    olt.SetTextOverflow(movedata.textOverflow);
+                    
+                    olt.SetEnableColorGradient(movedata.IsGradient);
+                    string[] gradientDirs = { "tl", "tr", "bl", "br" };
+                    for (int i = 0; i < movedata.gradients.Length; i++)
+                    {
+                        olt.SetColorGradient(gradientDirs[i], movedata.gradients[i]);
+                    }
+                    olt.SetFontOutlineWidth(movedata.fontOutlineWidth);
+                    olt.SetFontOutlineColor(movedata.fontOutlineColor);
+                    
+                }
+                
+                
+            }
+            /*Text ui = naa.avatar.GetComponent<Text>();
+
             if (movedata.animationType == AF_MOVETYPE.Text)
             {
                 if (options.isExecuteForDOTween == 1) seq.Join(ui.DOText(movedata.text, frame.duration));
@@ -1839,13 +2346,13 @@ namespace UserHandleSpace
             else if (movedata.animationType == AF_MOVETYPE.TextProperty)
             {
                 if (options.isExecuteForDOTween == 1) seq.Join(DOTween.To(() => ui.fontSize, x => ui.fontSize = x, movedata.fontSize, frame.duration));
-                else ui.fontSize = movedata.fontSize;
-
-                ui.fontStyle = movedata.fontStyle;
+                else ui.fontSize = movedata.fontSize;                
+                
 
                 if (options.isExecuteForDOTween == 1) seq.Join(ui.DOColor(movedata.color, frame.duration));
                 else ui.color = movedata.color;
-            }
+            }*/
+
             return seq;
         }
         private Sequence ParseForImage(Sequence seq, NativeAnimationFrame frame, AnimationTargetParts movedata, NativeAnimationFrameActor targetObjects, AnimationParsingOptions options)
@@ -2665,6 +3172,7 @@ namespace UserHandleSpace
 
                             //---for general animation clip
                             SetGeneralAnimationFrame(actor.avatar, aro.index, fr);
+                            SetVRMAnimationFrame(actor.avatar, aro.index, fr);
                         }
                     }
                 }
@@ -2745,6 +3253,7 @@ namespace UserHandleSpace
 
                         //---for general animation clip
                         SetGeneralAnimationFrame(actor.avatar, aro.index, fr);
+                        SetVRMAnimationFrame(actor.avatar, aro.index, fr);
 
                     }
                 }
@@ -2809,6 +3318,7 @@ namespace UserHandleSpace
                         frame.duration = aro.duration;
                         //---for general animation clip
                         SetGeneralAnimationFrame(actor.avatar, aro.index, frame);
+                        SetVRMAnimationFrame(actor.avatar, aro.index, frame);
                     }
                 }
             }
@@ -2832,6 +3342,7 @@ namespace UserHandleSpace
 
                         //---for general animation clip
                         SetGeneralAnimationFrame(actor.avatar, aro.index, frame);
+                        SetVRMAnimationFrame(actor.avatar, aro.index, frame);
                     }
                 }
             }
@@ -2898,6 +3409,8 @@ namespace UserHandleSpace
                         {
                             vmrec.RemoveKeyFrame(oldindex);
                             vmrec.AddKeyFrame(newindex, actor.frames[findex].ease, actor.frames[findex].duration);
+                            vmrec.RemoveKeyFrameVRMA(oldindex);
+                            vmrec.AddKeyFrameVRMA(newindex, actor.frames[findex].ease, actor.frames[findex].duration);
                         }
                     }
                     
@@ -3030,6 +3543,7 @@ namespace UserHandleSpace
                             ManageAvatarTransform mat = chara.avatar.avatar.GetComponent<ManageAvatarTransform>();
                             mat.recbvh.RemoveFrame(newindex, true);
                             vmrec.RemoveKeyFrame(newindex, true);
+                            vmrec.RemoveKeyFrameVRMA(newindex, true);
                         }
                         chara.frames.RemoveAt(justhit);
                         
@@ -3133,6 +3647,7 @@ namespace UserHandleSpace
                                 {
                                     VVMMotionRecorder vmrec = actor.avatar.avatar.GetComponent<VVMMotionRecorder>();
                                     vmrec.RemoveKeyFrame(aro.index);
+                                    vmrec.RemoveKeyFrameVRMA(aro.index);
 
                                     ManageAvatarTransform mat = actor.avatar.avatar.GetComponent<ManageAvatarTransform>();
                                     mat.recbvh.RemoveFrame(aro.index);
@@ -3246,6 +3761,26 @@ namespace UserHandleSpace
             }
             
         }
+        public void SetVRMAnimationFrame(NativeAnimationAvatar avatar, int index, NativeAnimationFrame frame)
+        {
+            if (avatar.type == AF_TARGETTYPE.VRM)
+            {
+                //---for general animation clip
+                VVMMotionRecorder vmrec = avatar.avatar.GetComponent<VVMMotionRecorder>();
+                if (vmrec != null)
+                {
+                    if (vmrec.IsExistFrameVRMA(index))
+                    {
+                        vmrec.ModifyFrameVRMA(index, frame.ease, frame.duration);
+                    }
+                    else
+                    {
+                        vmrec.AddKeyFrameVRMA(index, frame.ease, frame.duration);
+                    }
+                }
+                
+            }
+        }
 
         /// <summary>
         /// Clean up general animation clip and bvh
@@ -3269,6 +3804,19 @@ namespace UserHandleSpace
                 }
             }
             
+        }
+        public void ClearVRMAnimationFrame(NativeAnimationAvatar avatar)
+        {
+            if (avatar.type == AF_TARGETTYPE.VRM)
+            {
+                //---for general animation clip
+                VVMMotionRecorder vmrec = avatar.avatar.GetComponent<VVMMotionRecorder>();
+                if (vmrec != null)
+                {
+                    vmrec.ClearAllFrames4VRMA();
+                }
+
+            }
         }
 
         /// <summary>
@@ -3453,6 +4001,7 @@ namespace UserHandleSpace
             aframe.index = frameNumber;
             aframe.finalizeIndex = frameNumber;
             aframe.ease = options.ease;
+            aframe.memo = options.memo;
 
             //---update bodyInfoList current avatar body info.
             aframe.useBodyInfo = UseBodyInfoType.CurrentAvatar;
@@ -3662,7 +4211,7 @@ namespace UserHandleSpace
                     retmot = PackForCamera(aframe, actor, options, oldframe);
                     //aframe.movingData.AddRange(retcam);
                 }
-                else if (actor.targetType == AF_TARGETTYPE.Text)
+                else if ((actor.targetType == AF_TARGETTYPE.Text) || (actor.targetType == AF_TARGETTYPE.Text3D))
                 {
                     retmot = PackForText(aframe, actor, options, oldframe);
                     //aframe.movingData.AddRange(rettxt);
@@ -3725,30 +4274,40 @@ namespace UserHandleSpace
             {
                 if ((options.isBlendShapeOnly == 0) && (options.isHandOnly == 0) && (options.isTransformOnly == 0))
                 {
-                    OperateLoadedBase olb = nact.avatar.avatar.GetComponent<OperateLoadedBase>();
+                    OperateLoadedVRM olb = nact.avatar.avatar.GetComponent<OperateLoadedVRM>();
+                    GameObject trueik = olb.relatedTrueIKParent;
 
                     //---most common parts
-                    AnimationTargetParts[] ikp = new AnimationTargetParts[3];
+                    AnimationTargetParts[] ikp = new AnimationTargetParts[4];
                     ikp[0] = new AnimationTargetParts();
                     ikp[0].animationType = AF_MOVETYPE.Translate;
                     ikp[0].vrmBone = ParseIKBoneType.IKParent;
-                    ikp[0].position = nact.avatar.ikparent.transform.position;
+                    ikp[0].position = trueik.transform.position;
                     //------position only: jump parts
                     ikp[0].jumpNum = olb.GetJumpNum();
                     ikp[0].jumpPower = olb.GetJumpPower();
                     ikp[1] = new AnimationTargetParts();
                     ikp[1].animationType = AF_MOVETYPE.Rotate;
                     ikp[1].vrmBone = ParseIKBoneType.IKParent;
-                    ikp[1].rotation = nact.avatar.ikparent.transform.rotation.eulerAngles;
+                    ikp[1].rotation = trueik.transform.rotation.eulerAngles;
                     ikp[1].isRotate360 = options.isRotate360;
                     ikp[2] = new AnimationTargetParts();
                     ikp[2].animationType = AF_MOVETYPE.Scale;
                     ikp[2].vrmBone = ParseIKBoneType.IKParent;
                     ikp[2].scale = nact.avatar.avatar.transform.localScale;
+                    //---rigid
+                    ikp[3] = new AnimationTargetParts();
+                    ikp[3].animationType = AF_MOVETYPE.Rigid;
+                    ikp[3].vrmBone = ParseIKBoneType.IKParent;
+                    ikp[3].rigidDrag = olb.GetDrag(1);
+                    ikp[3].rigidAngularDrag = olb.GetDrag(2);
+                    ikp[3].useCollision = olb.GetEasyCollision();
+                    ikp[3].useRigidGravity = olb.GetUseGravity();
                     
                     movingData.Add(ikp[0]);
                     movingData.Add(ikp[1]);
                     movingData.Add(ikp[2]);
+                    movingData.Add(ikp[3]);
                     
 
                     //---common effect parts
@@ -3838,60 +4397,148 @@ namespace UserHandleSpace
                                 break;
                             }
                         }
+                        if (child != null)
+                        {
+                            Collider col = child.GetComponent<Collider>();
+                            Rigidbody rig = child.GetComponent<Rigidbody>();
 
-                        AnimationTargetParts[] atp = new AnimationTargetParts[3];
-                        atp[0] = new AnimationTargetParts();
-                        atp[1] = new AnimationTargetParts();
-                        atp[2] = new AnimationTargetParts();
-                        atp[0].vrmBone = (ParseIKBoneType)i;
-                        atp[1].vrmBone = (ParseIKBoneType)i;
-                        atp[2].vrmBone = (ParseIKBoneType)i;
-                        atp[0].animationType = AF_MOVETYPE.Translate;
-                        atp[1].animationType = AF_MOVETYPE.Rotate;
-                        atp[2].animationType = AF_MOVETYPE.Scale;
-                        atp[0].position = child.localPosition;
-                        atp[1].rotation = child.localRotation.eulerAngles;
-                        atp[2].scale = child.localScale;
+                            AnimationTargetParts[] atp = new AnimationTargetParts[4];
+                            atp[0] = new AnimationTargetParts();
+                            atp[1] = new AnimationTargetParts();
+                            atp[2] = new AnimationTargetParts();
+                            atp[3] = new AnimationTargetParts();
+                            atp[0].vrmBone = (ParseIKBoneType)i;
+                            atp[1].vrmBone = (ParseIKBoneType)i;
+                            atp[2].vrmBone = (ParseIKBoneType)i;
+                            atp[3].vrmBone = (ParseIKBoneType)i;
+                            atp[0].animationType = AF_MOVETYPE.Translate;
+                            atp[1].animationType = AF_MOVETYPE.Rotate;
+                            atp[2].animationType = AF_MOVETYPE.Scale;
+                            atp[3].animationType = AF_MOVETYPE.Rigid;
 
-                        movingData.Add(atp[0]);
-                        movingData.Add(atp[1]);
-                        movingData.Add(atp[2]);
+                            atp[0].position = child.localPosition;
+                            atp[1].rotation = child.localRotation.eulerAngles;
+                            atp[2].scale = child.localScale;
+                            atp[3].rigidDrag = rig.drag;
+                            atp[3].rigidAngularDrag = rig.angularDrag;
+                            atp[3].useCollision = col.isTrigger ? 0 : 1;
+                            atp[3].useRigidGravity = rig.useGravity ? 1 : 0;
+
+                            movingData.Add(atp[0]);
+                            movingData.Add(atp[1]);
+                            movingData.Add(atp[2]);
+                            movingData.Add(atp[3]);
+                        }
+                        
                     }
 
 
                 }
 
             }
-            else if ((nact.targetType == AF_TARGETTYPE.Text) || (nact.targetType == AF_TARGETTYPE.UImage))
+            else if ((nact.targetType == AF_TARGETTYPE.Text) || (nact.targetType == AF_TARGETTYPE.Text3D) || (nact.targetType == AF_TARGETTYPE.UImage))
             {
                 //---transform is RectTransform
                 RectTransform rectt = nact.avatar.avatar.GetComponent<RectTransform>();
                 OperateLoadedUImage olu = nact.avatar.avatar.GetComponent<OperateLoadedUImage>();
-                Vector2 v2 = olu.GetPosition();
 
-                AnimationTargetParts[] ikp = new AnimationTargetParts[3];
-                ikp[0] = new AnimationTargetParts();
-                ikp[0].animationType = AF_MOVETYPE.Translate;
-                ikp[0].vrmBone = ParseIKBoneType.IKParent;
-                ikp[0].position = new Vector3(v2.x, v2.y, 0f); // rectt.anchoredPosition3D;
-                movingData.Add(ikp[0]);
+                AnimationTargetParts[] ikp = new AnimationTargetParts[4];
+                if (nact.targetType == AF_TARGETTYPE.Text3D)
+                { //---3D text
+                    OperateLoadedText olt = nact.avatar.avatar.GetComponent<OperateLoadedText>();
+                    bool isEquip = false;
+                    if (olt != null)
+                    {
+                        OtherObjectDummyIK ooik = olt.relatedHandleParent.GetComponent<OtherObjectDummyIK>();
+                        isEquip = ooik.isEquipping;
+                    }
 
-                ikp[1] = new AnimationTargetParts();
-                ikp[1].animationType = AF_MOVETYPE.Rotate;
-                ikp[1].vrmBone = ParseIKBoneType.IKParent;
-                Vector3 rot2d = Vector3.zero;
-                rot2d.z = rectt.rotation.eulerAngles.z;
-                ikp[1].rotation = rot2d;
-                movingData.Add(ikp[1]);
+                    Vector3 v3 = olt.GetPosition3D();
 
-                if ((nact.avatar.type == AF_TARGETTYPE.OtherObject) || (nact.avatar.type == AF_TARGETTYPE.Image))
-                {
+                    ikp[0] = new AnimationTargetParts();
+                    ikp[0].animationType = AF_MOVETYPE.Translate;
+                    ikp[0].vrmBone = ParseIKBoneType.IKParent;
+                    ikp[0].position = v3;
+                    movingData.Add(ikp[0]);
+
+                    ikp[1] = new AnimationTargetParts();
+                    ikp[1].animationType = AF_MOVETYPE.Rotate;
+                    ikp[1].vrmBone = ParseIKBoneType.IKParent;
+                    ikp[1].rotation = olt.GetRotation3D();
+                    movingData.Add(ikp[1]);
+
                     ikp[2] = new AnimationTargetParts();
                     ikp[2].animationType = AF_MOVETYPE.Scale;
                     ikp[2].vrmBone = ParseIKBoneType.IKParent;
-                    ikp[2].scale = rectt.sizeDelta;
+                    ikp[2].scale = olt.GetTextAreaSize();
                     movingData.Add(ikp[2]);
+                    // (*) original scale is fixed (for 3D text)
+                    // dynamically size is width x height and BoxCollider.size
+
+                    //---rigid
+                    ikp[3] = new AnimationTargetParts();
+                    ikp[3].animationType = AF_MOVETYPE.Rigid;
+                    ikp[3].vrmBone = ParseIKBoneType.IKParent;
+                    ikp[3].rigidDrag = olt.GetDrag(1);
+                    ikp[3].rigidAngularDrag = olt.GetDrag(2);
+                    ikp[3].useCollision = olt.GetEasyCollision();
+                    ikp[3].useRigidGravity = olt.GetUseGravity();
+
+                    movingData.Add(ikp[3]);
+
+
+                    if (!isEquip)
+                    { //---Enable transforming without equipped status
+                      //---common effect parts
+                        AvatarPunchEffect punch = olt.GetPunch();
+                        //if ((punch != null))
+                        {
+                            AnimationTargetParts pp = new AnimationTargetParts();
+                            pp.animationType = AF_MOVETYPE.Punch;
+                            pp.vrmBone = ParseIKBoneType.IKParent;
+                            pp.effectPunch.Copy(punch);
+                            movingData.Add(pp);
+                        }
+                        AvatarShakeEffect shake = olt.GetShake();
+                        //if ((shake != null))
+                        {
+                            AnimationTargetParts pp = new AnimationTargetParts();
+                            pp.animationType = AF_MOVETYPE.Shake;
+                            pp.vrmBone = ParseIKBoneType.IKParent;
+                            pp.effectShake.Copy(shake);
+                            movingData.Add(pp);
+                        }
+
+                    }
                 }
+                else
+                { //---2D
+                    Vector2 v2 = olu.GetPosition();
+
+                    ikp[0] = new AnimationTargetParts();
+                    ikp[0].animationType = AF_MOVETYPE.Translate;
+                    ikp[0].vrmBone = ParseIKBoneType.IKParent;
+                    ikp[0].position = new Vector3(v2.x, v2.y, 0f); // rectt.anchoredPosition3D;
+                    movingData.Add(ikp[0]);
+
+                    ikp[1] = new AnimationTargetParts();
+                    ikp[1].animationType = AF_MOVETYPE.Rotate;
+                    ikp[1].vrmBone = ParseIKBoneType.IKParent;
+                    Vector3 rot2d = Vector3.zero;
+                    rot2d.z = rectt.rotation.eulerAngles.z;
+                    ikp[1].rotation = rot2d;
+                    movingData.Add(ikp[1]);
+
+                    if ((nact.avatar.type == AF_TARGETTYPE.OtherObject) || (nact.avatar.type == AF_TARGETTYPE.Image))
+                    {
+                        ikp[2] = new AnimationTargetParts();
+                        ikp[2].animationType = AF_MOVETYPE.Scale;
+                        ikp[2].vrmBone = ParseIKBoneType.IKParent;
+                        ikp[2].scale = rectt.sizeDelta;
+                        movingData.Add(ikp[2]);
+                    }
+                }
+                
             }
             else if (nact.targetType == AF_TARGETTYPE.Stage)
             {
@@ -3929,7 +4576,7 @@ namespace UserHandleSpace
                 }
 
                 //---Here is other of VRM, RectTransform, Audio, SystemEffect
-                AnimationTargetParts[] ikp = new AnimationTargetParts[3];
+                AnimationTargetParts[] ikp = new AnimationTargetParts[4];
                 ikp[0] = new AnimationTargetParts();
                 ikp[0].animationType = AF_MOVETYPE.Translate;
                 ikp[0].vrmBone = ParseIKBoneType.IKParent;
@@ -3954,8 +4601,19 @@ namespace UserHandleSpace
                     movingData.Add(ikp[2]);
                 }
 
+                //---rigid
+                ikp[3] = new AnimationTargetParts();
+                ikp[3].animationType = AF_MOVETYPE.Rigid;
+                ikp[3].vrmBone = ParseIKBoneType.IKParent;
+                ikp[3].rigidDrag = olb.GetDrag(1);
+                ikp[3].rigidAngularDrag = olb.GetDrag(2);
+                ikp[3].useCollision = olb.GetEasyCollision();
+                ikp[3].useRigidGravity = olb.GetUseGravity();
+
+                movingData.Add(ikp[3]);
+
                 if (!isEquip)
-                { //---Enable transfroming without equipped status
+                { //---Enable transforming without equipped status
                     //---common effect parts
                     AvatarPunchEffect punch = olb.GetPunch();
                     //if ((punch != null))
@@ -4051,15 +4709,21 @@ namespace UserHandleSpace
                 naf.blendShapeList.Clear();
 
                 //---From BlendShape Proxy (Key has always "PROX:" - prefix.)
-                AnimationTargetParts oldBlendShape = oldframe.movingData.Find(bm =>
+
+                AnimationTargetParts oldBlendShape = new AnimationTargetParts();
+                if (oldframe != null)
                 {
-                    if (bm.animationType == AF_MOVETYPE.BlendShape) return true;
-                    return false;
-                });
-                oldBlendShape.blendshapes.ForEach(action =>
-                {
-                    atblendshape.blendshapes.Add(action);
-                });
+                    oldBlendShape = oldframe.movingData.Find(bm =>
+                    {
+                        if (bm.animationType == AF_MOVETYPE.BlendShape) return true;
+                        return false;
+                    });
+                    oldBlendShape.blendshapes.ForEach(action =>
+                    {
+                        atblendshape.blendshapes.Add(action);
+                    });
+                }
+                
 
                 List<BasicBlendShapeKey> proxlist =  ovrm.ListProxyBlendShape();
                 foreach (BasicBlendShapeKey bsf in proxlist)
@@ -4087,6 +4751,14 @@ namespace UserHandleSpace
                     }
                     
                 }
+                //---auto blendshape
+                AnimationTargetParts atautoblendshape = new AnimationTargetParts();
+                atautoblendshape.animationType = AF_MOVETYPE.VRMAutoBlendShape;
+                atautoblendshape.vrmBone = ParseIKBoneType.BlendShape;
+                atautoblendshape.isblink = ovrm.GetPlayFlagAutoBlendShape();
+                atautoblendshape.interval = ovrm.GetAutoBlendShapeInterval();
+                atautoblendshape.openingSeconds = ovrm.GetAutoBlendShapeOpeningSeconds();
+                atautoblendshape.closeSeconds = ovrm.GetAutoBlendShapeCloseSeconds();
 
                 //---blink
                 AnimationTargetParts atblink = new AnimationTargetParts();
@@ -4099,6 +4771,7 @@ namespace UserHandleSpace
                 atblink.closingTime = ovrm.GetBlinkClosingTime();
 
                 movingData.Add(atblendshape);
+                movingData.Add(atautoblendshape);
                 movingData.Add(atblink);
 
             }
@@ -4166,8 +4839,9 @@ namespace UserHandleSpace
                     if (ishit > -1)
                     {
                         mat.includeMotion = options.registerMaterials[ishit].value;
+                        atmat.matProp.Add(mat);
                     }
-                    atmat.matProp.Add(mat);
+                    
                 }
                 /* 
                 atmat.vmatProp.dstblend = ovrm.userSharedProperties.dstblend;
@@ -4183,7 +4857,53 @@ namespace UserHandleSpace
                 */
                 if (atmat.matProp.Count > 0) movingData.Add(atmat);
 
+                //---VRMAnimation
+                if (ovrm.IsEnableVRMA())
+                {
 
+                    if (options.isPropertyOnly != 1)
+                    {
+
+                        AnimationTargetParts atobj = new AnimationTargetParts();
+
+                        atobj.vrmBone = ParseIKBoneType.Unknown;
+                        atobj.text = ovrm.GetVRMAFileName();
+                        atobj.animSpeed = ovrm.GetSpeedAnimation();
+                        atobj.animName = ovrm.GetTargetClip();
+                        atobj.animLoop = ovrm.GetWrapMode();
+
+
+                        atobj.animSeek = ovrm.GetSeekPosAnimation();
+                        atobj.animPlaying = ovrm.GetPlayFlagAnimation();
+                        if (atobj.animPlaying == UserAnimationState.Play)
+                        {
+                            atobj.animationType = AF_MOVETYPE.AnimStart;
+                        }
+                        else if (atobj.animPlaying == UserAnimationState.Stop)
+                        {
+                            atobj.animationType = AF_MOVETYPE.AnimStart;// AnimStop;
+                        }
+                        else if (atobj.animPlaying == UserAnimationState.Seeking)
+                        {
+                            atobj.animationType = AF_MOVETYPE.AnimStart;// AnimSeek;
+                        }
+                        else if (atobj.animPlaying == UserAnimationState.Pause)
+                        {
+                            atobj.animationType = AF_MOVETYPE.AnimStart;// AnimPause;
+                        }
+                        else if (atobj.animPlaying == UserAnimationState.Playing)
+                        {
+                            atobj.animationType = AF_MOVETYPE.AnimStart;// Rest;
+                        }
+                        movingData.Add(atobj);
+                    }
+                }else
+                {
+                    AnimationTargetParts atobj = new AnimationTargetParts();
+                    atobj.animationType = AF_MOVETYPE.AnimStop;
+                    atobj.animPlaying = UserAnimationState.Stop;
+                    movingData.Add(atobj);
+                }
             }
 
 
@@ -4269,8 +4989,9 @@ namespace UserHandleSpace
                 if (ishit > -1)
                 {
                     mat.includeMotion = options.registerMaterials[ishit].value;
+                    atobj3.matProp.Add(mat);
                 }
-                atobj3.matProp.Add(mat);
+                
                 
             }
 
@@ -4372,12 +5093,14 @@ namespace UserHandleSpace
         {
             List<AnimationTargetParts> movingData = new List<AnimationTargetParts>();
 
+            OperateLoadedText olt = nav.avatar.avatar.GetComponent<OperateLoadedText>();
+
             Text text = nav.avatar.avatar.GetComponent<Text>();
 
             if (options.isPropertyOnly != 1)
             {
                 AnimationTargetParts attext = new AnimationTargetParts();
-                attext.text = text.text;
+                attext.text = olt.GetVVMText(); // text.text;
                 attext.animationType = AF_MOVETYPE.Text;
 
                 movingData.Add(attext);
@@ -4387,9 +5110,19 @@ namespace UserHandleSpace
             {
                 AnimationTargetParts atprop = new AnimationTargetParts();
                 atprop.animationType = AF_MOVETYPE.TextProperty;
-                atprop.fontSize = text.fontSize;
-                atprop.fontStyle = text.fontStyle;
-                atprop.color = text.color;
+                atprop.fontSize = olt.GetFontSize(); // text.fontSize;
+                //atprop.fontStyle = text.fontStyle;
+                atprop.fontStyles = olt.GetFontStyles();
+                atprop.color = olt.GetFontColor(); // text.color;
+                atprop.textAlignmentOptions = olt.GetTextAlignment();
+                atprop.textOverflow = olt.GetTextOverflow();
+                atprop.dimension = olt.GetDimension();
+
+                atprop.IsGradient = olt.GetIsColorGradient();
+                atprop.gradients = olt.GetColorGradient();
+                atprop.fontOutlineWidth = olt.GetFontOutlineWidth();
+                atprop.fontOutlineColor = olt.GetFontOutlineColor();
+                
                 movingData.Add(atprop);
 
             }

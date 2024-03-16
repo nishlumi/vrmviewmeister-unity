@@ -74,7 +74,7 @@ namespace UserHandleSpace
         const int CSV_VALCNT = 3;
         const int CSV_BEGINVAL = 4;
 
-        public static  int PROJECT_VERSION = 4;
+        public static  int PROJECT_VERSION = 5;
 
         //-------------------------------------------------------------------------
         // Important objects
@@ -108,6 +108,9 @@ namespace UserHandleSpace
         private FrameClipboard clipboard;
         private int bkupScreenWidth;
         private int bkupScreenHeight;
+        private Vector3 bkup_camerapos;
+        private Quaternion bkup_camerarot;
+        public Vector3 bkup_lastvrar_pos;
 
         public KeyOperationMode keyOperationMode;
         public float cfg_dist_cam2view;
@@ -116,8 +119,13 @@ namespace UserHandleSpace
         public bool cfg_enable_foot_autorotate;
         public int cfg_vrarctrl_panel_left;
         public int cfg_vrarctrl_panel_right;
+        public Vector3 cfg_vrar_camera_initpos;
+        public bool cfg_vrar_save_camerapos;
+        
 
         protected NativeAnimationAvatar SingleMotionTargetRole = null;
+
+        public ManageExternalAnimation MexAnim;
 
 
         /// <summary>
@@ -140,6 +148,13 @@ namespace UserHandleSpace
         public CameraManagerXR camxr;
         private bool IsEndVRAR;
         public string VRARSelectedAvatarName;
+        [SerializeField]
+        private ownscr_HandMenu VRHandMenu;
+
+        [SerializeField]
+        GameObject GizmoRenderer;
+        [SerializeField]
+        GameObject ObjectInfoView;
 
         private void Awake()
         {
@@ -166,6 +181,8 @@ namespace UserHandleSpace
 
             bkupScreenWidth = Screen.width;
             bkupScreenHeight = Screen.height;
+            bkup_camerapos = Vector3.zero;
+            bkup_lastvrar_pos = Vector3.zero;
 
             cfg_dist_cam2view = 2.5f;
             cfg_keymove_speed_rot = 0.1f;
@@ -173,6 +190,8 @@ namespace UserHandleSpace
             cfg_enable_foot_autorotate = false;
             cfg_vrarctrl_panel_left = 1;
             cfg_vrarctrl_panel_right = 0;
+            cfg_vrar_camera_initpos = Vector3.zero;
+            cfg_vrar_save_camerapos = false;
 
             IsEndVRAR = true;
 
@@ -254,9 +273,11 @@ namespace UserHandleSpace
         {
             if (!IsEndVRAR)
             { //---VR/AR mode end trigger event
-                if (camxr.isActiveNormal())
+                if ((!camxr.isActiveAR() && !camxr.isActiveVR()) && camxr.isActiveNormal())
                 { //---if VR/AR mode ended ?
+                    Debug.Log("Ending VR/AR.");
                     ChangeColliderState_OtherObjects(true);
+                    ChangeStateEndingVRAR();
                     //---return edit data on VR/AR to HTML-UI
                     FinishVRWithEditData();
                     IsEndVRAR = true;
@@ -340,12 +361,26 @@ namespace UserHandleSpace
             else if (prm[1] == "vrarctrl_panel_left")
             {
                 configLab.SetValFromOuter(param);
-                cfg_vrarctrl_panel_left = configLab.GetIntVal("cfg_vrarctrl_panel_left", 0);
+                cfg_vrarctrl_panel_left = configLab.GetIntVal("vrarctrl_panel_left", 0);
             }
             else if (prm[1] == "vrarctrl_panel_right")
             {
                 configLab.SetValFromOuter(param);
-                cfg_vrarctrl_panel_right = configLab.GetIntVal("cfg_vrarctrl_panel_right", 1);
+                cfg_vrarctrl_panel_right = configLab.GetIntVal("vrarctrl_panel_right", 1);
+            }
+            else if (prm[1] == "vrar_camera_initpos")
+            {
+                configLab.SetValFromOuter(param);
+                string[] parr = prm[2].Split(":");
+                float ipx = float.TryParse(parr[0], out ipx) ? ipx : 0f;
+                float ipy = float.TryParse(parr[1], out ipy) ? ipy : 0f;
+                float ipz = float.TryParse(parr[2], out ipz) ? ipz : 0f;
+                cfg_vrar_camera_initpos = new Vector3(ipx, ipy, ipz);
+            }
+            else if (prm[1] == "vrar_save_camerapos")
+            {
+                configLab.SetValFromOuter(param);
+                cfg_vrar_save_camerapos = configLab.GetIntVal("vrar_save_camerapos", 0) == 1 ? true : false;
             }
         }
         //===========================================================================================================================
@@ -545,6 +580,7 @@ namespace UserHandleSpace
                     
             }
         }
+
 
         /// <summary>
         /// Adjust finalizeIndex of specified FrameActor
@@ -1073,6 +1109,11 @@ namespace UserHandleSpace
                     ret.avatar = GameObject.FindGameObjectWithTag("GroundWorld");
                     ret.ikparent = ret.avatar;
                 }
+                else if (type == AF_TARGETTYPE.Text3D)
+                {
+                    ret.avatar = AvatarArea.transform.Find(id).gameObject;
+                    ret.ikparent = ret.avatar.GetComponent<OperateLoadedText>().relatedHandleParent;
+                }
             }
             catch (Exception)
             {
@@ -1142,7 +1183,7 @@ namespace UserHandleSpace
             {
                 ret = avatar.avatar.GetComponent<OperateLoadedCamera>().Title;
             }
-            else if (type == AF_TARGETTYPE.Text)
+            else if ((type == AF_TARGETTYPE.Text) || (type == AF_TARGETTYPE.Text3D))
             {
                 ret = avatar.avatar.GetComponent<OperateLoadedText>().Title;
             }
@@ -1369,7 +1410,7 @@ namespace UserHandleSpace
             string[] prm = param.Split(',');
             int t = int.TryParse(prm[0], out t) ? t : 99;
             AF_TARGETTYPE castType = (AF_TARGETTYPE)t;
-            string[] cns_roleNames = { "VRM", "OtherObject", "Light", "Camera", "Text", "Image", "UImage", "Audio", "Effect", "SystemEffect", "Stage" };
+            string[] cns_roleNames = { "VRM", "OtherObject", "Light", "Camera", "Text", "Image", "UImage", "Audio", "Effect", "SystemEffect", "Stage", "Text3D" };
 
             NativeAnimationAvatar naa = new NativeAnimationAvatar();
             naa.avatar = null;
@@ -1906,7 +1947,7 @@ namespace UserHandleSpace
         public void DestroyEffectiveAvatar(GameObject avatar, GameObject ikparent, AF_TARGETTYPE type)
         {
             if ((type == AF_TARGETTYPE.VRM) || (type == AF_TARGETTYPE.OtherObject) || (type == AF_TARGETTYPE.Image) ||
-                 (type == AF_TARGETTYPE.Light) || (type == AF_TARGETTYPE.Camera) || (type == AF_TARGETTYPE.Effect)
+                 (type == AF_TARGETTYPE.Light) || (type == AF_TARGETTYPE.Camera) || (type == AF_TARGETTYPE.Effect) || (type == AF_TARGETTYPE.Text3D)
             )
             {
                 //fcom.DestroyVRM(cast.avatar.name);
@@ -2033,6 +2074,10 @@ namespace UserHandleSpace
             else if (type == "AUDIO")
             {
                 realtype = AF_TARGETTYPE.Audio;
+            }
+            else if (type == "TEXT3D")
+            {
+                realtype = AF_TARGETTYPE.Text3D;
             }
             else
             {
@@ -2287,6 +2332,89 @@ namespace UserHandleSpace
 
 
         //===Each properties edit function====================================================================================================
+
+        public void GetThisTimeFromOuter(string param)
+        {
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
+            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
+            float allduration = actor.frames.Select(x => x.duration).Sum();
+            float sumduration = 0;
+            for (int i = 0; i < actor.frames.Count; i++)
+            {
+                var frame = actor.frames[i];
+                if (frame.index <= aro.index)
+                {
+                    sumduration += frame.duration;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            string js = sumduration.ToString() + "," + allduration.ToString();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(js);
+#endif
+        }
+        public void GetMemoFromOuter(string param)
+        {
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
+            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
+
+            string ret = "";
+            if (curframe != null)
+            {
+                ret = curframe.memo;
+            }
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+        public void SetMemo(string param)
+        {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+            string js = "{ }";
+
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
+
+            int nearmin = GetNearMinFrameIndex(actor, aro.index);
+            NativeAnimationFrame minframe = null;
+            int minframeIndex = -1;
+            if (minframe != null)
+            {
+                minframe = actor.frames[nearmin]; // GetFrame(actor, nearmin);
+                minframeIndex = minframe.index;
+            }
+
+            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
+            if (curframe != null)
+            {
+                //---update "ease" only
+                curframe.memo = aro.memo;
+
+                js = "{ " +
+                    "\"roleName\": \"" + actor.targetRole + "\"," +
+                    "\"avatarId\" : \"" + actor.targetId + "\"," +
+                    "\"type\": " + (int)aro.targetType + "," +
+                    "\"nearMinIndex\": " + minframeIndex + "," +
+                    "\"index\":" + aro.index +
+                "}";
+            }
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(js);
+#endif
+        }
         public void GetEaseFromOuter(string param)
         {
             AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
@@ -2431,7 +2559,7 @@ namespace UserHandleSpace
 #endif
         }
         /// <summary>
-        /// Reset frame duration.(all frame)
+        /// Reset frame duration.(specified frame. all frame is loop at JS)
         /// </summary>
         /// <param name="param">JSON-string for AnimationRegisterOptions</param>
         public void ResetAutoDuration(string param)
@@ -2447,7 +2575,23 @@ namespace UserHandleSpace
             AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
 
             NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
-            AdjustAllFrameDuration(actor, currentProject.baseDuration);
+            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
+            int nearMinIndex = GetNearMinFrameIndex(actor, aro.index);
+            NativeAnimationFrame minframe = actor.frames[nearMinIndex];
+            if (curframe != null)
+            {
+                int dist = 1;
+                if (minframe != null)
+                {
+                    dist = curframe.index - minframe.index;
+                }
+                else
+                {
+                    dist = curframe.index;
+                }
+                curframe.duration = currentProject.baseDuration * (float)dist;
+            }
+            //AdjustAllFrameDuration(actor, currentProject.baseDuration);
         }
 
         /// <summary>
@@ -2723,7 +2867,7 @@ namespace UserHandleSpace
                         {
                             keyFrameSeq = ParseForCamera(keyFrameSeq, frame, movedata, targetObject, aro);
                         }
-                        else if (targetObject.targetType == AF_TARGETTYPE.Text)
+                        else if ((targetObject.targetType == AF_TARGETTYPE.Text) || (targetObject.targetType == AF_TARGETTYPE.Text3D))
                         {
                             keyFrameSeq = ParseForText(keyFrameSeq, frame, movedata, targetObject, aro);
                         }
@@ -2935,6 +3079,9 @@ namespace UserHandleSpace
                     Sequence nseq = DOTween.Sequence();
                     TweenCallback cb_end = () => {
                         //---for general animation clip
+                        SetGeneralAnimationFrame(actor.avatar, aro.index, frame);
+                        SetVRMAnimationFrame(actor.avatar, aro.index, frame);
+                        /*
                         VVMMotionRecorder vmrec = actor.avatar.avatar.GetComponent<VVMMotionRecorder>();
                         if (vmrec != null)
                         {
@@ -2946,9 +3093,10 @@ namespace UserHandleSpace
                             {
                                 vmrec.AddKeyFrame(aro.index, frame.ease, frame.duration);
                             }
-                        }
+                        }*/
                     };
-                    nseq.OnKill(cb_end);
+                    animateFlow.OnKill(cb_end);
+                    animateFlow.OnComplete(cb_end);
                     ProcessBody_forFrame(nseq, actor, frame, aro);
                     animateFlow.Append(nseq);
 
@@ -3350,6 +3498,9 @@ namespace UserHandleSpace
                     //---recover IsLimited-flags
                     FinishPreviewMarker2();
 
+                    //---apply latest frame marker to hand menu
+                    VRHandMenu.LabelWriteKeyFrame(currentProject.timelineFrameLength);
+
                     //Debug.Log("An animation finished.");
 #if !UNITY_EDITOR && UNITY_WEBGL
                     SendPlayingAnimationInfoOnComplete(seqInIndex);
@@ -3541,7 +3692,7 @@ namespace UserHandleSpace
                             {
                                 OperateLoadedVRM olvrm = actor.avatar.avatar.GetComponent<OperateLoadedVRM>();
                                 //---recover a bone rotation to IKPosition and IKRotation 
-                                StartCoroutine(olvrm.ApplyBoneTransformToIKTransform());
+                                StartCoroutine(olvrm.ApplyBoneTransformToIKTransform(actor.avatar.avatar.GetComponent<Animator>()));
                             }
 
                         }
@@ -3772,9 +3923,10 @@ namespace UserHandleSpace
                                 }
                                 else
                                 { //---frame different from easing of previous frame
+                                    //---save previous easing sequence
                                     ownseq.SetEase(oldframe.ease);
                                     actorSeq.Append(ownseq);
-
+                                    //---begin next easing sequence
                                     ownseq = null;
                                     ownseq = DOTween.Sequence();
                                     isexec_different = true;
@@ -4260,7 +4412,34 @@ namespace UserHandleSpace
         //===========================================================================================================================
         //  VR/AR mode functions
         //===========================================================================================================================
-
+        public float GetMoveRate()
+        {
+            return camxr.MoveRate;
+        }
+        public void GetMoveRateFromOuter()
+        {
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(camxr.MoveRate);
+#endif
+        }
+        public float GetRotateRate()
+        {
+            return camxr.RotateRate;
+        }
+        public void GetRotateRateFromOuter()
+        {
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveFloatVal(camxr.RotateRate);
+#endif
+        }
+        public void SetMoveRate(float val)
+        {
+            camxr.MoveRate = val;
+        }
+        public void SetRotateRate(float val)
+        {
+            camxr.RotateRate = val;
+        }
         /// <summary>
         /// Change states avatar by 3D-type
         /// </summary>
@@ -4272,94 +4451,193 @@ namespace UserHandleSpace
             for (int i = 0; i < currentProject.casts.Count; i++)
             {
                 NativeAnimationAvatar nav = currentProject.casts[i];
-                if (nav.type == AF_TARGETTYPE.OtherObject)
+                if (nav != null)
                 {
-                    Rigidbody rid = nav.avatar.GetComponent<Rigidbody>();
-                    //rid.isKinematic = isNormal;
+                    if (nav.type == AF_TARGETTYPE.OtherObject)
+                    {
+                        Rigidbody rid = nav.avatar.GetComponent<Rigidbody>();
+                        //rid.isKinematic = isNormal;
+                        if (isNormal)
+                        {
+
+                        }
+                        else
+                        {
+
+                        }
+                    }
+                    else if (nav.type == AF_TARGETTYPE.VRM)
+                    {
+                        nav.avatar.GetComponent<OperateLoadedVRM>().ChangeNormalVRAR_IKTarget();
+                    }
                     if (isNormal)
                     {
-                        
+                        if (oavrm.ActiveAvatar != nav.avatar)
+                        { //---if no select objects, disable IK marker.(normally specification)
+                            if (
+                                (nav.type != AF_TARGETTYPE.SystemEffect) &&
+                                (nav.type != AF_TARGETTYPE.Audio) &&
+                                (nav.type != AF_TARGETTYPE.Stage) &&
+                                (nav.type != AF_TARGETTYPE.Text) &&
+                                (nav.type != AF_TARGETTYPE.UImage)
+
+                            )
+                            {
+
+                                oavrm.DisableHandle_Avatar(nav.ikparent, nav.type);
+
+                            }
+
+                        }
                     }
                     else
-                    {
-
-                    }
-                }
-                else if (nav.type == AF_TARGETTYPE.VRM)
-                {
-                    nav.avatar.GetComponent<OperateLoadedVRM>().ChangeNormalVRAR_IKTarget();
-                }
-                if (isNormal)
-                {
-                    if (oavrm.ActiveAvatar != nav.avatar)
-                    { //---if no select objects, disable IK marker.(normally specification)
+                    { //---all objects enable IK marker when VR/AR mode.
                         if (
-                            (nav.type != AF_TARGETTYPE.SystemEffect) &&
-                            (nav.type != AF_TARGETTYPE.Audio) &&
-                            (nav.type != AF_TARGETTYPE.Stage) &&
-                            (nav.type != AF_TARGETTYPE.UImage) &&
-                            (nav.type != AF_TARGETTYPE.Text)
-                        )
+                                (nav.type != AF_TARGETTYPE.SystemEffect) &&
+                                (nav.type != AF_TARGETTYPE.Audio) &&
+                                (nav.type != AF_TARGETTYPE.Stage) &&
+                                (nav.type != AF_TARGETTYPE.Text) &&
+                                (nav.type != AF_TARGETTYPE.UImage)
+                            )
                         {
-                            oavrm.DisableHandle_Avatar(nav.ikparent, nav.type);
+
+                            oavrm.EnableHandle_Avatar(nav.ikparent, nav.type);
+
                         }
-                        
                     }
                 }
-                else
-                { //---all objects enable IK marker when VR/AR mode.
-                    if (
-                            (nav.type != AF_TARGETTYPE.SystemEffect) &&
-                            (nav.type != AF_TARGETTYPE.Audio) &&
-                            (nav.type != AF_TARGETTYPE.Stage) &&
-                            (nav.type != AF_TARGETTYPE.UImage) &&
-                            (nav.type != AF_TARGETTYPE.Text)
-                        )
-                    {
-                        oavrm.EnableHandle_Avatar(nav.ikparent, nav.type);
-                    }
-                }
+                
             }
         }
+
+        /// <summary>
+        /// Change states on enter VR/AR
+        /// </summary>
         public void ChangeStateEnteringVRAR()
         {
             OperateActiveVRM oavrm = ikArea.GetComponent<OperateActiveVRM>();
             NativeAnimationAvatar nav = GetCastByAvatar(oavrm.ActiveAvatar.name);
+            if (nav != null)
+            {
+                if ((nav.type == AF_TARGETTYPE.SystemEffect) || (nav.type == AF_TARGETTYPE.Audio) || (nav.type == AF_TARGETTYPE.Stage) ||
+                (nav.type == AF_TARGETTYPE.Text) || (nav.type == AF_TARGETTYPE.UImage)
+                )
+                { //---if selected avatar is non target. choose firstly hitted avatar.
+                    foreach (var cast in currentProject.casts)
+                    {
+                        if ((nav.type != AF_TARGETTYPE.SystemEffect) && (nav.type != AF_TARGETTYPE.Audio) && (nav.type != AF_TARGETTYPE.Stage) &&
+                            (nav.type != AF_TARGETTYPE.Text) && (nav.type != AF_TARGETTYPE.UImage)
+                        )
+                        {
+                            nav = cast;
+                            break;
+                        }
+                    }
+                }
+                
+            }
+            
+            
             //---input key number label, select objeect title
             var HandMenus = FindObjectsByType<ownscr_HandMenu>(FindObjectsSortMode.InstanceID);
-            foreach (var hm in HandMenus)
+            if (HandMenus != null)
             {
-                /*if (hm.HandType == ownscr_HandMenu.HandMenuDirection.Left)
+                foreach (var hm in HandMenus)
                 {
-                    hm.ChangePanel(cfg_vrarctrl_panel_left);
+                    /*if (hm.HandType == ownscr_HandMenu.HandMenuDirection.Left)
+                    {
+                        hm.ChangePanel(cfg_vrarctrl_panel_left);
+                    }
+                    else if (hm.HandType == ownscr_HandMenu.HandMenuDirection.Right)
+                    {
+                        hm.ChangePanel(cfg_vrarctrl_panel_right);
+                    }*/
+                    if (hm.HandType == ownscr_HandMenu.HandMenuDirection.Left)
+                    {
+                        hm.LabelWriteKeyFrame(oldPreviewMarker);
+                        hm.SetObjectTitle(nav.roleTitle);
+                    }
                 }
-                else if (hm.HandType == ownscr_HandMenu.HandMenuDirection.Right)
-                {
-                    hm.ChangePanel(cfg_vrarctrl_panel_right);
-                }*/
-                hm.LabelKeynumber.text = oldPreviewMarker.ToString();
-                hm.LabelSelobj.text = nav.roleTitle;
-
-
             }
+            
             VRARSelectedAvatarName = nav.roleName;
 
+            camxr.GetComponent<CameraOperation1>().targetObject.SetActive(false);
+            GizmoRenderer.SetActive(false);
+            ObjectInfoView.SetActive(false);
+        }
 
+        /// <summary>
+        /// Change states on Ending VR/AR
+        /// </summary>
+        public void ChangeStateEndingVRAR()
+        {
+            OperateActiveVRM oavrm = ikArea.GetComponent<OperateActiveVRM>();
+            //---recover from selected avatar on VR/AR to normal selected avatar.
+            NativeAnimationAvatar nav = GetCastInProject(VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                //---normally method use.
+                oavrm.ChangeEnableAvatarFromOuter(nav.avatar.name);
+            }
+            GizmoRenderer.SetActive(true);
+            ObjectInfoView.SetActive(true);
+            camxr.GetComponent<CameraOperation1>().targetObject.SetActive(true);
 
         }
-        public void EnterVR()
+        public void EnterVR(string param)
         {
+            string[] prm = param.Split(",");
+            cfg_vrar_save_camerapos = prm[0] == "1" ? true : false;
+            string[] parr = prm[1].Split(":");
+            float ipx = float.TryParse(parr[0], out ipx) ? ipx : 0f;
+            float ipy = float.TryParse(parr[1], out ipy) ? ipy : 0f;
+            float ipz = float.TryParse(parr[2], out ipz) ? ipz : 0f;
+            cfg_vrar_camera_initpos = new Vector3(ipx, ipy, ipz);
+
+            bkup_camerapos = new Vector3(camxr.transform.position.x, camxr.transform.position.y, camxr.transform.position.z);
+            bkup_camerarot = new Quaternion(camxr.transform.rotation.x, camxr.transform.rotation.y, camxr.transform.rotation.z, camxr.transform.rotation.w);
+            
+
             IsEndVRAR = false;
+            ChangeColliderState_OtherObjects(false);
+
+            ChangeStateEnteringVRAR();
             camxr.ToggleVR();
-            ChangeColliderState_OtherObjects(false);
-            ChangeStateEnteringVRAR();
+            if (cfg_vrar_save_camerapos)
+            {
+                camxr.transform.position = new Vector3(bkup_lastvrar_pos.x, bkup_lastvrar_pos.y, bkup_lastvrar_pos.z);
+            }
+            else
+            {
+                camxr.transform.position = new Vector3(cfg_vrar_camera_initpos.x, cfg_vrar_camera_initpos.y, cfg_vrar_camera_initpos.z);
+            }
         }
-        public void EnterAR()
+        public void EnterAR(string param)
         {
+            string[] prm = param.Split(",");
+            cfg_vrar_save_camerapos = prm[0] == "1" ? true : false;
+            string[] parr = prm[1].Split(":");
+            float ipx = float.TryParse(parr[0], out ipx) ? ipx : 0f;
+            float ipy = float.TryParse(parr[1], out ipy) ? ipy : 0f;
+            float ipz = float.TryParse(parr[2], out ipz) ? ipz : 0f;
+            cfg_vrar_camera_initpos = new Vector3(ipx, ipy, ipz);
+
+            bkup_camerapos = new Vector3(camxr.transform.position.x, camxr.transform.position.y, camxr.transform.position.z);
+            bkup_camerarot = new Quaternion(camxr.transform.rotation.x, camxr.transform.rotation.y, camxr.transform.rotation.z, camxr.transform.rotation.w);
+
             IsEndVRAR = false;
-            camxr.ToggleAR();
             ChangeColliderState_OtherObjects(false);
             ChangeStateEnteringVRAR();
+            camxr.ToggleAR();
+            if (cfg_vrar_save_camerapos)
+            {
+                camxr.transform.position = new Vector3(bkup_lastvrar_pos.x, bkup_lastvrar_pos.y, bkup_lastvrar_pos.z);
+            }
+            else
+            {
+                camxr.transform.position = new Vector3(cfg_vrar_camera_initpos.x, cfg_vrar_camera_initpos.y, cfg_vrar_camera_initpos.z);
+            }
         }
         public bool IsVRAR()
         {
@@ -4379,6 +4657,12 @@ namespace UserHandleSpace
             EndingVRAR(ret);
         
 #endif
+            bkup_lastvrar_pos.x = camxr.transform.position.x;
+            bkup_lastvrar_pos.y = camxr.transform.position.y;
+            bkup_lastvrar_pos.z = camxr.transform.position.z;
+
+            camxr.transform.position = new Vector3(bkup_camerapos.x, bkup_camerapos.y, bkup_camerapos.z);
+            camxr.transform.rotation = new Quaternion(bkup_camerarot.x, bkup_camerarot.y, bkup_camerarot.z, bkup_camerarot.w);
         }
     }
 

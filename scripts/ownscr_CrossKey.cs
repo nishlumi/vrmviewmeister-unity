@@ -17,10 +17,11 @@ namespace UserHandleSpace
 
         public float MoveRate = 0.01f;
         public float RotateRate = 0.5f;
+        public float ScaleRate = 0.01f;
 
         private Vector3 trackcurpos = Vector3.zero;
         public string MoveTarget = "c";
-        public string OperationType = "translate"; //translate, rotate
+        public string OperationType = "translate"; //translate, rotate, size
 
         // Start is called before the first frame update
         void Start()
@@ -35,7 +36,8 @@ namespace UserHandleSpace
         }
         private void OnTriggerEnter(Collider collider)
         {
-
+            MoveRate = manim.GetMoveRate();
+            RotateRate = manim.GetRotateRate();
 
         }
         private void OnTriggerStay(Collider other)
@@ -58,7 +60,9 @@ namespace UserHandleSpace
                         Transform tran = null;
                         if (nav.type == AF_TARGETTYPE.VRM)
                         {
-                            tran = nav.ikparent.transform;
+                            OperateLoadedVRM olvrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                            //tran = nav.ikparent.transform;
+                            tran = olvrm.relatedTrueIKParent.transform;
                         }
                         else
                         {
@@ -68,31 +72,7 @@ namespace UserHandleSpace
                         
                         if (tran != null)
                         {
-                            /*
-                            if (gameObject.name == "tp_forward")
-                            {
-                                tran.Translate(0, 0, 1 * MoveRate, Space.Self);
-                            }
-                            else if (gameObject.name == "tp_back")
-                            {
-                                tran.Translate(0, 0, -1 * MoveRate, Space.Self);
-                            }
-                            else if (gameObject.name == "tp_right")
-                            {
-                                tran.Translate(1 * MoveRate, 0, 0f, Space.Self);
-                            }
-                            else if (gameObject.name == "tp_left")
-                            {
-                                tran.Translate(-1 * MoveRate, 0, 0f, Space.Self);
-                            }
-                            else if (gameObject.name == "tp_up")
-                            {
-                                tran.Translate(0f, 1 * MoveRate, 0f, Space.Self);
-                            }
-                            else if (gameObject.name == "tp_down")
-                            {
-                                tran.Translate(0f, -1 * MoveRate, 0f, Space.Self);
-                            }*/
+                            
 
                             if (OperationType == "translate")
                             {
@@ -101,6 +81,17 @@ namespace UserHandleSpace
                             else if (OperationType == "rotate")
                             {
                                 TargetRotate(tran, gameObject.name);
+                            }
+                            else if (OperationType == "size")
+                            {
+                                if (
+                                    (nav.type == AF_TARGETTYPE.OtherObject) ||
+                                    (nav.type == AF_TARGETTYPE.Image) ||
+                                    (nav.type == AF_TARGETTYPE.Text3D)
+                                )
+                                {
+                                    TargetResize(tran, gameObject.name);
+                                }
                             }
                             
                         }
@@ -119,31 +110,6 @@ namespace UserHandleSpace
                     }
                     
 
-                /*
-                    if (gameObject.name == "tp_forward")
-                    {
-                        cameraset.transform.Translate(0, 0, 1 * MoveRate, Space.Self);
-                    }
-                    else if (gameObject.name == "tp_back")
-                    {
-                        cameraset.transform.Translate(0, 0, -1 * MoveRate, Space.Self);
-                    }
-                    else if (gameObject.name == "tp_right")
-                    {
-                        cameraset.transform.Translate(1 * MoveRate, 0, 0f, Space.Self);
-                    }
-                    else if (gameObject.name == "tp_left")
-                    {
-                        cameraset.transform.Translate(-1 * MoveRate, 0, 0f, Space.Self);
-                    }
-                    else if (gameObject.name == "tp_up")
-                    {
-                        cameraset.transform.Translate(0f, 1 * MoveRate, 0f, Space.Self);
-                    }
-                    else if (gameObject.name == "tp_down")
-                    {
-                        cameraset.transform.Translate(0f, -1 * MoveRate, 0f, Space.Self);
-                    }*/
                 }
                 
 
@@ -198,19 +164,19 @@ namespace UserHandleSpace
         /// <param name="btnname"></param>
         public void TargetRotate(Transform tran, string btnname)
         {
-            if (btnname == "tp_forward") //X axis
+            if (btnname == "tp_forward") //Z axis
             {
                 tran.Rotate(Vector3.forward * RotateRate, Space.Self);
             }
-            else if (btnname == "tp_back") //X axis
+            else if (btnname == "tp_back") //Z axis
             {
                 tran.Rotate(Vector3.back * RotateRate, Space.Self);
             }
-            else if (btnname == "tp_right") //Z axis
+            else if (btnname == "tp_right") //X axis
             {
                 tran.Rotate(Vector3.right * RotateRate, Space.Self);
             }
-            else if (btnname == "tp_left") //Z axis
+            else if (btnname == "tp_left") //X axis
             {
                 tran.Rotate(Vector3.left * RotateRate, Space.Self);
             }
@@ -222,6 +188,37 @@ namespace UserHandleSpace
             {
                 tran.Rotate(Vector3.down * RotateRate, Space.Self);
             }
+        }
+        public void TargetResize(Transform tran, string btnname)
+        {
+            Vector3 beforeScale = tran.localScale;
+
+            if (btnname == "tp_forward") //Z axis
+            {
+                beforeScale.z = beforeScale.z + (Vector3.forward.z * ScaleRate);
+            }
+            else if (btnname == "tp_back") //Z axis
+            {
+                beforeScale.z = beforeScale.z + (Vector3.back.z * ScaleRate);
+            }
+            else if (btnname == "tp_right") //X axis
+            {
+                beforeScale.x = beforeScale.x + (Vector3.right.x * ScaleRate);
+            }
+            else if (btnname == "tp_left") //X axis
+            {
+                beforeScale.x = beforeScale.x + (Vector3.left.x * ScaleRate);
+            }
+            else if (btnname == "tp_up") //Y axis
+            {
+                beforeScale.y = beforeScale.y + (Vector3.up.y * ScaleRate);
+            }
+            else if (btnname == "tp_down") //Y axis
+            {
+                beforeScale.y = beforeScale.y + (Vector3.down.y * ScaleRate);
+            }
+
+            tran.localScale = beforeScale;
         }
     }
 

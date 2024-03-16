@@ -11,12 +11,19 @@ namespace UserHandleSpace
 
         private bool IsPushingBtn1;
         private bool ToggleButtonState;
+        private bool ToggleShaderCutout;
+
+        [SerializeField]
+        private GameObject imgon;
+        [SerializeField]
+        private GameObject imgoff;
 
         // Start is called before the first frame update
         void Start()
         {
             IsPushingBtn1 = false;
             ToggleButtonState = true;
+            ToggleShaderCutout = false;
         }
 
         // Update is called once per frame
@@ -40,7 +47,9 @@ namespace UserHandleSpace
                     (gameObject.name != "hmbtn_mt_camera") &&
                     (gameObject.name != "hmbtn_mt_obj") &&
                     (gameObject.name != "hmbtn_ope_move") &&
-                    (gameObject.name != "hmbtn_ope_rot")
+                    (gameObject.name != "hmbtn_ope_rot") &&
+                    (gameObject.name != "hmbtn_ope_size") &&
+                    (gameObject.name != "HandMenuPlayPauser")
                  )
                 {
                     DownEvent();
@@ -56,7 +65,9 @@ namespace UserHandleSpace
                     (gameObject.name != "hmbtn_mt_camera") &&
                     (gameObject.name != "hmbtn_mt_obj") &&
                     (gameObject.name != "hmbtn_ope_move") &&
-                    (gameObject.name != "hmbtn_ope_rot")
+                    (gameObject.name != "hmbtn_ope_rot") &&
+                    (gameObject.name != "hmbtn_ope_size") &&
+                    (gameObject.name != "HandMenuPlayPauser")
                  )
                 {
                     UpEvent();
@@ -96,21 +107,35 @@ namespace UserHandleSpace
             else if (btnname == "hmbtn_showik")
             {
                 ToggleButtonState = !ToggleButtonState;
-                if (ToggleButtonState == true)
+                //Transform imgon = transform.Find("img_on");
+                //if (imgon != null)
                 {
-                    transform.Find("img_on").Translate(0, 0.6f, 0, Space.Self);
-                }
-                else
-                {
-                    transform.Find("img_on").Translate(0, -0.6f, 0, Space.Self);
+                    if (ToggleButtonState == true)
+                    {
+                        //transform.Find("img_on").Translate(0, 0.6f, 0, Space.Self);
+                        //imgon.transform.localPosition = new Vector3(imgon.transform.localPosition.x, 0.6f, imgon.transform.localPosition.z);
+                        if (imgon != null) imgon.SetActive(true);
+                        if (imgoff != null) imgoff.SetActive(false);
+                    }
+                    else
+                    {
+                        //transform.Find("img_on").Translate(0, -0.6f, 0, Space.Self);
+                        //imgon.transform.localPosition = new Vector3(imgon.transform.localPosition.x, 0, imgon.transform.localPosition.z);
+                        if (imgon != null) imgon.SetActive(false);
+                        if (imgoff != null) imgoff.SetActive(true);
 
-                }
-                HandMenu.CameraMan.ChangeIKMarkerStateWhenVRAR(ToggleButtonState);
+                    }
+                }                
+                HandMenu.ChangeIKMarkerView(ToggleButtonState);
+            }
+            else if (btnname == "hmbtn_oncutout")
+            {
+                ToggleShaderCutout = !ToggleShaderCutout;
+                HandMenu.ChangeShaderCutout(ToggleShaderCutout);
             }
             else if (btnname == "hmbtn_regkeyframe")
             {
                 HandMenu.RegisterKeyFrame();
-
 
             }
             else if (btnname == "hmbtn_prevkeyframe")
@@ -130,6 +155,10 @@ namespace UserHandleSpace
             {
                 HandMenu.StopAnimation();
             }
+            else if (btnname == "HandMenuPlayPauser")
+            {
+                HandMenu.StartPauseAnimation();
+            }
             else if (btnname == "hmbtn_mt_camera")
             {
                 HandMenu.ChangeMoveTarget("c");
@@ -145,6 +174,26 @@ namespace UserHandleSpace
             else if (btnname == "hmbtn_ope_rot")
             {
                 HandMenu.ChangeMoveOperationType("rotate");
+            }
+            else if (btnname == "hmbtn_ope_size")
+            {
+                HandMenu.ChangeMoveOperationType("size");
+            }
+            else if (btnname == "hmbtn_mt_reset_pos")
+            {
+                HandMenu.ResetTransformCurrentObject(true,false,false);
+            }
+            else if (btnname == "hmbtn_mt_reset_rot")
+            {
+                HandMenu.ResetTransformCurrentObject(false, true,false);
+            }
+            else if (btnname == "hmbtn_mt_reset_size") 
+            {
+                HandMenu.ResetTransformCurrentObject(false, false, true);
+            }
+            else if (btnname == "hmbtn_exitvrar")
+            {
+                HandMenu.EndVRAR();
             }
 
             return ret;

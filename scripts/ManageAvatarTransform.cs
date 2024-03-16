@@ -608,9 +608,8 @@ namespace UserHandleSpace
 
             return ret;
         }
-        public List<AvatarSingleIKTransform> GetIKTransformAll()
+        public List<AvatarSingleIKTransform> GetIKTransformAll_body()
         {
-
             List<AvatarSingleIKTransform> ret = new List<AvatarSingleIKTransform>();
             OperateLoadedVRM ovrm = gameObject.GetComponent<OperateLoadedVRM>();
             Transform[] bts = ovrm.relatedHandleParent.GetComponentsInChildren<Transform>();
@@ -620,9 +619,14 @@ namespace UserHandleSpace
                 if (i == 0)
                 {
                     GameObject ikparent = ovrm.relatedHandleParent;
+                    GameObject trueik = ovrm.relatedTrueIKParent;
+                    Collider col = trueik.GetComponent<Collider>();
+                    Rigidbody rig = trueik.GetComponent<Rigidbody>();
 
                     //ret.Add(new Vector3(  ikparent.transform.position.x, ikparent.transform.position.y, ikparent.transform.position.z));
-                    ret.Add(new AvatarSingleIKTransform(IKbones[i], ikparent.transform.position, ikparent.transform.rotation.eulerAngles));
+                    ret.Add(new AvatarSingleIKTransform(IKbones[i], ikparent.transform.position, ikparent.transform.rotation.eulerAngles, 
+                        col.isTrigger ? 0 : 1, rig.useGravity ? 1 : 0, rig.drag, rig.angularDrag
+                    ));
                 }
                 else
                 {
@@ -638,25 +642,35 @@ namespace UserHandleSpace
 
                     if (child != null)
                     {
+                        Collider col = child.GetComponent<Collider>();
+                        Rigidbody rig = child.GetComponent<Rigidbody>();
+
                         //ret.Add(new Vector3(  child.transform.localPosition.x, child.transform.localPosition.y, child.transform.localPosition.z ));
-                        ret.Add(new AvatarSingleIKTransform(IKbones[i], child.transform.localPosition, child.transform.localRotation.eulerAngles));
+                        ret.Add(new AvatarSingleIKTransform(IKbones[i], child.transform.localPosition, child.transform.localRotation.eulerAngles,
+                            col.isTrigger ? 0 : 1, rig.useGravity ? 1 : 0, rig.drag, rig.angularDrag
+                        ));
 
                     }
                     else
                     {
-                        ret.Add(new AvatarSingleIKTransform(IKbones[i], Vector3.zero, Vector3.zero));
+                        ret.Add(new AvatarSingleIKTransform(IKbones[i], Vector3.zero, Vector3.zero, 0, 0, 10, 10));
                     }
-                    
+
                 }
-                
+
             }
+
+            return ret;
+        }
+        public List<AvatarSingleIKTransform> GetIKTransformAll()
+        {
             AvatarAllIKParts aai = new AvatarAllIKParts();
-            aai.list = ret;
+            aai.list = GetIKTransformAll_body();
             string js = JsonUtility.ToJson(aai);
 #if !UNITY_EDITOR && UNITY_WEBGL
             ReceiveStringVal(js);
 #endif
-            return ret;
+            return aai.list;
         }
         public void GetIKPelvisAndHeight()
         {
@@ -739,6 +753,9 @@ namespace UserHandleSpace
 
                         if (child != null)
                         {
+                            Collider ccol = child.GetComponent<Collider>();
+                            Rigidbody crig = child.GetComponent<Rigidbody>();
+
                             if ((asit.ikname.ToLower() != "leftshoulder") && (asit.ikname.ToLower() != "rightshoulder"))
                             { // both shoulder is not neccessary positioning (rotation only)
                                 child.transform.localPosition = asit.position;
@@ -767,6 +784,13 @@ namespace UserHandleSpace
                             }
                             //seq.Join(child.transform.DOLocalMove(asit.position, 0.1f));
                             //seq.Join(child.transform.DOLocalRotate(asit.rotation, 0.1f));
+
+                            ccol.isTrigger = asit.useCollision == 1 ? false : true;
+                            crig.useGravity = asit.useGravity == 1 ? true : false;
+                            crig.drag = asit.drag;
+                            crig.angularDrag = asit.anglarDrag;
+
+
                             yield return null;
                             
                         }
@@ -775,9 +799,16 @@ namespace UserHandleSpace
                 }
             }
             //---IKParent
-            GameObject ikparent = ovrm.relatedHandleParent;
+            GameObject ikparent = ovrm.relatedTrueIKParent;
+            Collider col = ikparent.GetComponent<Collider>();
+            Rigidbody rig = ikparent.GetComponent<Rigidbody>();
+
             ikparent.transform.position = aai.list[0].position; // new Vector3(aai.list[i].x, aai.list[i].y, aai.list[i].z);
             ikparent.transform.rotation = Quaternion.Euler(aai.list[0].rotation);
+            col.isTrigger = aai.list[0].useCollision == 1 ? false : true;
+            rig.useGravity = aai.list[0].useGravity == 1 ? true : false;
+            rig.drag = aai.list[0].drag;
+            rig.angularDrag = aai.list[0].anglarDrag;
             //seq.Join(ikparent.transform.DOMove(aai.list[0].position, 0.01f));
             //seq.Join(ikparent.transform.DORotate(aai.list[0].rotation, 0.01f));
         }
@@ -1129,7 +1160,7 @@ namespace UserHandleSpace
 
 
             //---IKParent
-            GameObject ikparent = ovrm.relatedHandleParent;
+            GameObject ikparent = ovrm.relatedTrueIKParent;
             ikparent.transform.position = tpose[0];
             //ikparent.transform.rotation = Quaternion.Euler(aai.list[0].rotation);
         }
@@ -1154,7 +1185,7 @@ namespace UserHandleSpace
             GameObject parts = null;
             if (ikpos == 0)
             {
-                parts = ovrm.relatedHandleParent;
+                parts = ovrm.relatedTrueIKParent;
             }
             else
             {
@@ -1208,6 +1239,112 @@ namespace UserHandleSpace
                     else parts.transform.localRotation = Quaternion.Euler(new Vector3(parts.transform.localRotation.x, parts.transform.localRotation.y, val));
                 }
             }
+
+        }
+
+        /// <summary>
+        /// flip left-right posing
+        /// </summary>
+        public void MirrorPose()
+        {
+            AvatarSingleIKTransform FindParts(List<AvatarSingleIKTransform> list, string name)
+            {
+                return list.Find(match =>
+                {
+                    if (match.ikname == name) return true;
+                    return false;
+                });
+            }
+            
+            AvatarSingleIKTransform mirrorLR(AvatarSingleIKTransform tleft, AvatarSingleIKTransform tright)
+            {
+                AvatarSingleIKTransform asik = new AvatarSingleIKTransform(tleft.ikname, tleft.position, tleft.rotation, tleft.useCollision, tleft.useGravity, tleft.drag, tleft.anglarDrag);
+
+                asik.position.x = tright.position.x * -1;
+                asik.position.y = tright.position.y;
+                asik.position.z = tright.position.z;
+                asik.rotation.x = tright.rotation.x;
+                asik.rotation.y = tright.rotation.y * -1;
+                asik.rotation.z = tright.rotation.z * -1;
+
+                return asik;
+            }
+
+            AvatarAllIKParts aai = new AvatarAllIKParts();
+            List<AvatarSingleIKTransform> list = GetIKTransformAll();
+            aai.list.Add(list[0]);
+            
+            
+
+            for (int i = 1; i < IKbones.Length; i++)
+            {
+                AvatarSingleIKTransform hit = FindParts(list, IKbones[i]);
+                if ((i >= 1) && (i <= 6))
+                { 
+                    aai.list.Add(mirrorLR(hit, hit));
+                }
+                //---arm ~ hand
+                else if (i == (int)IKBoneType.LeftShoulder)
+                {
+                    aai.list.Add(mirrorLR(hit, FindParts(list, IKbones[(int)IKBoneType.RightShoulder])));
+                }
+                else if (i == (int)IKBoneType.LeftLowerArm)
+                {
+                    aai.list.Add(mirrorLR(hit, FindParts(list, IKbones[(int)IKBoneType.RightLowerArm])));
+                }
+                else if (i == (int)IKBoneType.LeftHand)
+                {
+                    aai.list.Add(mirrorLR(hit, FindParts(list, IKbones[(int)IKBoneType.RightHand])));
+                }
+                else if (i == (int)IKBoneType.RightShoulder)
+                {
+                    aai.list.Add(mirrorLR(hit, FindParts(list, IKbones[(int)IKBoneType.LeftShoulder])));
+                }
+                else if (i == (int)IKBoneType.RightLowerArm)
+                {
+                    aai.list.Add(mirrorLR(hit, FindParts(list, IKbones[(int)IKBoneType.LeftLowerArm])));
+                }
+                else if (i == (int)IKBoneType.RightHand)
+                {
+                    aai.list.Add(mirrorLR(hit, FindParts(list, IKbones[(int)IKBoneType.LeftHand])));
+                }
+                //---leg ~ foot
+                else if (i == (int)IKBoneType.LeftLowerLeg)
+                {
+                    aai.list.Add(mirrorLR(hit, FindParts(list, IKbones[(int)IKBoneType.RightLowerLeg])));
+                }
+                else if (i == (int)IKBoneType.LeftLeg)
+                {
+                    aai.list.Add(mirrorLR(hit, FindParts(list, IKbones[(int)IKBoneType.RightLeg])));
+                }
+                else if (i == (int)IKBoneType.RightLowerLeg)
+                {
+                    aai.list.Add(mirrorLR(hit, FindParts(list, IKbones[(int)IKBoneType.LeftLowerLeg])));
+                }
+                else if (i == (int)IKBoneType.RightLeg)
+                {
+                    aai.list.Add(mirrorLR(hit, FindParts(list, IKbones[(int)IKBoneType.LeftLeg])));
+                }
+
+            }
+            foreach (AvatarSingleIKTransform sik in aai.list)
+            {
+                int ishit = -1;
+                for (int i = 0; i < IKbones.Length; i++)
+                {
+                    if (sik.ikname == IKbones[i])
+                    {
+                        ishit = i;
+                        break;
+                    }
+                }
+                if (ishit > -1)
+                {
+
+                }
+                
+            }
+            StartCoroutine(SetIKTransformAll_Body(aai));
 
         }
         //=============================================================================================================================================

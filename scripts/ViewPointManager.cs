@@ -25,10 +25,14 @@ namespace UserHandleSpace
         // Update is called once per frame
         void Update()
         {
+            if (manim == null) return;
+
             if (manim.IsVRAR()) return;
 
             if (oldposition != transform.position)
             {
+                if (oavrm == null) return;
+
                 if (oavrm.ActiveAvatar != null)
                 {
                     //Debug.Log(oavrm.ActiveAvatar.gameObject.name);
