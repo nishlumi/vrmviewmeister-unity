@@ -1067,10 +1067,19 @@ namespace UserVRMSpace
                 {
                     Transform upche = animator.GetBoneTransform(HumanBodyBones.Hips);
                     Transform spine = animator.GetBoneTransform(HumanBodyBones.Spine);
+                    Transform chest = animator.GetBoneTransform(HumanBodyBones.Chest);
                     Vector3 newpos = new Vector3();
+                    /*if (chest != null)
+                    {
+                        newpos.y = (chest.position.y + spine.position.y) / 2f;
+                    }
+                    else*/
+                    {
+                        newpos.y = spine.position.y;
+                    }
                     newpos.x = spine.position.x;
-                    newpos.y = spine.position.y;
-                    newpos.z = 0;// spine.position.z;
+                    
+                    newpos.z = spine.position.z * -1;
                     hans.transform.position = newpos;
 
                     vik.waist = hans.transform;
@@ -1117,7 +1126,8 @@ namespace UserVRMSpace
 
                     Vector3 hanspos = pt.position;
                     hanspos.x *= -1f;
-                    hanspos.z = 0;
+                    hanspos.y = 0;
+                    hanspos.z *= -1f;
                     hans.transform.localPosition = hanspos;
 
 
@@ -1148,7 +1158,8 @@ namespace UserVRMSpace
 
                     Vector3 hanspos = pt.position;
                     hanspos.x *= -1f;
-                    hanspos.z = 0;
+                    hanspos.y = 0;
+                    hanspos.z *= -1f;
                     hans.transform.localPosition = hanspos;
 
                     vik.RightFoot = hans.transform;

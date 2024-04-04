@@ -1249,11 +1249,9 @@ namespace UserHandleSpace
         public int enabled = 1;
         public int compiled = 0;
 
-        /* Sample avatar specify information
-         * 0-2 bounds.extents
-         * 
-         * 
-         * */
+        /// <summary>
+        /// Sample avatar specify information. 0-2 bounds.extents
+        /// </summary>
         public float[] bodyHeight = new float[3];
         public List<Vector3> bodyInfoList;
         public List<string> blendShapeList;

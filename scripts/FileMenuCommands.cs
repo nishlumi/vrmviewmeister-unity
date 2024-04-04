@@ -276,6 +276,14 @@ namespace UserVRMSpace
             lastLoadedAvatar = null;
             openingNative = new OpeningNativeAnimationAvatar();
 
+            float a = -1.5853840462654034e-10f;
+            Debug.Log(a);
+            Debug.Log(a.ToString("F11"));
+
+            float b = 2.193940f;
+            Debug.Log(b);
+            Debug.Log(b.ToString("F8"));
+
         }
         private void OnDestroy()
         {

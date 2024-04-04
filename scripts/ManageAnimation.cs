@@ -2250,21 +2250,32 @@ namespace UserHandleSpace
         public Vector3 CalculateDifferenceByHeight(float[] currentActor, float[] roller, Vector3 position, ParseIKBoneType vrmBone, float is_x, float is_y, float is_z)
         {
             Vector3 ret = position;
-            if ((roller[0] != 0) && (roller[1] != 0) && (roller[2] != 0))
+            if (roller[0] != 0f)
             {
                 float hx = currentActor[0] / roller[0];
-                float hy = currentActor[1] / roller[1];
-                float hz = currentActor[2] / roller[2];
+                //hx = Mathf.Round(hx * 10000f) / 10000f;
+                if (hx == 0f) hx = 1f;
 
                 if (is_x == 0) ret.x = position.x;
                 else ret.x = position.x * (hx * is_x);
+            }
+            if (roller[1] != 0f)
+            {
+                float hy = currentActor[1] / roller[1];
+                //hy = Mathf.Round(hy * 10000f) / 10000f;
+                if (hy == 0f) hy = 1f;
 
                 if (is_y == 0) ret.y = position.y;
                 else ret.y = position.y * (hy * is_y);
+            }
+            if (roller[2] != 0f)
+            {
+                float hz = currentActor[2] / roller[2];
+                //hz = Mathf.Round(hz * 10000f) / 10000f;
+                if (hz == 0f) hz = 1f;
 
-                if (is_z == 0) ret.z = position.z; 
+                if (is_z == 0) ret.z = position.z;
                 else ret.z = position.z * (hz * is_z);
-
             }
 
             return ret;
@@ -2283,24 +2294,56 @@ namespace UserHandleSpace
                 return;
             }
 
+            /*for (int di = 0; di < destination.bodyHeight.Length; di++)
+            {
+                Debug.Log("dest=" + destination.bodyHeight[di].ToString());
+            }
+            for (int ni = 0; ni < nav.bodyHeight.Length; ni++)
+            {
+                Debug.Log("nav=" + nav.bodyHeight[ni].ToString());
+            }*/
+
+            ParseIKBoneType[] sortedIndex = new ParseIKBoneType[IKbonesCount] {
+                ParseIKBoneType.IKParent,
+
+
+                ParseIKBoneType.Pelvis,ParseIKBoneType.Chest,
+                ParseIKBoneType.Head,ParseIKBoneType.Aim,ParseIKBoneType.LookAt,
+
+                ParseIKBoneType.LeftShoulder,
+                ParseIKBoneType.LeftHand, ParseIKBoneType.LeftLowerArm,
+                ParseIKBoneType.RightShoulder,
+                ParseIKBoneType.RightHand, ParseIKBoneType.RightLowerArm,
+
+                ParseIKBoneType.LeftLeg,ParseIKBoneType.LeftLowerLeg,
+                ParseIKBoneType.RightLeg,ParseIKBoneType.RightLowerLeg,
+                ParseIKBoneType.EyeViewHandle
+            };
+            List<ParseIKBoneType> sortArr = new List<ParseIKBoneType>(sortedIndex);
 
             for (int i = 0; i < destination.frames.Count; i++)
             {
                 NativeAnimationFrame naframe = destination.frames[i];
 
                 //---search ParseIKBone(Type) from movingData
-                for (int m = 0; m < naframe.movingData.Count; m++)
+                for (int m = 0; m < naframe.translateMovingData.Count; m++)
                 {
-                    AnimationTargetParts movedata = naframe.movingData[m];
+                    //AnimationTargetParts movedata = naframe.movingData[m];
+                    AnimationTranslateTargetParts movedata = naframe.translateMovingData[m];
                     
                     if (
                         (movedata.animationType == AF_MOVETYPE.Translate) && 
                         ((movedata.vrmBone >= ParseIKBoneType.EyeViewHandle) && (movedata.vrmBone <= ParseIKBoneType.RightLeg))
                     )
                     {
+                        //vrmBone : SORTED !
+                        //bodyInfoList: original sort
+                        /*
                         // change motion difference: new:nav --> old:destination 
                         float[] curact = { nav.bodyHeight[0], nav.bodyInfoList[(int)movedata.vrmBone].y, nav.bodyInfoList[(int)movedata.vrmBone].z };
                         float[] dstact = { destination.bodyHeight[0], destination.bodyInfoList[(int)movedata.vrmBone].y, destination.bodyInfoList[(int)movedata.vrmBone].z };
+
+                        
                         if (movedata.vrmBone == ParseIKBoneType.EyeViewHandle)
                         { //EyeViewHandle, y-axis is multiply VRM bound Y
                             curact[1] = nav.bodyHeight[1];
@@ -2318,12 +2361,106 @@ namespace UserHandleSpace
                         }
                         for (int c = 0; c < curact.Length; c++) curact[c] = MathF.Round(curact[c], 6);
                         for (int c = 0; c < dstact.Length; c++) dstact[c] = MathF.Round(dstact[c], 6);
+                        */
+
+                        
+                        //---judge sorted bone index, find real bone index
+                        int sortInx = sortArr.FindIndex(v =>
+                        {
+                            if (v == movedata.vrmBone) return true;
+                            return false;
+                        });
+                        if (sortInx >= 0)
+                        {
+                            int bodyInx = (int)sortArr[sortInx]; //bodyInfoList of SORTED index
+                            for (var ti = 0; ti < movedata.values.Count; ti++)
+                            {
+                                Vector3 tranVal = movedata.values[ti];
+                                //tranVal.x = Mathf.Round(tranVal.x * 100000f) / 100000f;
+                                //tranVal.y = Mathf.Round(tranVal.y * 100000f) / 100000f;
+                                //tranVal.z = Mathf.Round(tranVal.z * 100000f) / 100000f;
+                                //---Round float value by string
+                                string tmpx = tranVal.x.ToString("0.0000");
+                                float ftmpx = float.Parse(tmpx);
+                                {
+                                    tranVal.x = ftmpx;
+                                }
+                                {
+                                    tmpx = tranVal.y.ToString("0.0000");
+                                    ftmpx = float.Parse(tmpx);
+                                    tranVal.y = ftmpx;
+                                }
+                                {
+                                    tmpx = tranVal.z.ToString("0.0000");
+                                    ftmpx = float.Parse(tmpx);
+                                    tranVal.z = ftmpx;
+                                }
+
+
+                                //--refer each parts position (original: global )
+                                Vector3 cur_whole = nav.bodyInfoList[bodyInx];
+                                Vector3 role_whole = destination.bodyInfoList[bodyInx];
+                                
+                                
+                                {
+                                    tmpx = role_whole.x.ToString("0.0000");
+                                    role_whole.x = float.Parse (tmpx);
+                                }
+                                {
+                                    tmpx = role_whole.y.ToString("0.0000");
+                                    role_whole.y = float.Parse(tmpx);
+                                }
+                                {
+                                    tmpx = role_whole.z.ToString("0.0000");
+                                    role_whole.z = float.Parse(tmpx);
+                                }
+
+                                float cur_height_parts_y = (nav.bodyHeight[1] + cur_whole.y) / 2f;
+                                float role_height_parts_y = (destination.bodyHeight[1] + role_whole.y) / 2f;
+                                
+
+                                float[] cur_whole_val = new float[3] { nav.bodyHeight[0], cur_height_parts_y, nav.bodyHeight[2] };
+                                float[] role_whole_val = new float[3] { destination.bodyHeight[0], role_height_parts_y, destination.bodyHeight[2] };
+
+
+                                //---body height version (original)
+                                //float[] cur_whole_val = nav.bodyHeight;
+                                //float[] role_whole_val = destination.bodyHeight;
+
+                                //Debug.Log("vrmBone=" + movedata.vrmBone.ToString());
+                                //Debug.Log($"  cur={cur_whole_val[0]}\t{cur_whole_val[1]}\t{cur_whole_val[2]}");
+                                //Debug.Log($"  role={role_whole_val[0]}\t{role_whole_val[1]}\t{role_whole_val[2]}");
+                                //Debug.Log($"  tranVal={tranVal.x}\t{tranVal.y}\t{tranVal.z}");
+                                //^^^ keyframe: local 
+
+                                Vector3 newpos = CalculateDifferenceByHeight(cur_whole_val, role_whole_val, tranVal, movedata.vrmBone, 1f, 1f, 1f);
+                                //Debug.Log($"  newpos={newpos.x}\t{newpos.y}\t{newpos.z}");
+
+                                destination.frames[i].translateMovingData[m].values[ti] = newpos;
+                            }
+                        }
+                        
+
+
+
                         //---not by whole height, but a height of EACH PARTS !!
                         //Vector3 newpos = CalculateDifferenceByHeight(nav.bodyHeight, destination.bodyHeight, movedata.position, movedata.vrmBone, 1, 1, 0);
-                        Vector3 newpos = CalculateDifferenceByHeight(curact, dstact, movedata.position, movedata.vrmBone, 1, 1, 1);
+
+                        /*for (var ti = 0; ti < movedata.values.Count; ti++)
+                        {
+                            Vector3 tranVal = movedata.values[ti];
+
+                            float[] cur_whole_val = nav.bodyHeight;
+                            float[] role_whole_val = destination.bodyHeight;
+
+                            Vector3 newpos = CalculateDifferenceByHeight(cur_whole_val, role_whole_val, tranVal, movedata.vrmBone, 1f, 1f, 1f);
+
+                            destination.frames[i].translateMovingData[m].values[ti] = newpos;
+                        }*/
+                        //Vector3 newpos = CalculateDifferenceByHeight(curact, dstact, movedata.position, movedata.vrmBone, 1, 1, 1);
 
 
-                        destination.frames[i].movingData[m].position = newpos;
+                        //destination.frames[i].movingData[m].position = newpos;
                     }
                 }
             }

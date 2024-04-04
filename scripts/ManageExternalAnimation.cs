@@ -37,13 +37,14 @@ namespace UserHandleSpace
         private static extern void ReceiveFloatVal(float val);
 
         Dictionary<string, Vrm10AnimationInstance> VrmaList;
-        Dictionary<string, int> RefList;
+        Dictionary<string, int> RefList;    
 
 
         // Start is called before the first frame update
         void Start()
         {
             VrmaList = new Dictionary<string, Vrm10AnimationInstance>();
+            RefList = new Dictionary<string, int>();
         }
 
         // Update is called once per frame
@@ -179,11 +180,11 @@ namespace UserHandleSpace
         }
         public void CountAddVRMAReference(string name)
         {
-            RefList[name] += 1;
+            if (RefList.ContainsKey(name)) RefList[name] += 1;
         }
         public void CountDownVRMAReference(string name)
         {
-            RefList[name] -= 1;
+            if (RefList.ContainsKey(name)) RefList[name] -= 1;
         }
         public void HitVRMAReferenceFromOuter(string name)
         {

@@ -407,7 +407,7 @@ namespace UserHandleSpace
                             }
 
                             //---Position (absorb a distance of height)
-                            if (movedata.animationType == AF_MOVETYPE.Translate)
+                            if ((realObject != null) && (movedata.animationType == AF_MOVETYPE.Translate))
                             {
                                 List<Vector3> curList = olvrm.GetTPoseBodyList();
                                 int vbone = (int)movedata.vrmBone;
@@ -416,8 +416,24 @@ namespace UserHandleSpace
                                 List<Vector3> repoarr = new List<Vector3>();
                                 foreach (var v in movedatavalues)
                                 {
-                                    repoarr.Add(CalculateDifferenceByHeight(naa.bodyHeight, targetObjects.bodyHeight, v, movedata.vrmBone, 1, 1, 1));
+                                    //Debug.Log($"{realObject.name}={v.x}\t{v.y}\t{v.z}");
+                                    repoarr.Add(CalculateDifferenceByHeight(naa.bodyHeight, targetObjects.bodyHeight, v, movedata.vrmBone, 1f, 1f, 1f));                                    
                                 }
+                                /*for (int di = 0; di < targetObjects.bodyHeight.Length; di++)
+                                {
+                                    Debug.Log("dest=" + targetObjects.bodyHeight[di].ToString());
+                                }
+                                for (int ni = 0; ni < naa.bodyHeight.Length; ni++)
+                                {
+                                    Debug.Log("nav=" + naa.bodyHeight[ni].ToString());
+                                }
+                                Debug.Log("vrmBone=" + movedata.vrmBone.ToString());
+                                foreach (var rea in repoarr)
+                                {
+                                    Debug.Log($"  repoarr={rea.x}\t{rea.y}\t{rea.z}");
+                                }
+                                */
+
                                 seq.Join(realObject.transform.DOLocalPath(repoarr.ToArray(), frame.duration, PathType.CatmullRom));
                                 /*
                                 //---Path version
@@ -891,7 +907,7 @@ namespace UserHandleSpace
                             }
 
                             //---Position (absorb a distance of height)
-                            if (movedata.animationType == AF_MOVETYPE.Translate)
+                            if (false) //(movedata.animationType == AF_MOVETYPE.Translate)
                             {
                                 List<Vector3> curList = naa.avatar.GetComponent<OperateLoadedVRM>().GetTPoseBodyList();
                                 int vbone = (int)movedata.vrmBone;

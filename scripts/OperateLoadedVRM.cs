@@ -2978,19 +2978,26 @@ namespace UserHandleSpace
         {
             if (param == VrmaFileName) return;
 
+            //Debug.Log("SetVRMA: begin ClearVRMA");
             ClearVRMA();
             //StartCoroutine(LoadVRMAbody(param));
 
             //---ManageExternalAnimation
+            //Debug.Log("SetVRMA: begin GetVRMA");
             var vrma = manim.MexAnim.GetVRMA(param);
             if (vrma != null )
             {
                 VrmaFileName = param;
+                //Debug.Log("SetVRMA: begin vrminstance.Runtime.VrmAnimation");
                 vrminstance.Runtime.VrmAnimation = vrma;
+                //Debug.Log("SetVRMA: begin VrmaNativeAnimation");
                 VrmaNativeAnimation = vrma.GetComponent<Animation>();
+                VrmaNativeAnimation.wrapMode = WrapMode.Default;
 
+                //Debug.Log("SetVRMA: begin CountAddVRMAReference");
                 manim.MexAnim.CountAddVRMAReference(param);
 
+                //Debug.Log("SetVRMA: begin relatedTrueIKParent");
                 //---change target of trueik
                 var oodik = relatedTrueIKParent.GetComponent<OtherObjectDummyIK>();
                 oodik.relatedAvatar = gameObject;
@@ -3097,7 +3104,7 @@ namespace UserHandleSpace
 
                 manim.MexAnim.CountDownVRMAReference(VrmaFileName);
 
-                VrmaNativeAnimation = null;
+                //VrmaNativeAnimation = null;
                 vrminstance.Runtime.VrmAnimation = null;
                 VrmaFileName = "";
                 //vrmaInst.Dispose();

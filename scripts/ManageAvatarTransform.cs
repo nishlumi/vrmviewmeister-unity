@@ -598,7 +598,8 @@ namespace UserHandleSpace
                         UserHandleOperation uho = null; // child.GetComponent<UserHandleOperation>();
                         if (child.TryGetComponent<UserHandleOperation>(out uho))
                         {
-                            ret.Add(new Vector3(uho.defaultPosition.x, uho.defaultPosition.y, uho.defaultPosition.z));
+                            ret.Add(new Vector3(Mathf.Round(uho.defaultPosition.x*1000f)/1000f, Mathf.Round(uho.defaultPosition.y*1000f)/1000f, Mathf.Round(uho.defaultPosition.z*1000f)/1000f));
+                            //ret.Add(new Vector3(child.transform.position.x, child.transform.position.y, child.transform.position.z));
                         }
                         
                     }
@@ -2141,11 +2142,15 @@ namespace UserHandleSpace
                 NativeAnimationFrame nframe = maa.ParseEffectiveFrame(nact, fr, atran.version);
                 nact.frames.Add(nframe);
             }
+            for (int di = 0; di < nact.bodyHeight.Length; di++)
+            {
+                Debug.Log("nact=" + nact.bodyHeight[di].ToString());
+            }
             //---calculate difference of the height
             maa.CalculateAllFrameForCurrent(nav, nact);
             Array.Copy(nav.bodyHeight, nact.bodyHeight, nav.bodyHeight.Length);
 
-
+            Debug.Log("mat calculate end!");
             aro.targetRole = nact.targetRole;
 
             //---at this time, cast : frame actor = 1 : 1
