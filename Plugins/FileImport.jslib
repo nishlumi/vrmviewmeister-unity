@@ -136,6 +136,25 @@ var FileImportPlugin = {
 		*/
 		
 	},
+	sendCaptureFree : function (rawimg, size) {
+		
+		var binary = "";
+		
+		for (var i = 0; i < size; i++) {
+			binary += String.fromCharCode(HEAPU8[rawimg + i]);
+		}
+		var dataurl = "data:image/png;base64," + btoa(binary);
+		
+		var imgname = new Date().valueOf();
+		AppDB.capture.setItem(imgname, dataurl);
+		
+		var mykey = "freecapture_unity2html";
+		var str = UTF8ToString(imgname);
+		
+		AppDB.temp.setItem(mykey,str).then(function(value){
+			AppQueue.fixedExecute(mykey,value);
+		});
+	},
 	sendBackupTransform: function(thumbnail, size, info) {
 		var binary = "";
 		var js = {};

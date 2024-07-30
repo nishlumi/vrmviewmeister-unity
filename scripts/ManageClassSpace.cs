@@ -17,6 +17,14 @@ using TMPro;
 
 namespace UserHandleSpace
 {
+    public static class FloatExtensions
+    {
+        public static float Round(this float value, int decimals)
+        {
+            float multiplier = Mathf.Pow(10f, decimals);
+            return Mathf.Round(value * multiplier) / multiplier;
+        }
+    }
 
     //===============================================================================================================
     //  Material and General class
@@ -325,7 +333,7 @@ namespace UserHandleSpace
         public AvatarSingleIKTransform(string name, Vector3 pos, Vector3 rot, int usecol, int usegra, float dra, float andra)
         {
             ikname = name;
-            position = pos;
+            position = new Vector3(pos.x.Round(5), pos.y.Round(5), pos.z.Round(5));
             rotation = rot;
             useCollision = usecol;
             useGravity = usegra;
@@ -1167,12 +1175,14 @@ namespace UserHandleSpace
         public float[] bodyHeight = new float[3];
         public List<Vector3> bodyInfoList;
         public List<string> blendShapeList;
+        public List<string> gravityBoneList;
 
         public AnimationSingleMotion()
         {
             
             bodyInfoList = new List<Vector3>();
             blendShapeList = new List<string>();
+            gravityBoneList = new List<string>();
             frames = new List<AnimationSingleFrame>();
         }
         public AnimationSingleMotion SCopy()
@@ -1199,6 +1209,10 @@ namespace UserHandleSpace
                 {
                     blendShapeList.Add(sc.blendShapeList[i]);
                 }*/
+            }
+            if (gravityBoneList != null)
+            {
+                sc.gravityBoneList = new List<string>(gravityBoneList);
             }
             return sc;
         }
@@ -2242,20 +2256,85 @@ namespace UserHandleSpace
     {
         public float movespeed;
         public float transspeed;
+        [SerializeField]
+        private TMPro.TextMeshProUGUI textgui;
+
         public Space IsGlobalLocal;
         private short opemode = 0; //0 - translate, 1 - rotation
+        private OperateLoadedVRM olvrm;
+        private GameObject leftarm;
+        private GameObject leftlowerarm;
+        private Transform la;
+        private GameObject rightarm;
+        private GameObject rightlowerarm;
+        private Transform ra;
+        private GameObject leftleg;
+        private GameObject leftlowerleg;
+        private Transform llg;
+        private GameObject rightleg;
+        private GameObject rightlowerleg;
+        private Transform rlg;
+
         public AvatarKeyOperator(float config_movespeed, float config_transspeed)
         {
             movespeed = config_movespeed;
             transspeed = config_transspeed;
             IsGlobalLocal = Space.World;
+            olvrm = null;
+        }
+        public void SetTextGUI( TMPro.TextMeshProUGUI gui)
+        {
+            textgui = gui;
         }
         public void SetSpeed(float speed, float trans_speed)
         {
             movespeed = speed;
             transspeed = trans_speed;
         }
-        public void CallKeyOperation(GameObject ik, TMPro.TextMeshProUGUI textgui)
+        public void SetLoadedVRM(OperateLoadedVRM operateLoadedVRM)
+        {
+            olvrm = operateLoadedVRM;
+            Animator anim = olvrm.gameObject.GetComponent<Animator>();
+
+            leftarm = olvrm.GetIKHandleByPartsName("leftarm");
+            leftlowerarm =  olvrm.GetIKHandleByPartsName("leftlowerarm"); //anim.GetBoneTransform(HumanBodyBones.LeftLowerArm).gameObject; //
+            la = anim.GetBoneTransform(HumanBodyBones.LeftHand);
+            rightarm = olvrm.GetIKHandleByPartsName("rightarm");
+            rightlowerarm =  olvrm.GetIKHandleByPartsName("rightlowerarm"); //anim.GetBoneTransform(HumanBodyBones.RightLowerArm).gameObject; //
+            ra = anim.GetBoneTransform(HumanBodyBones.RightHand);
+            leftleg = olvrm.GetIKHandleByPartsName("leftleg");
+            leftlowerleg =  olvrm.GetIKHandleByPartsName("leftlowerleg"); //anim.GetBoneTransform(HumanBodyBones.LeftLowerLeg).gameObject; //
+            llg = anim.GetBoneTransform(HumanBodyBones.LeftFoot);
+            rightleg = olvrm.GetIKHandleByPartsName("rightleg");
+            rightlowerleg =  olvrm.GetIKHandleByPartsName("rightlowerleg");//anim.GetBoneTransform(HumanBodyBones.RightLowerLeg).gameObject; //
+            rlg = anim.GetBoneTransform(HumanBodyBones.RightFoot);
+        }
+        public void TranslateObjectFromController(GameObject ik, Vector2 v2)
+        {
+            ik.transform.Translate(new Vector3(v2.x, 0, v2.y) * transspeed, IsGlobalLocal);
+        }
+        public void UpDownObjectFromController(GameObject ik, Vector2 v2)
+        {
+            ik.transform.Translate(new Vector3(0, v2.y, 0) * transspeed, IsGlobalLocal);
+        }
+        public void RotateObjectFromController(GameObject ik, Vector2 v2)
+        {
+            ik.transform.Rotate(new Vector3(v2.y, v2.x, 0) * movespeed, IsGlobalLocal);
+        }
+        public void ChangeOperateSpaceFromController()
+        {
+            if (IsGlobalLocal == Space.Self)
+            {
+                IsGlobalLocal = Space.World;
+                textgui.text = "G";
+            }
+            else if (IsGlobalLocal == Space.World)
+            {
+                IsGlobalLocal = Space.Self;
+                textgui.text = "L";
+            }
+        }
+        public void CallKeyOperation(GameObject ik, TMPro.TextMeshProUGUI tgui = null)
         {
             if (Input.GetKey(KeyCode.W))
             { //to front
@@ -2347,11 +2426,34 @@ namespace UserHandleSpace
             }
             if (Input.GetKey(KeyCode.E))
             { //translate mode
-                //opemode = 0;
+                
             }
             if (Input.GetKey(KeyCode.B))
             {
 
+            }
+            if (Input.GetKey(KeyCode.N))
+            {
+                if (leftarm.GetComponent<UserHandleOperation>().is_current_marker)
+                {
+                    leftarm.transform.localRotation = leftlowerarm.transform.localRotation.normalized;
+                    //leftarm.transform.rotation = leftlowerarm.transform.rotation;
+                }
+                else if (rightarm.GetComponent<UserHandleOperation>().is_current_marker)
+                {
+                    rightarm.transform.localRotation = rightlowerarm.transform.localRotation.normalized;
+                    //rightarm.transform.rotation = rightlowerarm.transform.rotation;
+                }
+                else if (leftleg.GetComponent<UserHandleOperation>().is_current_marker)
+                {
+                    leftleg.transform.localRotation = leftlowerleg.transform.localRotation.normalized;
+                    //leftleg.transform.rotation = leftlowerleg.transform.rotation;
+                }
+                else if (rightleg.GetComponent<UserHandleOperation>().is_current_marker)
+                {
+                    rightleg.transform.localRotation = rightlowerleg.transform.localRotation.normalized;
+                    //rightleg.transform.rotation = rightlowerleg.transform.rotation;
+                }
             }
             if (Input.GetKeyDown(KeyCode.G))
             {

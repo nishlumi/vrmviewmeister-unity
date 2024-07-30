@@ -133,6 +133,30 @@ namespace UserHandleSpace
                 ToggleShaderCutout = !ToggleShaderCutout;
                 HandMenu.ChangeShaderCutout(ToggleShaderCutout);
             }
+            else if (btnname == "hmbtn_globallocal")
+            {
+                if (HandMenu.GetGlobalLocal() == Space.Self)
+                {
+                    HandMenu.ChangeGlobalLocal(Space.World);
+                    imgon.GetComponent<TMPro.TextMeshPro>().text = "G";
+                }
+                else if (HandMenu.GetGlobalLocal() == Space.World)
+                {
+                    HandMenu.ChangeGlobalLocal(Space.Self);
+                    imgon.GetComponent<TMPro.TextMeshPro>().text = "L";
+                }
+                //---hmcrosskey exists in handR
+                Transform hmcrosskey = imgoff.transform;
+                int cnt = hmcrosskey.childCount;
+                //Debug.Log("hmcrosskey children=" + cnt.ToString());
+                for (int i = 0; i < cnt; i++)
+                {
+                    Transform child = hmcrosskey.GetChild(i);
+                    ownscr_CrossKey ck = child.GetComponent<ownscr_CrossKey>();
+                    ck.SpaceType = HandMenu.GetGlobalLocal();
+                }
+
+            }
             else if (btnname == "hmbtn_regkeyframe")
             {
                 HandMenu.RegisterKeyFrame();

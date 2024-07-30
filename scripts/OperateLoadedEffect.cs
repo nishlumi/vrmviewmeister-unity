@@ -41,6 +41,10 @@ namespace UserHandleSpace
         
         private string[] EffectNames;
 
+        public string oldGenre = "";
+        public string oldEffectName = "";
+           
+
         [SerializeField]
         private bool isVRMCollider;
         private float vrmColliderSize;
@@ -234,6 +238,8 @@ namespace UserHandleSpace
                         ret = effects[i];
                         EffectNames[0] = prm[0];
                         EffectNames[1] = prm[1];
+                        oldGenre = prm[0];
+                        oldEffectName = prm[1];
                         break;
                     }
                 }
@@ -272,6 +278,8 @@ namespace UserHandleSpace
 
             EffectNames[0] = prm[1];
             EffectNames[1] = prm[2];
+            oldGenre = prm[1];
+            oldEffectName = prm[2];
 
             RelaseEffectRef();
 
@@ -309,8 +317,8 @@ namespace UserHandleSpace
         {
             string ret = "";
             EffectCurrentStates ecs = new EffectCurrentStates();
-            ecs.genre = EffectNames[0];
-            ecs.effectName = EffectNames[1];
+            ecs.genre = oldGenre; // EffectNames[0];
+            ecs.effectName = oldEffectName; // EffectNames[1];
             ecs.effectList = new List<string>();
 
             List<GameObject> efs = ListEffects(ecs.genre);

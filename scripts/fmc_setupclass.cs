@@ -940,12 +940,21 @@ namespace UserVRMSpace
                 {
                     Transform hanstrans = animator.GetBoneTransform(HumanBodyBones.Head);
                     if (hanstrans == null) hanstrans = animator.GetBoneTransform(HumanBodyBones.Head);
+                    Transform eyetrans = null;
+                    if (animator.GetBoneTransform(HumanBodyBones.LeftEye) != null)
+                    {
+                        eyetrans = animator.GetBoneTransform(HumanBodyBones.LeftEye);
+                    }
+                    else
+                    {
+                        eyetrans = animator.GetBoneTransform(HumanBodyBones.Head);
+                    }
 
                     Vector3 newpos;
                     newpos.x = hanstrans.position.x;
-                    newpos.y = hanstrans.position.y; // bnd.y < hanstrans.position.y ? hanstrans.position.y : bnd.y;
+                    newpos.y = eyetrans.position.y; // bnd.y < hanstrans.position.y ? hanstrans.position.y : bnd.y;
                     newpos.z = (bnd.z < 0 ? bnd.z : bnd.z * -1f) - 0.2f;
-                    hans.transform.position = newpos;
+                    hans.transform.position = new Vector3(newpos.x, eyetrans.position.y, newpos.z);
 
                     vik.lookAtObject = hans.transform;
                     vik.lookAtHeadWeight = 1;
@@ -1075,7 +1084,8 @@ namespace UserVRMSpace
                     }
                     else*/
                     {
-                        newpos.y = spine.position.y;
+                        newpos.y = upche.position.y + 0.05f;
+                        //newpos.y = ((spine.position.y + upche.position.y) * 0.01f) * 95f;
                     }
                     newpos.x = spine.position.x;
                     
@@ -1126,7 +1136,7 @@ namespace UserVRMSpace
 
                     Vector3 hanspos = pt.position;
                     hanspos.x *= -1f;
-                    hanspos.y = 0;
+                    hanspos.y = 0.06f;
                     hanspos.z *= -1f;
                     hans.transform.localPosition = hanspos;
 
@@ -1158,7 +1168,7 @@ namespace UserVRMSpace
 
                     Vector3 hanspos = pt.position;
                     hanspos.x *= -1f;
-                    hanspos.y = 0;
+                    hanspos.y = 0.06f;
                     hanspos.z *= -1f;
                     hans.transform.localPosition = hanspos;
 

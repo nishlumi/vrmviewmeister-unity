@@ -5,6 +5,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using DG.Tweening;
 using RootMotion.FinalIK;
+using LumisIkApp;
 
 namespace UserHandleSpace
 {
@@ -14,10 +15,16 @@ namespace UserHandleSpace
     /// </summary>
     public class UserHandleOperation : MonoBehaviour
     {
+        public enum OperateType
+        {
+            MOVE = 0,
+            ROTATE = 1
+        }
         //public GameObject avatar;
         public bool IsFixTransform;
         public string PartsName;
         public GameObject relatedAvatar;
+        private VvmIk VvmIk;
         Animator animator;
         private Vector3 oldPosition;
         private Quaternion oldRotation;
@@ -34,6 +41,9 @@ namespace UserHandleSpace
 
         private const float cns_lowerleg_z = 0.05f;
 
+        private OperateType cur_operatetype = OperateType.MOVE;
+        public bool is_current_marker;
+
         private void Awake()
         {
             cnf = GameObject.Find("Canvas").GetComponent<ConfigSettingLabs>();
@@ -46,6 +56,8 @@ namespace UserHandleSpace
         void Start()
         {
             IsFixTransform = true;
+
+            VvmIk = relatedAvatar.GetComponent<VvmIk>();
 
             //animator = avatar.GetComponent<Animator>();
             oldPosition = new Vector3(this.transform.localPosition.x, this.transform.localPosition.y, this.transform.localPosition.z);
@@ -246,6 +258,46 @@ namespace UserHandleSpace
                         seq.Join(rl.transform.DOLocalMoveX(rlnewpos.x, 0.01f));
                         //seq.Join(rl.transform.DOLocalMoveY(rlnewpos.y, 0.01f));
                         seq.Join(rl.transform.DOLocalMoveZ(rlnewpos.z + cns_lowerleg_z, 0.01f));
+                    }
+                }
+                else if (PartsName == "leftlowerarm")
+                { //---synchronize hand and lower arm rotation.
+                    if ((this.transform.localRotation != oldRotation) && manim.IsRelatedLeftLowerArm2Hand)
+                    {
+                        Transform[] childTransforms = RootTransform.GetComponentsInChildren<Transform>();
+                        GameObject ll = null;
+                        foreach (Transform childTransform in childTransforms)
+                        {
+                            if (childTransform.name == "LeftHand")
+                            {
+                                ll = childTransform.gameObject;
+                                break;
+                            }
+                        }
+
+                        //Transform leftlowerarm = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
+                        Vector3 rot = transform.rotation.eulerAngles;
+                        seq.Join(ll.transform.DORotate(rot, 0.1f));
+                    }
+                }
+                else if (PartsName == "rightlowerarm")
+                { //---synchronize hand and lower arm rotation.
+                    if ((this.transform.localRotation != oldRotation) && manim.IsRelatedRightLowerArm2Hand)
+                    {
+                        Transform[] childTransforms = RootTransform.GetComponentsInChildren<Transform>();
+                        GameObject rl = null;
+                        foreach (Transform childTransform in childTransforms)
+                        {
+                            if (childTransform.name == "RightHand")
+                            {
+                                rl = childTransform.gameObject;
+                                break;
+                            }
+                        }
+
+                        //Transform rightlowerarm = animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
+                        Vector3 rot = transform.rotation.eulerAngles;
+                        seq.Join(rl.transform.DORotate(rot, 0.1f));
                     }
                 }
                 seq.Play();
@@ -579,12 +631,51 @@ namespace UserHandleSpace
                 }
 
             }
+            
+            /*
+            //---move and rotate divide
+            if (transform.localPosition != oldPosition)
+            {
+                if (cur_operatetype != OperateType.MOVE)
+                {
+                    if (VvmIk.GetIKMarker(gameObject))
+                    {
+                        VvmIk.SetIKRotationWeight(transform.gameObject, 0f);
+                    }
+                    
+                }
+                cur_operatetype = OperateType.MOVE;
+            }
+            else
+            {
+                if (cur_operatetype != OperateType.ROTATE)
+                {
+                    if (VvmIk.GetIKMarker(gameObject))
+                    {
+                        //TODO: 1. apply bone rotation to ik rotation. 
+                        //VvmIk.SetRotation_Bone2IK(transform.gameObject);
+                        Quaternion qt = VvmIk.GetRotation_Bone(gameObject);
+                        transform.rotation = qt;
+                        //2. on rotation weight
+                        VvmIk.SetIKRotationWeight(transform.gameObject, 1f);
+                    }
+                    
+                }
+                cur_operatetype = OperateType.ROTATE;
+
+
+            }
+            */
+
+            CheckCurrentMarker();
+
 
             oldPosition = this.transform.localPosition;
             oldRotation = this.transform.localRotation;
 
             
         }
+
         void LastUpdate()
         {
             //Debug.Log(transform.position);
@@ -609,10 +700,10 @@ namespace UserHandleSpace
             defaultPosition = new Vector3(transform.localPosition.x, transform.localPosition.y, transform.localPosition.z);
             defaultRotation = new Quaternion(transform.localRotation.x, transform.localRotation.y, transform.localRotation.z, transform.localRotation.w);
         }
-        public void LoadDefaultTransform()
+        public void LoadDefaultTransform(bool ismove, bool isrotate)
         {
-            transform.localPosition = defaultPosition;
-            transform.localRotation = defaultRotation;
+            if (ismove) transform.localPosition = defaultPosition;
+            if (isrotate) transform.localRotation = defaultRotation;
         }
         public void ActivateHandle()
         {
@@ -663,6 +754,19 @@ namespace UserHandleSpace
             mat = relatedAvatar.GetComponent<ManageAvatarTransform>();
             ovrm = relatedAvatar.GetComponent<OperateLoadedVRM>();
 
+        }
+        public void CheckCurrentMarker()
+        {
+            is_current_marker = false;
+            MeshRenderer mr = GetComponent<MeshRenderer>();
+            for (int i = 0; i <  mr.sharedMaterials.Length; i++)
+            {
+                if (mr.sharedMaterials[i].shader.name.ToLower() == "custom/outline")
+                {
+                    is_current_marker = true;
+                    break;
+                }
+            }
         }
     }
 }

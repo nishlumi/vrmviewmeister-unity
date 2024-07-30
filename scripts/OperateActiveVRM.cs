@@ -53,7 +53,7 @@ namespace UserHandleSpace
         private Quaternion defaultRotation;
 
         private ConfigSettingLabs configLab;
-        
+
 
         private ManageAnimation manim;
         private AvatarKeyOperator akeyo;
@@ -86,6 +86,7 @@ namespace UserHandleSpace
             oldRotation = this.transform.rotation;
 
             akeyo = new AvatarKeyOperator(manim.cfg_keymove_speed_rot, manim.cfg_keymove_speed_trans);
+            akeyo.SetTextGUI(KeyObjGlobalLocal);
 
             SaveDefaultTransform(true,true);
 
@@ -104,19 +105,20 @@ namespace UserHandleSpace
                     akeyo.SetSpeed(manim.cfg_keymove_speed_rot, manim.cfg_keymove_speed_trans);
                     if (ActiveType == AF_TARGETTYPE.VRM)
                     {
+                        akeyo.SetLoadedVRM(ActiveAvatar.GetComponent<OperateLoadedVRM>());
                         if (ovrm.IsEnableVRMA())
                         { //---when playing VRMAnimation, move VRM directly.
-                            akeyo.CallKeyOperation(ActiveAvatar, KeyObjGlobalLocal);
+                            akeyo.CallKeyOperation(ActiveAvatar);
                         }
                         else
                         {
-                            akeyo.CallKeyOperation(ActiveTrueIK, KeyObjGlobalLocal);
+                            akeyo.CallKeyOperation(ActiveTrueIK);
                         }
                         
                     }
                     else
                     {
-                        akeyo.CallKeyOperation(ActiveIKHandle, KeyObjGlobalLocal);
+                        akeyo.CallKeyOperation(ActiveIKHandle);
                     }
                     
                 }
@@ -708,7 +710,43 @@ namespace UserHandleSpace
             bool tog = (flag == 1 ? true : false);
             isEquipMode = tog;
 
+        }
+        public GameObject GetMoveTargetByController()
+        {
+            GameObject ret = null;
 
+            if (ActiveType == AF_TARGETTYPE.VRM)
+            {
+                if (ovrm.IsEnableVRMA())
+                { //---when playing VRMAnimation, move VRM directly.
+                    ret = ActiveAvatar;
+                }
+                else
+                {
+                    ret = ActiveTrueIK;
+                }
+            }
+            else
+            {
+                ret = ActiveIKHandle;
+            }
+            return ret;
+        }
+        public void TranslateByController(Vector2 v2)
+        {
+            akeyo.TranslateObjectFromController(GetMoveTargetByController(), v2);
+        }
+        public void UpDownByController(Vector2 v2)
+        {
+            akeyo.UpDownObjectFromController(GetMoveTargetByController(), v2);
+        }
+        public void RotateByController(Vector2 v2)
+        {
+            akeyo.RotateObjectFromController(GetMoveTargetByController(), v2);
+        }
+        public void ChangeOperationSpaceFromController()
+        {
+            akeyo.ChangeOperateSpaceFromController();
         }
         //========================================================================================================================
         //  New Activate methods: using Layer "Handle", "HiddenHandle"
@@ -1091,7 +1129,7 @@ namespace UserHandleSpace
                 GameObject child = ActiveIKHandle.transform.GetChild(i).gameObject;
                 if (child.GetComponent<UserHandleOperation>().PartsName == param)
                 {
-                    child.GetComponent<UserHandleOperation>().LoadDefaultTransform();
+                    child.GetComponent<UserHandleOperation>().LoadDefaultTransform(true,true);
                 }
 
             }
@@ -1101,7 +1139,7 @@ namespace UserHandleSpace
             UserHandleOperation[] bts = ActiveIKHandle.GetComponentsInChildren<UserHandleOperation>();
             foreach (UserHandleOperation bt in bts)
             {
-                bt.LoadDefaultTransform();
+                bt.LoadDefaultTransform(true,true);
             }
             /*
             for (int i = 0; i < ActiveIKHandle.transform.childCount; i++)

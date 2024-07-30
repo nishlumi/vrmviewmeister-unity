@@ -387,6 +387,10 @@ namespace UserHandleSpace
                             else naa.ikparent.transform.position = movedatavalues[0];
                         }
                     }*/
+                    if (options.isBuildDoTween == 0)
+                    {
+                        olvrm.SetJump(movedata.jumpPower.ToString() + "," + movedata.jumpNum.ToString());
+                    }
                 }
                 else
                 { //---Each IK parts---------------
@@ -523,6 +527,7 @@ namespace UserHandleSpace
             }
             else
             { //---OtherLight, Light, Camera, Effect, Text3D
+
                 if (targetObjects.compiled == 1)
                 {
                     if (movedata.jumpNum >= 1) seq.Join(naa.avatar.transform.DOJump(movedata.values[movedatavalues.Count - 1], movedata.jumpPower, movedata.jumpNum, frame.duration));
@@ -560,6 +565,9 @@ namespace UserHandleSpace
                 if (options.isBuildDoTween == 0)
                 { //---when not motion, directly set last indexed movedatavalues
                     naa.avatar.transform.position = movedatavalues[movedatavalues.Count - 1];
+                    
+                    olb.SetJump(movedata.jumpPower.ToString() + "," + movedata.jumpNum.ToString());
+                    
                 }
             }
             return seq;
@@ -2733,7 +2741,8 @@ namespace UserHandleSpace
                         await ole.SetEffectRef("Effects/" + movedata.effectGenre + "/" + movedata.effectName);
                         
                     },false);
-
+                    ole.oldGenre = movedata.effectGenre;
+                    ole.oldEffectName = movedata.effectName;
                     
                 }
             }
@@ -4333,7 +4342,14 @@ namespace UserHandleSpace
                         AnimationTargetParts pp = new AnimationTargetParts();
                         pp.animationType = AF_MOVETYPE.Punch;
                         pp.vrmBone = ParseIKBoneType.IKParent;
-                        pp.effectPunch = punch;
+                        pp.effectPunch.Copy(punch);
+                        /*pp.effectPunch.punch.x = punch.punch.x;
+                        pp.effectPunch.punch.y = punch.punch.y;
+                        pp.effectPunch.punch.z = punch.punch.z;
+                        pp.effectPunch.translationType = punch.translationType;
+                        pp.effectPunch.elasiticity = punch.elasiticity;
+                        pp.effectPunch.isEnable = punch.isEnable;
+                        pp.effectPunch.vibrato = punch.vibrato;*/
                         movingData.Add(pp);
                     }
                     AvatarShakeEffect shake = olb.GetShake();
@@ -4342,7 +4358,14 @@ namespace UserHandleSpace
                         AnimationTargetParts pp = new AnimationTargetParts();
                         pp.animationType = AF_MOVETYPE.Shake;
                         pp.vrmBone = ParseIKBoneType.IKParent;
-                        pp.effectShake = shake;
+                        pp.effectShake.Copy(shake);
+                        /*pp.effectShake.isEnable = shake.isEnable;
+                        pp.effectShake.translationType = shake.translationType;
+                        pp.effectShake.fadeOut = shake.fadeOut;
+                        pp.effectShake.strength = shake.strength;
+                        pp.effectShake.randomness = shake.randomness;
+                        pp.effectShake.vibrato = shake.vibrato;
+                        */
                         movingData.Add(pp);
                     }
 

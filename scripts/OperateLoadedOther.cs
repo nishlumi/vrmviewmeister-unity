@@ -172,7 +172,7 @@ namespace UserHandleSpace
             if ((currentAnim.wrapMode == WrapMode.Loop) || (currentAnim.wrapMode == WrapMode.PingPong) || (currentAnim.wrapMode == WrapMode.ClampForever)) return;
             if (manim.IsPlaying) return;
 
-            Debug.Log(param);
+            //Debug.Log("OnAnimationFinished="+param.ToString());
             string ret = currentAnim.clip.name + "," + param.ToString();
 #if !UNITY_EDITOR && UNITY_WEBGL
             SendPreviewingOtherObjectAnimationEnd(ret);

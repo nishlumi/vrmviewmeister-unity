@@ -36,7 +36,7 @@ public class CameraOperation1 : MonoBehaviour
     public Camera ARCameraR;
 
     [SerializeField]
-    private Camera mainCamera;
+    private GameObject mainCamera;
     private Vector3 lastMousePos;
     private Vector3 lastDragPos;
     private Vector3 newAngle = Vector3.zero;
@@ -83,6 +83,8 @@ public class CameraOperation1 : MonoBehaviour
         //Dbg_mouse = GameObject.Find("Dbg_mouse").GetComponent<Text>();
 
         distance_camera2viewpoint = configLab.GetFloatVal("distance_camera_viewpoint", 2.5f);
+
+        //### [Hidden the editor only UI] ###
 #if !UNITY_EDITOR && UNITY_WEBGL
         WebGLInput.captureAllKeyboardInput = false;
         //GameObject futureHide = GameObject.Find("Canvas").transform.Find("futureHide").gameObject;
@@ -129,6 +131,7 @@ public class CameraOperation1 : MonoBehaviour
         {
             if (Input.GetKey(KeyCode.W))
             {
+                
                 if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
                 {
                     //rotate to up
@@ -220,7 +223,7 @@ public class CameraOperation1 : MonoBehaviour
             }
             if (Input.GetKey(KeyCode.G))
             {
-
+                //---already used
             }
             if (Input.GetKey(KeyCode.B))
             {
@@ -249,6 +252,7 @@ public class CameraOperation1 : MonoBehaviour
                 KeyOperationModeView.text = "C";
                 KeyObjGlobalLocal.gameObject.SetActive(false);
             }
+            GetComponent<CtrlOperateCamera>().keyOperationMode = manim.keyOperationMode;
         }
         if (Input.GetKey(KeyCode.I))
         {
@@ -474,7 +478,7 @@ public class CameraOperation1 : MonoBehaviour
     /// </summary>
     public void ResetCameraFromOuter()
     {
-        mainCamera.transform.position = new Vector3(0f, 1f, -2.5f);
+        mainCamera.transform.position = new Vector3(0f, 1f, -3.5f);
         mainCamera.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
         ResetCenterTarget();
 
@@ -526,6 +530,21 @@ public class CameraOperation1 : MonoBehaviour
             }
         }
     }
+    public void SetTargetAndCameraDistance(float param)
+    {
+        targetObject.transform.position = new Vector3(mainCamera.transform.position.x, mainCamera.transform.position.y, mainCamera.transform.position.z);
+        targetObject.transform.Translate(new Vector3(0, 0, param));
+        manim.cfg_dist_cam2view = param;
+    }
+    
+    //===========================================================================
+    // Translate/Rotate Operation for external functions
+    //===========================================================================
+
+    /// <summary>
+    /// Move main camera to center position of VRM
+    /// </summary>
+    /// <param name="param"></param>
     public void FocusCameraToVRMFromOuter(string param)
     {
         ManageAnimation manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
@@ -573,7 +592,7 @@ public class CameraOperation1 : MonoBehaviour
                 OperateLoadedBase ovrm = nav.avatar.GetComponent<OperateLoadedBase>();
 
                 Vector3 newpos = new Vector3(
-                    ovrm.relatedHandleParent.transform.position.x, ovrm.relatedHandleParent.transform.position.y, ovrm.relatedHandleParent.transform.position.z - manim.cfg_dist_cam2view
+                    ovrm.relatedHandleParent.transform.position.x, ovrm.relatedHandleParent.transform.position.y, ovrm.relatedHandleParent.transform.position.z
                 );
 
                 if (ovrm.targetType == AF_TARGETTYPE.VRM)
@@ -582,14 +601,18 @@ public class CameraOperation1 : MonoBehaviour
                     //GameObject bodyobj = mat.GetBodyMesh();
                     //Bounds bnd = bodyobj.GetComponent<SkinnedMeshRenderer>().bounds;
 
-                    newpos.y += mat.GetMaximumHeightRenderer(mat.CheckSkinnedMeshAvailable()); // (bnd.size.y / 2f);
+                    newpos.y += (mat.GetMaximumHeightRenderer(mat.CheckSkinnedMeshAvailable()) / 2f); // (bnd.size.y / 2f);
                 }
-                Camera.main.transform.position = newpos;
-
-                newpos.z += manim.cfg_dist_cam2view;
-                Camera.main.transform.DOLookAt(newpos, 0.1f);
                 targetObject.transform.position = newpos;
-
+                mainCamera.transform.position = newpos;
+                mainCamera.transform.Translate(Vector3.back * manim.cfg_dist_cam2view);
+                
+                
+                //newpos.z += manim.cfg_dist_cam2view;
+                //targetObject.transform.position = newpos;
+                mainCamera.transform.DOLookAt(targetObject.transform.position, 0.1f);
+                //SetTargetAndCameraDistance(manim.cfg_dist_cam2view);
+                
                 break;
             }
         }
@@ -620,6 +643,11 @@ public class CameraOperation1 : MonoBehaviour
         ReceiveStringVal(ret);
 #endif
     }
+
+    /// <summary>
+    /// Rotate by user keyboard input
+    /// </summary>
+    /// <param name="param"></param>
     public void RotateCameraPosFromOuter(string param)
     {
         string[] prm = param.Split(',');
@@ -656,6 +684,11 @@ public class CameraOperation1 : MonoBehaviour
 
 
     }
+
+    /// <summary>
+    /// move by user keyboard input
+    /// </summary>
+    /// <param name="param"></param>
     public void TranslateCameraPosFromOuter(string param)
     {
         string[] prm = param.Split(',');
@@ -673,6 +706,11 @@ public class CameraOperation1 : MonoBehaviour
 
 
     }
+
+    /// <summary>
+    /// progress/back by user keyboard input
+    /// </summary>
+    /// <param name="zpos"></param>
     public void ProgressCameraPosFromOuter(float zpos)
     {
         Vector3 pos = new Vector3(0, 0, zpos);
@@ -699,7 +737,25 @@ public class CameraOperation1 : MonoBehaviour
         }
         mr.sharedMaterial.SetColor("_Color", col);
     }
-
+    public void ChangeOperateTarget(KeyOperationMode kmode)
+    {
+        if (kmode == KeyOperationMode.MoveAvatar)
+        {
+            manim.keyOperationMode = KeyOperationMode.MoveAvatar;
+            KeyOperationModeView.text = "O";
+            KeyObjGlobalLocal.gameObject.SetActive(true);
+        }
+        else if (kmode == KeyOperationMode.MoveCamera)
+        {
+            manim.keyOperationMode = KeyOperationMode.MoveCamera;
+            KeyOperationModeView.text = "C";
+            KeyObjGlobalLocal.gameObject.SetActive(false);
+        }
+    }
+    public KeyOperationMode GetCurrentOperationTarget()
+    {
+        return manim.keyOperationMode;
+    }
 
     //*********************************************************************************************************
     //  Each settings method

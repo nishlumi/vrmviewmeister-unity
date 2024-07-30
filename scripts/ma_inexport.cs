@@ -761,22 +761,54 @@ namespace UserHandleSpace
                         string lste = lst[lst_i];
                         string[] graitem = lste.Split(CST_SEPSTR_PROP);
                         int gravIndex = int.TryParse(graitem[0], out gravIndex) ? gravIndex : -1;
-                        if ((gravIndex > -1) && (gravIndex < actor.gravityBoneList.Count))
+                        if (file_version >= 6)
                         {
-                            VRMGravityInfo vgi = new VRMGravityInfo();
-                            string[] g_name = actor.gravityBoneList[gravIndex].Split('/');
-                            vgi.comment = g_name[0];
-                            vgi.rootBoneName = g_name[1];
-                            float power = float.TryParse(graitem[1], out power) ? power : 0f;
-                            vgi.power = power;
-                            float x = float.TryParse(graitem[2], out x) ? x : 0f;
-                            float y = float.TryParse(graitem[3], out y) ? y : -1f;
-                            float z = float.TryParse(graitem[4], out z) ? z : 0f;
-                            vgi.dir.x = x;
-                            vgi.dir.y = y;
-                            vgi.dir.z = z;
-                            atp.gravity.list.Add(vgi);
+                            if (gravIndex == -1)
+                            {
+                                int boneListHit = actor.gravityBoneList.FindIndex(match =>
+                                {
+                                    if (match == graitem[0]) return true;
+                                    return false;
+                                });
+                                if (boneListHit > -1)
+                                {
+                                    VRMGravityInfo vgi = new VRMGravityInfo();
+                                    string[] g_name = actor.gravityBoneList[boneListHit].Split('/');
+                                    vgi.comment = g_name[0];
+                                    vgi.rootBoneName = g_name[1];
+                                    float power = float.TryParse(graitem[1], out power) ? power : 0f;
+                                    vgi.power = power;
+                                    float x = float.TryParse(graitem[2], out x) ? x : 0f;
+                                    float y = float.TryParse(graitem[3], out y) ? y : -1f;
+                                    float z = float.TryParse(graitem[4], out z) ? z : 0f;
+                                    vgi.dir.x = x;
+                                    vgi.dir.y = y;
+                                    vgi.dir.z = z;
+                                    atp.gravity.list.Add(vgi);
+                                }
+                            }
                         }
+                        else
+                        {
+                            if ((gravIndex > -1) && (gravIndex < actor.gravityBoneList.Count))
+                            {
+
+                                VRMGravityInfo vgi = new VRMGravityInfo();
+                                string[] g_name = actor.gravityBoneList[gravIndex].Split('/');
+                                vgi.comment = g_name[0];
+                                vgi.rootBoneName = g_name[1];
+                                float power = float.TryParse(graitem[1], out power) ? power : 0f;
+                                vgi.power = power;
+                                float x = float.TryParse(graitem[2], out x) ? x : 0f;
+                                float y = float.TryParse(graitem[3], out y) ? y : -1f;
+                                float z = float.TryParse(graitem[4], out z) ? z : 0f;
+                                vgi.dir.x = x;
+                                vgi.dir.y = y;
+                                vgi.dir.z = z;
+                                atp.gravity.list.Add(vgi);
+                            }
+                        }
+                        
                         
                     }
                 }
@@ -1631,7 +1663,16 @@ namespace UserHandleSpace
                         for (int i = 0; i < atp.gravity.list.Count; i++)
                         {
                             VRMGravityInfo gra = atp.gravity.list[i];
-                            ret.Add(i.ToString() + "=" + gra.power + CST_SEPSTR_PROP + gra.dir.x.ToString() + CST_SEPSTR_PROP + gra.dir.y.ToString() + CST_SEPSTR_PROP + gra.dir.z.ToString());
+                            //---version <= 5
+                            //ret.Add(i.ToString() + CST_SEPSTR_PROP + gra.power + CST_SEPSTR_PROP + gra.dir.x.ToString() + CST_SEPSTR_PROP + gra.dir.y.ToString() + CST_SEPSTR_PROP + gra.dir.z.ToString());
+                            //---version >= 6
+                            ret.Add(
+                                gra.comment + "/" + gra.rootBoneName + CST_SEPSTR_PROP + 
+                                gra.power + CST_SEPSTR_PROP + 
+                                gra.dir.x.ToString() + CST_SEPSTR_PROP + 
+                                gra.dir.y.ToString() + CST_SEPSTR_PROP + 
+                                gra.dir.z.ToString()
+                            );
                         }
                     }
                     else if (atp.animationType == AF_MOVETYPE.VRMIKProperty)
@@ -2247,7 +2288,8 @@ namespace UserHandleSpace
 //===========================================================================================================================
         public void NewProject()
         {
-            try
+            string ret = "";
+            //try
             {
                 //---destroy current project
                 for (int i = currentProject.casts.Count - 1; i >= 0; i--)
@@ -2384,12 +2426,15 @@ namespace UserHandleSpace
                 }
                 */
             }
-            catch (Exception e)
+            /*catch (Exception e)
             {
                 Debug.Log(e.Message);
-            }
-            
-
+            }*/
+            Debug.Log("prepare mkey");
+            ret = "mkey," + currentProject.mkey.ToString();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
         }
         public void OpenProject(string url)
         {
@@ -2416,7 +2461,7 @@ namespace UserHandleSpace
         public async void LoadProject(string param)
         {
             //---reset current project (do not merge)
-            NewProject();
+            //NewProject();
 
             AnimationProject proj = JsonUtility.FromJson<AnimationProject>(param);
             currentProject = await ConvertProjectNative(proj);
@@ -2990,6 +3035,8 @@ namespace UserHandleSpace
                     //---sample avatar height --> frame actor height
                     Array.Copy(asm.bodyHeight, naf.bodyHeight, asm.bodyHeight.Length);
 
+
+
                     naf.bodyInfoList.Clear();
                     /*asm.bodyInfoList.ForEach(item =>
                     {
@@ -3253,6 +3300,8 @@ namespace UserHandleSpace
                 //---AnimationAvatar -> AnimationSingleMotion: bodyHeight information. (as current avatar height info!!)
                 Array.Copy(naf.avatar.bodyHeight, asm.bodyHeight, naf.avatar.bodyHeight.Length);
                 asm.bodyInfoList = naf.bodyInfoList;
+
+                asm.gravityBoneList = naf.gravityBoneList;
 
                 List<Vector3> curList = naf.avatar.avatar.GetComponent<OperateLoadedVRM>().GetTPoseBodyList();
 

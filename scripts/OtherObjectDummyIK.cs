@@ -122,6 +122,7 @@ public class OtherObjectDummyIK : MonoBehaviour
                     }
                     else
                     {
+                        Debug.Log("ChangeTransformOnUpdate");
                         ChangeTransformOnUpdate(JsonUtility.ToJson(bti));
                     }
                 }

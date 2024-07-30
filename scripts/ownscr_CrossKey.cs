@@ -22,6 +22,7 @@ namespace UserHandleSpace
         private Vector3 trackcurpos = Vector3.zero;
         public string MoveTarget = "c";
         public string OperationType = "translate"; //translate, rotate, size
+        public Space SpaceType = Space.World;
 
         // Start is called before the first frame update
         void Start()
@@ -133,27 +134,27 @@ namespace UserHandleSpace
             if (btnname == "tp_forward")
             {
                 
-                tran.Translate(Vector3.forward * MoveRate, Space.Self);
+                tran.Translate(Vector3.forward * MoveRate, SpaceType);
             }
             else if (btnname == "tp_back")
             {
-                tran.Translate(Vector3.back * MoveRate, Space.Self);
+                tran.Translate(Vector3.back * MoveRate, SpaceType);
             }
             else if (btnname == "tp_right")
             {
-                tran.Translate(Vector3.right * MoveRate, Space.Self);
+                tran.Translate(Vector3.right * MoveRate, SpaceType);
             }
             else if (btnname == "tp_left")
             {
-                tran.Translate(Vector3.left * MoveRate, Space.Self);
+                tran.Translate(Vector3.left * MoveRate, SpaceType);
             }
             else if (btnname == "tp_up")
             {
-                tran.Translate(Vector3.up * MoveRate, Space.Self);
+                tran.Translate(Vector3.up * MoveRate, SpaceType);
             }
             else if (btnname == "tp_down")
             {
-                tran.Translate(Vector3.down * MoveRate, Space.Self);
+                tran.Translate(Vector3.down * MoveRate, SpaceType);
             }
         }
 
@@ -166,27 +167,27 @@ namespace UserHandleSpace
         {
             if (btnname == "tp_forward") //Z axis
             {
-                tran.Rotate(Vector3.forward * RotateRate, Space.Self);
+                tran.Rotate(Vector3.forward * RotateRate, SpaceType);
             }
             else if (btnname == "tp_back") //Z axis
             {
-                tran.Rotate(Vector3.back * RotateRate, Space.Self);
+                tran.Rotate(Vector3.back * RotateRate, SpaceType);
             }
             else if (btnname == "tp_right") //X axis
             {
-                tran.Rotate(Vector3.right * RotateRate, Space.Self);
+                tran.Rotate(Vector3.right * RotateRate, SpaceType);
             }
             else if (btnname == "tp_left") //X axis
             {
-                tran.Rotate(Vector3.left * RotateRate, Space.Self);
+                tran.Rotate(Vector3.left * RotateRate, SpaceType);
             }
             else if (btnname == "tp_up") //Y axis
             {
-                tran.Rotate(Vector3.up * RotateRate, Space.Self);
+                tran.Rotate(Vector3.up * RotateRate, SpaceType);
             }
             else if (btnname == "tp_down") //Y axis
             {
-                tran.Rotate(Vector3.down * RotateRate, Space.Self);
+                tran.Rotate(Vector3.down * RotateRate, SpaceType);
             }
         }
         public void TargetResize(Transform tran, string btnname)

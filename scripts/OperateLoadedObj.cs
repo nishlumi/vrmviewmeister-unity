@@ -1137,6 +1137,15 @@ namespace UserHandleSpace
             UserGroundOperation ugo = ikparent.AddComponent<UserGroundOperation>();
             ugo.SetRelatedAvatar(avatar);
 
+            Vector3 Eyepos = Vector3.zero;
+            if (animator.GetBoneTransform(HumanBodyBones.LeftEye) != null)
+            {
+                Eyepos = animator.GetBoneTransform(HumanBodyBones.LeftEye).transform.position;
+            }
+            else
+            {
+                Eyepos = animator.GetBoneTransform(HumanBodyBones.Head).transform.position;
+            }
             GameObject copycamera = (GameObject)Resources.Load("EyeViewHandleSphere");
             GameObject camera = Instantiate(copycamera, copycamera.transform.position, Quaternion.identity, ikparent.transform);
             UserHandleOperation uhocamera = camera.GetComponent<UserHandleOperation>();
@@ -1144,8 +1153,9 @@ namespace UserHandleSpace
             Vector3 pos = animator.GetBoneTransform(HumanBodyBones.Head).transform.position;
             pos.Set(pos.x, pos.y, pos.z - 0.05f);
             camera.tag = "IKHandle";
+            uhocamera.PartsName = "eyeviewhandle";
             uhocamera.SetRelatedAvatar(avatar);
-            camera.transform.position = new Vector3(pos.x, pos.y, -0.5f);
+            camera.transform.position = new Vector3(pos.x, Eyepos.y, -0.5f);
             camera.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
             uhocamera.SaveDefaultTransform();
             uhocamera.RootTransform = ikparent.transform;
@@ -1172,10 +1182,11 @@ namespace UserHandleSpace
             uholookat.PartsName = "lookat";
             uholookat.SetRelatedAvatar(avatar);
             Vector3 lookatpos = animator.GetBoneTransform(HumanBodyBones.Head).transform.position;
-            lookat.transform.position = new Vector3(headpos.x, headpos.y, -1f);
+            lookat.transform.position = new Vector3(headpos.x, Eyepos.y, -1f);
             uholookat.SaveDefaultTransform();
             uholookat.RootTransform = ikparent.transform;
 
+            //---Aim=================================
             GameObject copyaim = (GameObject)Resources.Load("IKHandleObjAim");
             GameObject aim = Instantiate(copyaim, copyaim.transform.position, Quaternion.identity, ikparent.transform);
             UserHandleOperation uhoaim = aim.GetComponent<UserHandleOperation>();
@@ -1185,8 +1196,12 @@ namespace UserHandleSpace
             uhoaim.SetRelatedAvatar(avatar);
             uhoaim.RootTransform = ikparent.transform;
 
-            //---Chest is optional======
-            Transform upperchesttrans = animator.GetBoneTransform(HumanBodyBones.Chest);
+            //---Chest is optional======================
+            Transform upperchesttrans = animator.GetBoneTransform(HumanBodyBones.UpperChest);
+            if (upperchesttrans == null)
+            {
+                upperchesttrans = animator.GetBoneTransform(HumanBodyBones.Chest);
+            }
             if (upperchesttrans == null)
             {
                 upperchesttrans = animator.GetBoneTransform(HumanBodyBones.Spine);
@@ -1195,6 +1210,7 @@ namespace UserHandleSpace
             aim.transform.rotation = CmdZeroRotation; // upperchesttrans.transform.rotation;
             uhoaim.SaveDefaultTransform();
 
+            Transform necktrans = animator.GetBoneTransform(HumanBodyBones.Neck);
             GameObject copychest = (GameObject)Resources.Load("IKHandleSphereChest");
             GameObject upperchest = Instantiate(copychest, copychest.transform.position, Quaternion.identity, ikparent.transform);
             UserHandleOperation uhoupperchest = upperchest.GetComponent<UserHandleOperation>();
@@ -1202,7 +1218,7 @@ namespace UserHandleSpace
             upperchest.tag = "IKHandle";
             uhoupperchest.PartsName = "chest";
             uhoupperchest.SetRelatedAvatar(avatar);
-            upperchest.transform.position = upperchesttrans.transform.position;
+            upperchest.transform.position = necktrans.transform.position;
             upperchest.transform.rotation = Quaternion.Euler(Vector3.zero);
             uhoupperchest.SaveDefaultTransform();
             uhoupperchest.RootTransform = ikparent.transform;
@@ -1347,6 +1363,7 @@ namespace UserHandleSpace
             UserHandleOperation uholleg = leftleg.GetComponent<UserHandleOperation>();
             leftleg.name = "LeftLeg"; // + avatar.name;
             leftleg.transform.rotation = CmnRotation;
+            //leftleg.transform.position = new Vector3(leftleg.transform.position.x, 0.06f, leftleg.transform.position.z);
             leftleg.tag = "IKHandle";
             uholleg.PartsName = "leftleg";
             uholleg.SetRelatedAvatar(avatar);
@@ -1377,6 +1394,7 @@ namespace UserHandleSpace
             UserHandleOperation uhorleg = rightleg.GetComponent<UserHandleOperation>();
             rightleg.name = "RightLeg";// + avatar.name;
             rightleg.transform.rotation = CmnRotation;
+            //rightleg.transform.position = new Vector3(rightleg.transform.position.x, 0.06f, rightleg.transform.position.z);
             rightleg.tag = "IKHandle";
             uhorleg.PartsName = "rightleg";
             uhorleg.SetRelatedAvatar(avatar);

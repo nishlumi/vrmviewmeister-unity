@@ -421,6 +421,180 @@ namespace LumisIkApp
             }
         }
 
+        public bool GetIKMarker(GameObject obj)
+        {
+            bool ret = false;
+
+            if (LeftHand.gameObject.name == obj.name)
+            {
+                ret = true;
+            }
+            else if (RightHand.gameObject.name == obj.name)
+            {
+                ret = true;
+            }
+            else if (LeftFoot.gameObject.name == obj.name)
+            {
+                ret = true;
+            }
+            else if (RightFoot.gameObject.name == obj.name)
+            {
+                ret = true;
+            }
+            return ret;
+        }
+        public float GetIKPositionWeight(GameObject obj)
+        {
+            float ret = -1;
+
+            if (LeftHand.gameObject.name == obj.name)
+            {
+                ret = LeftHandPositionWeight;
+            }else if (RightHand.gameObject.name == obj.name)
+            {
+                ret = RightHandPositionWeight;
+            }else if (LeftFoot.gameObject.name == obj.name)
+            {
+                ret = LeftFootPositionWeight;
+            }else if (RightFoot.gameObject.name == obj.name)
+            {
+                ret = RightFootPositionWeight;
+            }
+            return ret;
+        }
+        public void SetIKPositionWeight(GameObject obj, float weight)
+        {
+            if (LeftHand.gameObject.name == obj.name)
+            {
+                LeftHandPositionWeight = weight;
+            }
+            else if (RightHand.gameObject.name == obj.name)
+            {
+                RightHandPositionWeight = weight;
+            }
+            else if (LeftFoot.gameObject.name == obj.name)
+            {
+                LeftFootPositionWeight = weight;
+            }
+            else if (RightFoot.gameObject.name == obj.name)
+            {
+                RightFootPositionWeight = weight;
+            }
+        }
+        public float GetIKRotationWeight(GameObject obj)
+        {
+            float ret = -1;
+
+            if (LeftHand.gameObject.name == obj.name)
+            {
+                ret = LeftHandRotationWeight;
+            }
+            else if (RightHand.gameObject.name == obj.name)
+            {
+                ret = RightHandRotationWeight;
+            }
+            else if (LeftFoot.gameObject.name == obj.name)
+            {
+                ret = LeftFootRotationWeight;
+            }
+            else if (RightFoot.gameObject.name == obj.name)
+            {
+                ret = RightFootRotationWeight;
+            }
+            return ret;
+        }
+        public void SetIKRotationWeight(GameObject obj, float weight)
+        {
+            if (LeftHand.gameObject.name == obj.name)
+            {
+                LeftHandRotationWeight = weight;
+            }
+            else if (RightHand.gameObject.name == obj.name)
+            {
+                RightHandRotationWeight = weight;
+            }
+            else if (LeftFoot.gameObject.name == obj.name)
+            {
+                LeftFootRotationWeight = weight;
+            }
+            else if (RightFoot.gameObject.name == obj.name)
+            {
+                RightFootRotationWeight = weight;
+            }
+        }
+        public Quaternion GetRotation_Bone(GameObject obj)
+        {
+            Quaternion ret = new Quaternion(0, 0, 0, 0);
+
+            if (LeftHand.gameObject.name == obj.name)
+            {
+                Transform bone = animator.GetBoneTransform(HumanBodyBones.LeftHand);
+                ret = bone.rotation;
+            }
+            else if (RightHand.gameObject.name == obj.name)
+            {
+                Transform bone = animator.GetBoneTransform(HumanBodyBones.RightHand);
+                ret = bone.rotation;
+            }
+            else if (LeftFoot.gameObject.name == obj.name)
+            {
+                Transform bone = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
+                ret = bone.rotation;
+            }
+            else if (RightFoot.gameObject.name == obj.name)
+            {
+                Transform bone = animator.GetBoneTransform(HumanBodyBones.RightFoot);
+                ret = bone.rotation;
+            }
+            return ret;
+        }
+        public void SetRotation_Bone2IK(GameObject obj)
+        {
+            if (LeftHand.gameObject.name == obj.name)
+            {
+                if (ActiveLeftHand)
+                {
+                    if (LeftHand != null)
+                    {
+                        Transform bone = animator.GetBoneTransform(HumanBodyBones.LeftHand);
+                        animator.SetIKRotation(AvatarIKGoal.LeftHand, bone.rotation);
+                    }
+                }
+            }
+            else if (RightHand.gameObject.name == obj.name)
+            {
+                if (ActiveRightHand)
+                {
+                    if (RightHand != null)
+                    {
+                        Transform bone = animator.GetBoneTransform(HumanBodyBones.RightHand);
+                        animator.SetIKRotation(AvatarIKGoal.RightHand, bone.rotation);
+                    }
+                }
+            }
+            else if (LeftFoot.gameObject.name == obj.name)
+            {
+                if (ActiveLeftFoot)
+                {
+                    if (LeftFoot != null)
+                    {
+                        Transform bone = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
+                        animator.SetIKRotation(AvatarIKGoal.LeftFoot, bone.rotation);
+                    }
+                }
+            }
+            else if (RightFoot.gameObject.name == obj.name)
+            {
+                if (ActiveRightFoot)
+                {
+                    if (RightFoot != null)
+                    {
+                        Transform bone = animator.GetBoneTransform(HumanBodyBones.RightFoot);
+                        animator.SetIKRotation(AvatarIKGoal.RightFoot, bone.rotation);
+                    }
+                }
+            }
+        }
     }
 
 }

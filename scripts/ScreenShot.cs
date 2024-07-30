@@ -4,6 +4,7 @@ using System.Collections;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using UserHandleSpace;
+using UserUISpace;
 
 public class ScreenShot : MonoBehaviour
 {
@@ -88,6 +89,40 @@ public class ScreenShot : MonoBehaviour
             LayerCullingShow(Cam3DBottom, "Stage");
         }
         msgarea.renderMode = RenderMode.ScreenSpaceOverlay;
+
+    }
+    public void FreeCaptureScreen(Camera cam, UserUIARWin HideUI)
+    {
+        StartCoroutine(_FreeCaptureScreenBody(true, cam, HideUI));
+    }
+    IEnumerator _FreeCaptureScreenBody(bool isTransparent, Camera cam, UserUIARWin HideUI)
+    {
+        HideUI.ShowUI(false);
+
+        yield return new WaitForEndOfFrame();
+
+        Texture2D screenShot = new Texture2D(Screen.width, Screen.height, TextureFormat.RGBA32, false);
+
+        RenderTexture rt = new RenderTexture(screenShot.width, screenShot.height, 32);
+        RenderTexture prev = cam.targetTexture;
+
+        cam.targetTexture = rt;
+        cam.Render();
+        cam.targetTexture = prev;
+
+        RenderTexture.active = rt;
+        screenShot.ReadPixels(new Rect(0, 0, screenShot.width, screenShot.height), 0, 0);
+        screenShot.Apply();
+
+        byte[] bytes = screenShot.EncodeToPNG();
+        UnityEngine.Object.Destroy(screenShot);
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+        sendCapture(bytes, bytes.Length);
+#endif
+        yield return new WaitForEndOfFrame();
+
+        HideUI.ShowUI(true);
 
     }
     public byte[] CaptureThumbnail(int isTransparent, GameObject targetAvatar)

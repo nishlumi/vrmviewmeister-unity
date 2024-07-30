@@ -11,6 +11,7 @@ using TriLibCore.SFB;
 
 
 using UserHandleSpace;
+using LumisIkApp;
 
 namespace UserUISpace
 {
@@ -57,7 +58,8 @@ namespace UserUISpace
         {
             //---toolbar
             Button tlb_btn_newobj = rootElement.Q<Button>("tlb_btn_newobj");
-            tlb_btn_newobj.clicked += Newobj_OnClick;
+            //tlb_btn_newobj.clicked += Newobj_OnClick;
+            tlb_btn_newobj.RegisterCallback<PointerDownEvent>(Newobj_OnClick, TrickleDown.TrickleDown);
 
             /*rootElement.Q<Button>("tlb_menunew_vrm").clicked += Newobj_VRM_OnClick;
             rootElement.Q<Button>("tlb_menunew_oobject").clicked += Newobj_OtherObject_OnClick;
@@ -282,12 +284,12 @@ namespace UserUISpace
         //===============================================================================================
         // menunew
 
-        void Newobj_OnClick()
+        void Newobj_OnClick(PointerDownEvent evt = null)
         {
             VisualElement panel = rootElement.Q<VisualElement>("tlb_menu_new");
             ShowHideToolbarMenu(panel);
         }
-        void Newobj_VRM_OnClick()
+        void Newobj_VRM_OnClick(PointerDownEvent evt = null)
         {
             GameObject animatearea = GameObject.Find("AnimateArea");
             UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
@@ -295,7 +297,7 @@ namespace UserUISpace
 
             Newobj_OnClick();
         }
-        void Newobj_OtherObject_OnClick()
+        void Newobj_OtherObject_OnClick(PointerDownEvent evt = null)
         {
             GameObject animatearea = GameObject.Find("AnimateArea");
             UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
@@ -303,7 +305,7 @@ namespace UserUISpace
 
             Newobj_OnClick();
         }
-        void Newobj_SpotLight_OnClick()
+        void Newobj_SpotLight_OnClick(PointerDownEvent evt = null)
         {
             GameObject animatearea = GameObject.Find("AnimateArea");
             UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
@@ -311,7 +313,7 @@ namespace UserUISpace
 
             Newobj_OnClick();
         }
-        void Newobj_PointLight_OnClick()
+        void Newobj_PointLight_OnClick(PointerDownEvent evt = null)
         {
             GameObject animatearea = GameObject.Find("AnimateArea");
             UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
@@ -319,7 +321,7 @@ namespace UserUISpace
 
             Newobj_OnClick();
         }
-        void Newobj_Camera_OnClick()
+        void Newobj_Camera_OnClick(PointerDownEvent evt = null)
         {
             GameObject animatearea = GameObject.Find("AnimateArea");
             UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
@@ -327,7 +329,7 @@ namespace UserUISpace
 
             Newobj_OnClick();
         }
-        void Newobj_Effect_OnClick()
+        void Newobj_Effect_OnClick(PointerDownEvent evt = null)
         {
             GameObject animatearea = GameObject.Find("AnimateArea");
             UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
@@ -335,7 +337,7 @@ namespace UserUISpace
 
             Newobj_OnClick();
         }
-        void Newobj_Text_OnClick()
+        void Newobj_Text_OnClick(PointerDownEvent evt = null)
         {
             GameObject animatearea = GameObject.Find("AnimateArea");
             UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
@@ -343,7 +345,7 @@ namespace UserUISpace
 
             Newobj_OnClick();
         }
-        void Newobj_3DText_OnClick()
+        void Newobj_3DText_OnClick(PointerDownEvent evt = null)
         {
             GameObject animatearea = GameObject.Find("AnimateArea");
             UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
@@ -352,7 +354,7 @@ namespace UserUISpace
 
             Newobj_OnClick();
         }
-        void Newobj_Image_OnClick()
+        void Newobj_Image_OnClick(PointerDownEvent evt = null)
         {
             GameObject animatearea = GameObject.Find("AnimateArea");
             UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
@@ -360,7 +362,7 @@ namespace UserUISpace
 
             Newobj_OnClick();
         }
-        void Newobj_UImage_OnClick()
+        void Newobj_UImage_OnClick(PointerDownEvent evt = null)
         {
             GameObject animatearea = GameObject.Find("AnimateArea");
             UserVRMSpace.FileMenuCommands fmc = animatearea.GetComponent<UserVRMSpace.FileMenuCommands>();
@@ -490,6 +492,19 @@ namespace UserUISpace
         {
             OperateActiveVRM oav =  GameObject.Find("IKHandleParent").GetComponent<OperateActiveVRM>();
 
+            CameraOperation1 camo1 = GameObject.Find("WebXRCameraSet").GetComponent<CameraOperation1>();
+            TextField anp_input1 = rootElement.Q<TextField>("anp_input1");
+            camo1.CenteringCameraForAvatar(oav.ActiveAvatar.name);
+            return;
+
+            ManageAvatarTransform mat = oav.ActiveAvatar.GetComponent<ManageAvatarTransform>();
+            mat.GetIKTransformAll_body();
+            return;
+
+            //---2024/07/24
+            manim.NewProject();
+            return;
+
             //---2023/02/12
             VVMMotionRecorder vmrec = oav.ActiveAvatar.GetComponent<VVMMotionRecorder>();
             //Debug.Log(vmrec.GenerateAnimationCurve());
@@ -502,7 +517,6 @@ namespace UserUISpace
             return;
 
             //---2024/01/19
-            ManageAvatarTransform mat = oav.ActiveAvatar.GetComponent<ManageAvatarTransform>();
             mat.MirrorPose();
             return;
 
@@ -859,12 +873,26 @@ namespace UserUISpace
             OperateLoadedVRM ovrm = oav.ActiveAvatar.GetComponent<OperateLoadedVRM>();
             ManageAvatarTransform mat = oav.ActiveAvatar.GetComponent<ManageAvatarTransform>();
 
-            TextField anp_input1 = rootElement.Q<TextField>("anp_input1");
+            //TextField anp_input1 = rootElement.Q<TextField>("anp_input1");
 
-            GameObject animatearea = GameObject.Find("AnimateArea");
+            //GameObject animatearea = GameObject.Find("AnimateArea");
 
-            mat.SetIKTransformAll2(anp_input1.text);
+            //mat.SetIKTransformAll2(anp_input1.text);
 
+            /*
+            Animator anim = oav.ActiveAvatar.GetComponent<Animator>();
+            Transform lh = anim.GetBoneTransform(HumanBodyBones.LeftHand);
+            Debug.Log(lh.localRotation.eulerAngles);
+            GameObject ikla = ovrm.GetIKHandleByPartsName("leftarm");
+            ikla.transform.rotation = lh.rotation * Quaternion.Euler(new Vector3(0, 180f, 0)) * Quaternion.Euler(new Vector3(0, 90f,0));
+
+            Transform rh = anim.GetBoneTransform(HumanBodyBones.RightHand);
+            Debug.Log(rh.localRotation.eulerAngles);
+            GameObject ikra = ovrm.GetIKHandleByPartsName("rightarm");
+            ikra.transform.rotation = rh.rotation * Quaternion.Euler(new Vector3(0, 180f, 0)) * Quaternion.Euler(new Vector3(0, -90f, 0));
+            */
+            //bool gir2n = ovrm.GetIKGoalRotation2Natural();
+            //ovrm.SetIKGoalRotation2Natural(!gir2n);            
         }
         void anp_btn_fk2ik_OnClick()
         {

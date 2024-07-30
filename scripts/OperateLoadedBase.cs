@@ -35,6 +35,7 @@ namespace UserHandleSpace
         public const string SHAD_ICE = "custom/iceshader";
         public const string SHAD_MICRA = "custom/pixelizetexture";
         public const string SHAD_CUSTOMCUTOUT = "Unlit/CustomCutout";
+        public const string SHAD_UNLITTRANSPARENT = "Unlit/Transparent";
 
 
         public string Title;
@@ -98,6 +99,7 @@ namespace UserHandleSpace
             effectShake = new AvatarShakeEffect();
             jumpNum = 0;
             jumpPower = 1f;
+            cachedShaders = new Dictionary<string, Shader>();
 
         }
         // Start is called before the first frame update
@@ -106,7 +108,6 @@ namespace UserHandleSpace
             //SaveDefaultTransform(true, true);
 
             //copyToList = new List<NativeAnimationAvatar>();
-            cachedShaders = new Dictionary<string, Shader>();
         }
 
         // Update is called once per frame
@@ -1407,6 +1408,16 @@ namespace UserHandleSpace
                     };
                     ret = String.Join(SEPSTR, tmparr);
                 }
+                else if (mat.shader.name.ToLower() == SHAD_UNLITTRANSPARENT.ToLower())
+                {
+                    string[] tmparr = new string[]
+                    {
+                        gobjName,
+                        mat.name,
+                        mat.shader.name
+                    };
+                    ret = String.Join(SEPSTR, tmparr);
+                }
             }
             /////Debug.Log("ret=" + ret);
             // 0 - key name
@@ -1619,6 +1630,14 @@ namespace UserHandleSpace
                         mat.matName,
                         mat.shaderName,
                         ColorUtility.ToHtmlStringRGBA(mat.color),
+                    });
+                }
+                else if ((mat.shaderName.ToLower() == SHAD_UNLITTRANSPARENT.ToLower()))
+                {
+                    retarr.AddRange(new string[]  {
+                        gobjName,
+                        mat.matName,
+                        mat.shaderName,
                     });
                 }
                 ret = String.Join(SEPSTR, retarr);

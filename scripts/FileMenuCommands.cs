@@ -1009,10 +1009,10 @@ namespace UserVRMSpace
             OperateLoadedVRM olvrm = contextRoot.AddComponent<OperateLoadedVRM>();
 
             var testanim = contextRoot.GetComponent<Animator>();
-            Debug.Log("eye name=" + testanim.GetBoneTransform(HumanBodyBones.LeftEye).name);
-            Debug.Log("         " + vinst.Runtime.ControlRig.GetBoneTransform(HumanBodyBones.LeftEye).name);
-            Debug.Log("         " + vinst.Runtime.ControlRig.Bones[HumanBodyBones.LeftEye].ControlBone.name);
-            Debug.Log("         " + vinst.Humanoid.LeftEye.name);
+            //Debug.Log("eye name=" + testanim.GetBoneTransform(HumanBodyBones.LeftEye).name);
+            //Debug.Log("         " + vinst.Runtime.ControlRig.GetBoneTransform(HumanBodyBones.LeftEye).name);
+            //Debug.Log("         " + vinst.Runtime.ControlRig.Bones[HumanBodyBones.LeftEye].ControlBone.name);
+            //Debug.Log("         " + vinst.Humanoid.LeftEye.name);
             
             olvrm.SaveDefaultColliderPosition(bc.center);
             olvrm.Title = pendingVRMmeta.Name; // contextRoot.GetComponent<VRMMeta>().Meta.Title;
@@ -1023,6 +1023,16 @@ namespace UserVRMSpace
             olvrm.ListGravityInfo();
             olvrm.RegisterUserMaterial();
             //olvrm.ListProxyBlendShape();
+            //---change material Standard to VRM10
+            var umat = olvrm.ListUserMaterialObject();
+            umat.ForEach(action =>
+            { 
+                if (action.shaderName.ToLower() != OperateLoadedBase.SHAD_VRM10)
+                {
+                    olvrm.SetUserMaterial(action.name + ",shader,VRM10/MToon10");
+                }
+                
+            });
 
             bool useFullBodyIK = false; // configLab.GetIntVal("use_fullbody_bipedik") == 1 ? true : false;
             bool useVVMIK = true;
@@ -1031,7 +1041,7 @@ namespace UserVRMSpace
 
             //VRMLookAtHead vlook = contextRoot.GetComponent<VRMLookAtHead>();
             VRM10LookTarget vlook = contextRoot.GetComponent<VRM10LookTarget>();
-            vinst.LookAtTargetType = VRM10ObjectLookAt.LookAtTargetTypes.CalcYawPitchToGaze;          
+            vinst.LookAtTargetType = VRM10ObjectLookAt.LookAtTargetTypes.SpecifiedTransform;          
 
             //---for VRIK
             /*
@@ -1049,7 +1059,8 @@ namespace UserVRMSpace
             {
                 ikparent = ikworld.GetComponent<OperateLoadedObj>().CreateFullBodyIKHandle(contextRoot);
                 //vlook.Target = ikparent.transform.GetChild(0);
-                vinst.Gaze = ikparent.transform.Find("EyeViewHandle");
+                //vinst.Gaze = ikparent.transform.Find("EyeViewHandle");
+                vinst.LookAtTarget = ikparent.transform.Find("EyeViewHandle");
                 ikparent.GetComponent<UserGroundOperation>().relatedAvatar = contextRoot;
 
                 FullBodyBipedIK fullik = contextRoot.AddComponent<FullBodyBipedIK>();
@@ -1198,8 +1209,9 @@ namespace UserVRMSpace
 
         }
 
-        public void DestroyVRM(string param)
+        public string DestroyVRM(string param)
         {
+            string ret = "";
             GameObject ikhp = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
             OperateActiveVRM ovrm = ikhp.GetComponent<OperateActiveVRM>();
             GameObject[] vrm = GameObject.FindGameObjectsWithTag("Player");
@@ -1214,14 +1226,21 @@ namespace UserVRMSpace
 
                     ovrm.RemoveAvatarBox(ik);
 
-                    if (ovrm.ActiveAvatar.name == vrm[i].name)
+                    if (ovrm.ActiveAvatar != null)
                     {
-                        ovrm.ActiveAvatar = null;
+                        if (ovrm.ActiveAvatar.name == vrm[i].name)
+                        {
+                            ovrm.ActiveAvatar = null;
+                        }
                     }
-                    if (ovrm.ActiveIKHandle.name == ik.name)
+                    if (ovrm.ActiveIKHandle != null)
                     {
-                        ovrm.ActiveIKHandle = null;
+                        if (ovrm.ActiveIKHandle.name == ik.name)
+                        {
+                            ovrm.ActiveIKHandle = null;
+                        }
                     }
+                    
 
                     managa.DetachAvatarFromRole(param + ",avatar");
 
@@ -1230,12 +1249,19 @@ namespace UserVRMSpace
                     //olvrm.GetContext().Dispose();
                     Destroy(vrm[i]);
 
-#if !UNITY_EDITOR && UNITY_WEBGL
-                    ReceiveStringVal(param);
-#endif
+                    ret = param;
+
                     break;
                 }
             }
+            return ret;
+        }
+        public void DestroyVRMFromOuter(string param)
+        {
+            string ret = DestroyVRM(param);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
         }
 
 
@@ -1744,8 +1770,9 @@ namespace UserVRMSpace
                     GameObject objpar = managa.AvatarArea; //GameObject.Find("View Body");
 
                     AssetLoaderOptions options = AssetLoader.CreateDefaultLoaderOptions();
-                    options.ExternalDataMapper = ScriptableObject.CreateInstance<FilePickerExternalDataMapper>();
-                    options.TextureMapper = ScriptableObject.CreateInstance<FilePickerTextureMapper>();
+                    //options.ExternalDataMapper = ScriptableObject.CreateInstance<FilePickerExternalDataMapper>();
+                    //options.TextureMappers.Append(ScriptableObject.CreateInstance<FilePickerTextureMapper>());
+                    
 
                     //Debug.Log("filename=[" + filename + "]");
                     //Debug.Log("ext=[" + ext + "]");
@@ -1812,9 +1839,9 @@ namespace UserVRMSpace
             
 
         }
-        public void DestroyOther(string param)
+        public string DestroyOther(string param)
         {
-            //Debug.Log("DestroyOther");
+            string ret = "";
             GameObject ikhp = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
             OperateActiveVRM ovrm = ikhp.GetComponent<OperateActiveVRM>();
             
@@ -1833,23 +1860,28 @@ namespace UserVRMSpace
 
                 ovrm.RemoveAvatarBox(ik);
 
-                if (ovrm.GetEffectiveActiveAvatar().name == oth.name)
+                if (ovrm.ActiveAvatar != null)
                 {
-                    ovrm.ActiveAvatar = null;
+                    if (ovrm.GetEffectiveActiveAvatar().name == oth.name)
+                    {
+                        ovrm.ActiveAvatar = null;
+                    }
                 }
-                if (ovrm.ActiveIKHandle.name == ik.name)
+                if (ovrm.ActiveIKHandle != null)
                 {
-                    ovrm.ActiveIKHandle = null;
+                    if (ovrm.ActiveIKHandle.name == ik.name)
+                    {
+                        ovrm.ActiveIKHandle = null;
+                    }
                 }
+                
 
                 managa.DetachAvatarFromRole(param + ",avatar");
 
+                ret = oth.name;
                 Destroy(ik);
                 Destroy(oth);
 
-#if !UNITY_EDITOR && UNITY_WEBGL
-                    ReceiveStringVal(oth.name);
-#endif
                 NativeAnimationAvatar nav = managa.GetCastInProject("Stage");
                 if (nav != null)
                 {
@@ -1859,7 +1891,14 @@ namespace UserVRMSpace
 
                 }
             }
-            
+            return ret;
+        }
+        public void DestroyOtherFromOuter(string param)
+        {
+            string ret = DestroyOther(param);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
         }
         public NativeAnimationAvatar CreateBlankQuad()
         {
@@ -2122,8 +2161,9 @@ namespace UserVRMSpace
 #endif
             return nav;
         }
-        public void DestroyLight(string param)
+        public string DestroyLight(string param)
         {
+            string ret = "";
             GameObject ikhp = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
             OperateActiveVRM ovrm = ikhp.GetComponent<OperateActiveVRM>();
             GameObject[] vrm = GameObject.FindGameObjectsWithTag("LightPlayer");
@@ -2137,25 +2177,39 @@ namespace UserVRMSpace
 
                     ovrm.RemoveAvatarBox(ik);
 
-                    if (ovrm.ActiveAvatar.name == vrm[i].name)
+                    if (ovrm.ActiveAvatar != null)
                     {
-                        ovrm.ActiveAvatar = null;
+                        if (ovrm.ActiveAvatar.name == vrm[i].name)
+                        {
+                            ovrm.ActiveAvatar = null;
+                        }
                     }
-                    if (ovrm.ActiveIKHandle.name == ik.name)
+                    if (ovrm.ActiveIKHandle != null)
                     {
-                        ovrm.ActiveIKHandle = null;
+                        if (ovrm.ActiveIKHandle.name == ik.name)
+                        {
+                            ovrm.ActiveIKHandle = null;
+                        }
                     }
+                    
 
                     managa.DetachAvatarFromRole(param + ",avatar");
 
+                    ret = vrm[i].name;
                     Destroy(ik);
                     Destroy(vrm[i]);
-#if !UNITY_EDITOR && UNITY_WEBGL
-                    ReceiveStringVal(vrm[i].name);
-#endif
+
                     break;
                 }
             }
+            return ret;
+        }
+        public void DestroyLightFromOuter(string param)
+        {
+            string ret = DestroyLight(param);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
         }
         //=============================================================================================================================
         //  Camera functions
@@ -2248,8 +2302,9 @@ namespace UserVRMSpace
 #endif
             return nav;
         }
-        public void DestroyCamera(string param)
+        public string DestroyCamera(string param)
         {
+            string ret = "";
             GameObject ikhp = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
             OperateActiveVRM ovrm = ikhp.GetComponent<OperateActiveVRM>();
             GameObject[] vrm = GameObject.FindGameObjectsWithTag("CameraPlayer");
@@ -2264,25 +2319,40 @@ namespace UserVRMSpace
 
                     ovrm.RemoveAvatarBox(ik);
 
-                    if (ovrm.ActiveAvatar.name == vrm[i].name)
+                    if (ovrm.ActiveAvatar != null)
                     {
-                        ovrm.ActiveAvatar = null;
+                        if (ovrm.ActiveAvatar.name == vrm[i].name)
+                        {
+                            ovrm.ActiveAvatar = null;
+                        }
                     }
-                    if (ovrm.ActiveIKHandle.name == ik.name)
+                    if (ovrm.ActiveIKHandle != null)
                     {
-                        ovrm.ActiveIKHandle = null;
+                        if (ovrm.ActiveIKHandle.name == ik.name)
+                        {
+                            ovrm.ActiveIKHandle = null;
+                        }
                     }
+                    
 
                     managa.DetachAvatarFromRole(param + ",avatar");
 
+                    ret = vrm[i].name;
                     Destroy(ik);
                     Destroy(vrm[i]);
-#if !UNITY_EDITOR && UNITY_WEBGL
-                    ReceiveStringVal(vrm[i].name);
-#endif
+
+
                     break;
                 }
             }
+            return ret;
+        }
+        public void DestroyCameraFromOuter(string param)
+        {
+            string ret = DestroyCamera(param);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
         }
         //=============================================================================================================================
         //  Text functions
@@ -2460,8 +2530,9 @@ namespace UserVRMSpace
 #endif
             return nav;
         }
-        public void DestroyText(string param)
+        public string DestroyText(string param)
         {
+            string ret = "";
             GameObject msgarea = managa.MsgArea; // GameObject.Find("MsgArea");
             
             for (var i = 0; i < msgarea.transform.childCount; i++)
@@ -2473,13 +2544,25 @@ namespace UserVRMSpace
 
                     managa.ikArea.GetComponent<OperateLoadedObj>().RelaseGeneralAssetRef(vrm);
                     Destroy(vrm);
-#if !UNITY_EDITOR && UNITY_WEBGL
-                    ReceiveStringVal(vrm.name);
-#endif
+
+                    ret = vrm.name;
+
                     break;
                 }
             }
+            return ret;
 
+        }
+        public void DestroyTextFromOuter(string param)
+        {
+            string ret = DestroyText(param);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+        public string DestroyText3D(string param)
+        {
+            string ret = "";
             //---3D text
             GameObject ikhp = managa.ikArea;
             OperateActiveVRM ovrm = ikhp.GetComponent<OperateActiveVRM>();
@@ -2491,30 +2574,45 @@ namespace UserVRMSpace
                     OperateLoadedText olt = vrms[i].GetComponent<OperateLoadedText>();
 
                     GameObject ik = olt.relatedHandleParent;
-                    
+
 
                     ovrm.RemoveAvatarBox(ik);
 
-                    if (ovrm.ActiveAvatar.name == vrms[i].name)
+                    if (ovrm.ActiveAvatar != null)
                     {
-                        ovrm.ActiveAvatar = null;
+                        if (ovrm.ActiveAvatar.name == vrms[i].name)
+                        {
+                            ovrm.ActiveAvatar = null;
+                        }
                     }
-                    if (ovrm.ActiveIKHandle.name == ik.name)
+                    if (ovrm.ActiveIKHandle != null)
                     {
-                        ovrm.ActiveIKHandle = null;
+                        if (ovrm.ActiveIKHandle.name == ik.name)
+                        {
+                            ovrm.ActiveIKHandle = null;
+                        }
                     }
+
 
                     managa.DetachAvatarFromRole(param + ",avatar");
 
+                    ret = vrms[i].name;
                     Destroy(ik);
                     managa.ikArea.GetComponent<OperateLoadedObj>().RelaseGeneralAssetRef(vrms[i]);
                     Destroy(vrms[i]);
-#if !UNITY_EDITOR && UNITY_WEBGL
-                    ReceiveStringVal(vrms[i].name);
-#endif
+
+
                     break;
                 }
             }
+            return ret;
+        }
+        public void DestroyText3DFromOuter(string param)
+        {
+            string ret = DestroyText3D(param);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
         }
         //=============================================================================================================================
         //  Image functions
@@ -2713,8 +2811,9 @@ namespace UserVRMSpace
 
             yield return null;
         }
-        public void DestroyUImage(string param)
+        public string DestroyUImage(string param)
         {
+            string ret = "";
             GameObject imgarea = managa.ImgArea; // GameObject.Find("ImgArea");
 
             for (var i = 0; i < imgarea.transform.childCount; i++)
@@ -2724,13 +2823,21 @@ namespace UserVRMSpace
                 {
                     managa.DetachAvatarFromRole(param + ",avatar");
 
+                    ret = vrm.name;
                     Destroy(vrm);
-#if !UNITY_EDITOR && UNITY_WEBGL
-                    ReceiveStringVal(vrm.name);
-#endif
+
+
                     break;
                 }
             }
+            return ret;
+        }
+        public void DestroyUImageFromOuter(string param)
+        {
+            string ret = DestroyUImage(param);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
         }
         public IEnumerator DownloadImage_body(byte[] data, bool isBackHTML, string filename, string extension)
         {
@@ -2739,7 +2846,7 @@ namespace UserVRMSpace
 
             //---load image as texture
             Texture2D tex = new Texture2D(1,1);
-            Material mat = new Material(Shader.Find("Standard"));
+            Material mat = new Material(Shader.Find("Unlit/Transparent"));
 
             //tex = ((DownloadHandlerTexture)handler).texture;
             tex.LoadImage(data);
@@ -2875,10 +2982,15 @@ namespace UserVRMSpace
 
             return tex;
         }
-        public void DestroyImage(string param)
+        public string DestroyImage(string param)
         {
-            DestroyOther(param);
+            string ret = DestroyOther(param);
+            return ret;
 
+        }
+        public void DestroyImageFromOuter(string param)
+        {
+            DestroyOtherFromOuter(param);
         }
         //=============================================================================================================================
         //  Effect functions
@@ -3016,8 +3128,9 @@ namespace UserVRMSpace
 
         }
 
-        public void DestroyEffect(string param)
+        public string DestroyEffect(string param)
         {
+            string ret = "";
             GameObject ikhp = managa.ikArea; // GameObject.FindGameObjectWithTag("IKHandleWorld");
             OperateActiveVRM ovrm = ikhp.GetComponent<OperateActiveVRM>();
             GameObject[] vrm = GameObject.FindGameObjectsWithTag("EffectDestination");
@@ -3032,25 +3145,39 @@ namespace UserVRMSpace
 
                     ovrm.RemoveAvatarBox(ik);
 
-                    if (ovrm.GetEffectiveActiveAvatar().name == vrm[i].name)
+                    if (ovrm.ActiveAvatar != null)
                     {
-                        ovrm.ActiveAvatar = null;
+                        if (ovrm.GetEffectiveActiveAvatar().name == vrm[i].name)
+                        {
+                            ovrm.ActiveAvatar = null;
+                        }
                     }
-                    if (ovrm.ActiveIKHandle.name == ik.name)
+                    if (ovrm.ActiveIKHandle != null)
                     {
-                        ovrm.ActiveIKHandle = null;
+                        if (ovrm.ActiveIKHandle.name == ik.name)
+                        {
+                            ovrm.ActiveIKHandle = null;
+                        }
                     }
+                    
 
                     managa.DetachAvatarFromRole(param + ",avatar");
 
+                    ret = vrm[i].name;
                     Destroy(vrm[i]);
                     Destroy(ik);
-#if !UNITY_EDITOR && UNITY_WEBGL
-                    ReceiveStringVal(vrm[i].name);
-#endif
                     break;
                 }
             }
+            return ret;
+        }
+        public void DestroyEffectFromOuter(string param)
+        {
+            string ret = DestroyEffect(param);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+
         }
         //=============================================================================================================================
         //  Audio functions

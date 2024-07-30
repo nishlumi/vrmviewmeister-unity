@@ -58,6 +58,7 @@ namespace UserHandleSpace
         public AvatarEquipmentClass equipDestinations;
         public AvatarGravityClass gravityList;
         public List<AvatarIKMappingClass> ikMappingList;
+        public bool IsGoalRotationNatural;
 
         private Vrm10Instance vrminstance;
         private UniVRM10.VRM10Viewer.VRM10Blinker blink;
@@ -349,9 +350,37 @@ namespace UserHandleSpace
             Transform[] children = relatedHandleParent.transform.GetComponentsInChildren<Transform>();
             foreach (var child in children)
             {
-                if (child.name == name) ret = child.gameObject;
+                if (child.name == name)
+                {
+                    ret = child.gameObject;
+                    break;
+                }
             }
             //ret = relatedHandleParent.transform.Find(name).gameObject;
+            return ret;
+        }
+        public GameObject GetIKHandleByPartsName(string name)
+        {
+            GameObject ret = null;
+
+            /*int cnt = relatedHandleParent.transform.childCount;
+            for (int i = 0; i < cnt; i++)
+            {
+                if (relatedHandleParent.transform.GetChild(i).name == name)
+                {
+                    ret = relatedHandleParent.transform.GetChild(i).gameObject;
+                    break;
+                }
+            }*/
+            UserHandleOperation[] children = relatedHandleParent.transform.GetComponentsInChildren<UserHandleOperation>();
+            foreach (var child in children)
+            {
+                if (child.PartsName == name)
+                {
+                    ret = child.gameObject;
+                    break;
+                }
+            }
             return ret;
         }
         /// <summary>
@@ -854,7 +883,33 @@ namespace UserHandleSpace
             //EnableIK(true);
             StartCoroutine(EnableIKOperationMode(true));
         }
-
+        public void ApplyNaturalRotationGoal(string partsname)
+        {
+            GameObject leftarm = GetIKHandleByPartsName("leftarm");
+            GameObject leftlowerarm = GetIKHandleByPartsName("leftlowerarm");
+            GameObject rightarm = GetIKHandleByPartsName("rightarm");
+            GameObject rightlowerarm = GetIKHandleByPartsName("rightlowerarm");
+            GameObject leftleg = GetIKHandleByPartsName("leftleg");
+            GameObject leftlowerleg = GetIKHandleByPartsName("leftlowerleg");
+            GameObject rightleg = GetIKHandleByPartsName("rightleg");
+            GameObject rightlowerleg = GetIKHandleByPartsName("rightlowerleg");
+            if ((partsname == "leftarm") && leftarm.GetComponent<UserHandleOperation>().is_current_marker)
+            {
+                leftarm.transform.localRotation = leftlowerarm.transform.localRotation;
+            }
+            else if ((partsname == "rightarm") && rightarm.GetComponent<UserHandleOperation>().is_current_marker)
+            {
+                rightarm.transform.localRotation = rightlowerarm.transform.localRotation;
+            }
+            else if ((partsname == "leftleg") && leftleg.GetComponent<UserHandleOperation>().is_current_marker)
+            {
+                leftleg.transform.localRotation = leftlowerleg.transform.localRotation;
+            }
+            else if ((partsname == "rightleg") && rightleg.GetComponent<UserHandleOperation>().is_current_marker)
+            {
+                rightleg.transform.localRotation = rightlowerleg.transform.localRotation;
+            }
+        }
         //===============================================================================================================================
         //  Gravity 
 
@@ -2559,7 +2614,7 @@ namespace UserHandleSpace
         /// </summary>
         public void constructIKMappingList ()
         {
-            for (int ik = (int)IKBoneType.EyeViewHandle; ik < (int)IKBoneType.RightLeg; ik++)
+            for (int ik = (int)IKBoneType.EyeViewHandle; ik <= (int)IKBoneType.RightLeg; ik++)
             {
                 AvatarIKMappingClass aik = new AvatarIKMappingClass();
                 aik.parts = (IKBoneType)ik;
@@ -2930,6 +2985,91 @@ namespace UserHandleSpace
                     item.name = newname;
                 }
             });
+        }
+
+        /// <summary>
+        /// naturalize ik goal rotation
+        /// </summary>
+        /// <param name="isEnable"></param>
+        public void SetIKGoalRotation2Natural(bool isEnable, string bonename)
+        {
+            IsGoalRotationNatural = isEnable;
+
+            VvmIk vik = GetComponent<VvmIk>();
+            if (vik != null)
+            {
+                if (isEnable == true)
+                {
+                    if (bonename == "leftarm") vik.LeftHandRotationWeight = 0;
+                    if (bonename == "rightarm") vik.RightHandRotationWeight = 0;
+                    if (bonename == "leftleg") vik.LeftFootRotationWeight = 0;
+                    if (bonename == "rightleg") vik.RightFootRotationWeight = 0;
+                }
+
+                //---apply from HumanBodyBones to IK-marker---
+                ApplyRotationHuman2IK(bonename);
+
+
+                if (isEnable == false)
+                {
+                    if (bonename == "leftarm") vik.LeftHandRotationWeight = 1f;
+                    if (bonename == "rightarm") vik.RightHandRotationWeight = 1f;
+                    if (bonename == "leftleg") vik.LeftFootRotationWeight = 1f;
+                    if (bonename == "rightleg") vik.RightFootRotationWeight = 1f;
+                }
+            }
+        }
+        public void SetIKGoalRotation2NaturalFromOuter(string param)
+        {
+            string[] arr = param.Split(",");
+            SetIKGoalRotation2Natural(arr[0] == "1" ? true : false, arr[1]);
+        }
+        public void ApplyRotationHuman2IK(string bonename)
+        {
+            Animator anim = GetComponent<Animator>();
+            if (bonename == "leftarm")
+            {
+                Transform lh = anim.GetBoneTransform(HumanBodyBones.LeftHand);
+                GameObject ikla = GetIKHandleByPartsName("leftarm");
+                ikla.transform.rotation = lh.rotation * Quaternion.Euler(new Vector3(0, 180f, 0)) * Quaternion.Euler(new Vector3(0, 90f, 0));
+            }
+            else if (bonename == "rightarm")
+            {
+                Transform rh = anim.GetBoneTransform(HumanBodyBones.RightHand);
+                GameObject ikra = GetIKHandleByPartsName("rightarm");
+                ikra.transform.rotation = rh.rotation * Quaternion.Euler(new Vector3(0, 180f, 0)) * Quaternion.Euler(new Vector3(0, -90f, 0));
+            }
+            else if (bonename == "leftleg")
+            {
+                Transform lf = anim.GetBoneTransform(HumanBodyBones.LeftFoot);
+                GameObject iklf = GetIKHandleByPartsName("leftleg");
+                iklf.transform.rotation = lf.rotation;
+            }
+            else if (bonename == "rightleg")
+            {
+                Transform rf = anim.GetBoneTransform(HumanBodyBones.RightFoot);
+                GameObject ikrf = GetIKHandleByPartsName("rightleg");
+                ikrf.transform.rotation = rf.rotation;
+            }
+        }
+        public bool GetIKGoalRotation2Natural(string bonename)
+        {
+            bool flag = false;
+
+            VvmIk vik = GetComponent<VvmIk>();
+            if (bonename == "leftarm") flag = vik.LeftHandRotationWeight == 1 ? false : true;
+            if (bonename == "rightarm") flag = vik.RightHandRotationWeight == 1 ? false : true;
+            if (bonename == "leftleg") flag = vik.LeftFootRotationWeight == 1 ? false : true;
+            if (bonename == "rightleg") flag = vik.RightFootRotationWeight == 1 ? false : true;
+
+            return flag;
+        }
+        public void GetIKGoalRotation2NaturalFromOuter(string bonename)
+        {
+            int flag = GetIKGoalRotation2Natural(bonename) ? 1 : 0;
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveIntVal(flag);
+#endif
         }
 
         //---Head lock=========================================================

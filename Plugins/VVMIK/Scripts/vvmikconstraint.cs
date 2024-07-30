@@ -6,7 +6,7 @@ using UnityEngine;
 namespace LumisIkApp
 {
     [Serializable]
-    public class VvmIkConstraint
+    public class VvmIkConstraint: MonoBehaviour
     {
         public Transform BoneTran = null;
         public Vector3 LimitFrom = Vector3.zero;
