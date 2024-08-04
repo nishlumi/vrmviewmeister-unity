@@ -12,7 +12,8 @@ using RootMotion.FinalIK;
 using LumisIkApp;
 using TMPro;
 using DG.Tweening;
-
+using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 
 namespace UserHandleSpace
 {
@@ -1474,40 +1475,43 @@ namespace UserHandleSpace
 
             return ret;
         }
-        public async System.Threading.Tasks.Task<GameObject[]> CreateText(string text, string anchorpos, int dimension)
+        public async Task<GameObject[]> CreateText(string text, string anchorpos, int dimension)
         {
             GameObject[] tex = new GameObject[2];
-
+            //Debug.Log("CreateText start");
             GameObject msgarea = manim.MsgArea; //GameObject.Find("MsgArea");
             GameObject ikhp = manim.ikArea;
             GameObject copytex = null;
             GameObject copyiktex = (GameObject)Resources.Load("IKHandleCube");
 
+            //Debug.Log("Addressable start");
             if (dimension == 2)
             {
                 //copytex = (GameObject)Resources.Load("UserText2D");
                 copytex = await SetGeneralAssetRef("UserText2D");
-                //tex[0] = Instantiate(copytex, copytex.transform.position, Quaternion.identity, msgarea.transform);
+                //---
+                //---
                 tex[0] = copytex;
                 
                 tex[1] = null;
             }
             else if (dimension == 3)
             {
-                copytex = await SetGeneralAssetRef("UserText3D");
+
+                copytex = await SetGeneralAssetRef("UserText3D"); 
+                //---
+                //---
                 tex[0] = copytex;
-                //copytex = (GameObject)Resources.Load("UserText3D");
                 tex[1] = Instantiate(copyiktex, copyiktex.transform.position, Quaternion.identity, ikhp.transform);
             }
-
-            
+            //await UniTask.Yield(PlayerLoopTiming.Update);
+            //Debug.Log("Addressable end");
             
 
             //---setting OperateLoadedText
             OperateLoadedText olt = tex[0].AddComponent<OperateLoadedText>();
             olt.RegenerateDimension(dimension);
-
-            RectTransform rect = tex[0].GetComponent<RectTransform>();
+            //Debug.Log("RegenerateDimension end.");
 
             /*
             if (anchorpos == "tl")
@@ -1538,6 +1542,7 @@ namespace UserHandleSpace
 
             if (dimension == 2)
             {
+                RectTransform rect = tex[0].GetComponent<RectTransform>();
                 rect.SetParent(msgarea.transform, false);
             }
             else if (dimension == 3)
@@ -1561,7 +1566,7 @@ namespace UserHandleSpace
             }
             //tex.GetComponent<Text>().text = text;
             olt.SetVVMText(text);
-
+            //Debug.Log("SetVVMText end.");
             return tex;
         }
 
@@ -1638,26 +1643,19 @@ namespace UserHandleSpace
             return ret;
         }
 
-        public async System.Threading.Tasks.Task<GameObject> SetGeneralAssetRef(string param)
+        public async Task<GameObject> SetGeneralAssetRef(string param)
         {
-            string[] prm = param.Split("/");
-            
-            //if ((prm[0] == "") || (prm[1] == "")) return null;
-
 
             //---addressable
             AsyncOperationHandle<GameObject> targetEffectHandle = Addressables.InstantiateAsync(param);
 
-
-            //targetEffectHandle.Completed += instantiate_Completed;
-
             //System.Threading.Tasks.Task<GameObject> eff = targetEffectHandle.Task;
             GameObject targetEffect = await targetEffectHandle.Task;
+            
+            //GameObject targetEffect = await Addressables.InstantiateAsync(param);
 
             //targetEffect = await eff;
-            
-            
-            
+
             
             return targetEffect;
 

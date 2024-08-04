@@ -483,6 +483,32 @@ namespace UserUISpace
         {
             armf.ResetTransformCurrentObject(false, false, true);
         }
+        void CommonBtnDownEvent()
+        {
+            MouseOperationXR[] mxrs = GameObject.FindObjectsOfType<MouseOperationXR>();
+            foreach (var  mxr in mxrs) 
+            {
+                mxr.EmergencyStop = true;
+            }
+            MouseOperationXR2[] mxr2s = GameObject.FindObjectsOfType<MouseOperationXR2>();
+            foreach (var mxr in mxr2s)
+            {
+                mxr.EmergencyStop = true;
+            }
+        }
+        void CommonBtnUpEvent()
+        {
+            MouseOperationXR[] mxrs = GameObject.FindObjectsOfType<MouseOperationXR>();
+            foreach (var mxr in mxrs)
+            {
+                mxr.EmergencyStop = false;
+            }
+            MouseOperationXR2[] mxr2s = GameObject.FindObjectsOfType<MouseOperationXR2>();
+            foreach (var mxr in mxr2s)
+            {
+                mxr.EmergencyStop = false;
+            }
+        }
         //---X+
         void tp_right_OnClick()
         { 
@@ -492,11 +518,13 @@ namespace UserUISpace
         {
             armf.TargetOperationBody("tp_right");
             pushed_tp_right = true;
+            CommonBtnDownEvent();
             evt.StopPropagation();
         }
         void tp_right_PointerUpEvent(PointerUpEvent evt)
         {
             pushed_tp_right = false;
+            CommonBtnUpEvent();
             evt.StopPropagation();
         }
         //---X-
@@ -508,11 +536,13 @@ namespace UserUISpace
         {
             armf.TargetOperationBody("tp_left");
             pushed_tp_left = true;
+            CommonBtnDownEvent();
             evt.StopPropagation();
         }
         void tp_left_PointerUpEvent(PointerUpEvent evt)
         {
             pushed_tp_left = false;
+            CommonBtnUpEvent();
             evt.StopPropagation();
         }
         //---Y+
@@ -524,11 +554,13 @@ namespace UserUISpace
         {
             armf.TargetOperationBody("tp_up");
             pushed_tp_up = true;
+            CommonBtnDownEvent();
             evt.StopPropagation();
         }
         void tp_up_PointerUpEvent(PointerUpEvent evt)
         {
             pushed_tp_up = false;
+            CommonBtnUpEvent();
             evt.StopPropagation();
         }
         //---Y-
@@ -540,11 +572,13 @@ namespace UserUISpace
         {
             armf.TargetOperationBody("tp_down");
             pushed_tp_down = true;
+            CommonBtnDownEvent();
             evt.StopPropagation();
         }
         void tp_down_PointerUpEvent(PointerUpEvent evt)
         {
             pushed_tp_down = false;
+            CommonBtnUpEvent();
             evt.StopPropagation();
         }
         //---Z+
@@ -556,11 +590,13 @@ namespace UserUISpace
         {
             armf.TargetOperationBody("tp_forward");
             pushed_tp_forward = true;
+            CommonBtnDownEvent();
             evt.StopPropagation();
         }
         void tp_forward_PointerUpEvent(PointerUpEvent evt)
         {
             pushed_tp_forward = false;
+            CommonBtnUpEvent();
             evt.StopPropagation();
         }
         //---Z-
@@ -572,11 +608,13 @@ namespace UserUISpace
         {
             armf.TargetOperationBody("tp_back");
             pushed_tp_back = true;
+            CommonBtnDownEvent();
             evt.StopPropagation();
         }
         void tp_back_PointerUpEvent(PointerUpEvent evt)
         {
             pushed_tp_back = false;
+            CommonBtnUpEvent();
             evt.StopPropagation();
         }
         //#######################################################################################################

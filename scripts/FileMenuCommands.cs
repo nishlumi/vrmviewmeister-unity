@@ -31,7 +31,7 @@ using System;
 using System.Linq;
 using TMPro;
 using DG.Tweening;
-
+using Cysharp.Threading.Tasks;
 
 namespace UserVRMSpace
 {
@@ -2360,7 +2360,7 @@ namespace UserVRMSpace
         public NativeAnimationAvatar OpenSample1Text()
         {
             NativeAnimationAvatar avatar = null;
-            DOVirtual.DelayedCall(0.0001f, async () =>
+            DOVirtual.DelayedCall(0.0001f,  async () =>
             {
                 avatar = await OpenText("ABC,tl,2");
             });
@@ -2375,15 +2375,16 @@ namespace UserVRMSpace
             });
             return avatar;
         }
-        public async System.Threading.Tasks.Task<OpeningNativeAnimationAvatar> OpenRecoveryText(string param)
+        public async Task<OpeningNativeAnimationAvatar> OpenRecoveryText(string param)
         {
             
             var task = await Body_OpenText(param);
 
             return task;
         }
-        public async System.Threading.Tasks.Task<OpeningNativeAnimationAvatar> Body_OpenText(string param)
+        public async Task<OpeningNativeAnimationAvatar> Body_OpenText(string param)
         {
+            //Debug.Log("start Body_OpenText");
             GameObject ikhp = managa.ikArea;
             OperateActiveVRM ovrm = ikhp.GetComponent<OperateActiveVRM>();
 
@@ -2411,6 +2412,7 @@ namespace UserVRMSpace
                 txt[0].layer = LayerMask.NameToLayer("Player");
 
             }
+            //Debug.Log("NameToLayer end");
 
             txt[0].AddComponent<ManageAvatarTransform>();
             
@@ -2458,6 +2460,7 @@ namespace UserVRMSpace
                 toi.Title = "Text3D";
                 toi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.Text3D);
             }
+            //Debug.Log("basicInformation set1: " + toi.Title);
             
             toi.motion.fontSize = olt.GetFontSize();
             //toi.motion.fontStyle = text.fontStyle;
@@ -2473,6 +2476,7 @@ namespace UserVRMSpace
             {
                 toi.Title = toi.Title + "_" + existCnt.ToString();
             }
+            //Debug.Log("basicInformation set2: " + toi.Title);
 
             NativeAnimationAvatar nav = new NativeAnimationAvatar();
             nav.avatar = txt[0];
@@ -2500,7 +2504,7 @@ namespace UserVRMSpace
         /// Create and Show Text UI
         /// </summary>
         /// <param name="param">CSV-string: 0=text label, 1=anchor position(tl=TopLeft, bl=BottomLeft, tr=TopRight, br=BottomRight), 2=dimension(2, 3)</param>
-        public async System.Threading.Tasks.Task<NativeAnimationAvatar> OpenText(string param)
+        public async Task<NativeAnimationAvatar> OpenText(string param)
         {
 
             OpeningNativeAnimationAvatar tmpnav = await Body_OpenText(param);

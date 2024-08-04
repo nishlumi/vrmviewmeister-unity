@@ -118,6 +118,7 @@ namespace UserHandleSpace
         private Vector3 bkup_camerapos;
         private Quaternion bkup_camerarot;
         public Vector3 bkup_lastvrar_pos;
+        public Quaternion bkup_lastvrar_rot;
 
         public KeyOperationMode keyOperationMode;
         public float cfg_dist_cam2view;
@@ -202,6 +203,7 @@ namespace UserHandleSpace
             bkupScreenHeight = Screen.height;
             bkup_camerapos = Vector3.zero;
             bkup_lastvrar_pos = Vector3.zero;
+            bkup_lastvrar_rot = Quaternion.Euler(Vector3.zero);
 
             cfg_dist_cam2view = 2.5f;
             cfg_keymove_speed_rot = 0.1f;
@@ -3108,6 +3110,42 @@ namespace UserHandleSpace
             }
             return keyFrameSeq;
         }
+        public void PrecalculateKeyframeByBone(NativeAnimationFrameActor targetObject, NativeAnimationFrame frame, AnimationParsingOptions aro)
+        {
+            foreach ( ParseIKBoneType pbone in System.Enum.GetValues(typeof(ParseIKBoneType)))
+            {
+                List<AnimationTranslateTargetParts> svlist = new List<AnimationTranslateTargetParts>();
+                int throwCount = 0;
+                for (int i = 0; i < targetObject.frames.Count; i++)
+                { //---frames loop
+                    var curframe = targetObject.frames[i];
+                    for (int f = 0; f < curframe.translateMovingData.Count; f++)
+                    { //---movingData loop in frame 
+                        var movingData = curframe.translateMovingData[i];
+
+                        if (
+                            (pbone == movingData.vrmBone) 
+                        )
+                        {
+                            if (svlist.Count > 0)
+                            { //---already saved, start calculating.
+                                
+                            }
+                            else
+                            {
+                                svlist.Add(movingData);
+                            }
+
+                        }
+                        else
+                        {
+                            throwCount++;
+                        }
+                    }
+                    
+                }
+            }
+        }
         /// <summary>
         /// Calculate indicated frame duration between 2 keyframes.
         /// </summary>
@@ -3851,7 +3889,7 @@ namespace UserHandleSpace
         /// To play routine animation of while version (NOT USE)
         /// </summary>
         /// <returns></returns>
-        public void BuildPlayTimelineRoutine()
+        /*public void BuildPlayTimelineRoutine()
         { //---loop is frame -> character
             while (currentMarker <= currentPlayingOptions.endIndex)
             {
@@ -3864,7 +3902,7 @@ namespace UserHandleSpace
 
                 currentMarker++;
             }
-        }
+        }*/
 
         /// <summary>
         /// To play routine animation of NEW VERSION

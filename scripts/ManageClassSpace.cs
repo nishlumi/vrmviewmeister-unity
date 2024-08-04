@@ -1402,6 +1402,18 @@ namespace UserHandleSpace
         }
     }
 
+    //==============================================================
+    //  AnimationFrameActorBone
+    //==============================================================
+    public class AnimationFrameActorBone: AnimationFrameActor
+    {
+        public ParseIKBoneType targetBone;
+
+        public AnimationFrameActorBone(): base()
+        {
+            targetBone = ParseIKBoneType.Unknown;
+        }
+    }
 
     //==============================================================
     //  AnimationMotionTimeline
