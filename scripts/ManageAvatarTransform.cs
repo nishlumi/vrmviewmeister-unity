@@ -36,13 +36,16 @@ namespace UserHandleSpace
                     "RightShoulder","RightLowerArm","RightHand",
                     "LeftLowerLeg","LeftLeg",
                     "RightLowerLeg","RightLeg",
+                    "", "",
+                    "",
+                    "LeftToes", "RightToes"
         };
         /*
         public string[] IKbones = { "IKParent", "EyeViewHandle", "Head", "LookAt", "Aim", "Chest", "Pelvis", "LeftShoulder", "LeftLowerArm", "LeftHand",
             "RightShoulder","RightLowerArm","RightHand","LeftUpperLeg","LeftLowerLeg","LeftLeg","RightUpperLeg","RightLowerLeg","RightLeg"
         };
         */
-        const int IKbonesCount = 17;
+        const int IKbonesCount = 19; //17;
 
         const int BODYINFO_COUNT = 9;
         const int HEIGHT_X = 0;
@@ -219,7 +222,10 @@ namespace UserHandleSpace
                     "LeftShoulder","LeftLowerArm", "LeftHand",
                     "RightShoulder","RightLowerArm","RightHand",
                     "LeftLowerLeg","LeftLeg",
-                    "RightLowerLeg","RightLeg"
+                    "RightLowerLeg","RightLeg",
+                    "", "",
+                    "",
+                    "LeftToes", "RightToes"
                 };
             }
         }
@@ -488,7 +494,7 @@ namespace UserHandleSpace
 
             ret[0] = maxbounds.size.x; // GetMaximumWidthRenderer(glist) * 2f;
             ret[1] = maxbounds.size.y; //GetMaximumHeightRenderer(glist);
-            ret[2] = maxbounds.size.z; //GetMaximumDepthRenderer(glist);
+            ret[2] = maxbounds.size.z; //GetMaximumDepthRenderer(glist); //---z dimension is same as x's size.
 
             Debug.Log("max ren=" + ret[0].ToString() + "," +  ret[1].ToString() + "," +  ret[2].ToString());
 
@@ -576,7 +582,7 @@ namespace UserHandleSpace
                 {
                     ret.Add(new Vector3(  ikparent.transform.position.x, ikparent.transform.position.y, ikparent.transform.position.z ));
                 }
-                else
+                else if (name != "")
                 {
                     //Debug.Log(name);
                     GameObject child = null; // ikparent.transform.Find(name).gameObject;
@@ -609,6 +615,11 @@ namespace UserHandleSpace
 
             return ret;
         }
+
+        /// <summary>
+        /// Get  transform data of All IK-markers
+        /// </summary>
+        /// <returns></returns>
         public List<AvatarSingleIKTransform> GetIKTransformAll_body()
         {
             List<AvatarSingleIKTransform> ret = new List<AvatarSingleIKTransform>();
@@ -629,7 +640,7 @@ namespace UserHandleSpace
                         col.isTrigger ? 0 : 1, rig.useGravity ? 1 : 0, rig.drag, rig.angularDrag
                     ));
                 }
-                else
+                else if (IKbones[i] != "")
                 {
                     GameObject child = null;// ovrm.relatedHandleParent.transform.Find(IKbones[i]).gameObject;
                     foreach (Transform bt in bts)
@@ -710,8 +721,8 @@ namespace UserHandleSpace
                     "Pelvis", "Aim", "LookAt", "Chest","Head",
                     "LeftLeg",
                     "RightLeg",
-                    "LeftLowerLeg",
-                    "RightLowerLeg",
+                    "LeftLowerLeg","LeftToes",
+                    "RightLowerLeg","RightToes",
 
                     "LeftShoulder",
                     "LeftHand", "LeftLowerArm",
@@ -757,7 +768,12 @@ namespace UserHandleSpace
                             Collider ccol = child.GetComponent<Collider>();
                             Rigidbody crig = child.GetComponent<Rigidbody>();
 
-                            if ((asit.ikname.ToLower() != "leftshoulder") && (asit.ikname.ToLower() != "rightshoulder"))
+                            if (
+                                (asit.ikname.ToLower() != "leftshoulder") && 
+                                (asit.ikname.ToLower() != "rightshoulder") &&
+                                (asit.ikname.ToLower() != "lefttoes") &&
+                                (asit.ikname.ToLower() != "righttoes") 
+                            )
                             { // both shoulder is not neccessary positioning (rotation only)
                                 child.transform.localPosition = asit.position;
                             }
@@ -1166,7 +1182,7 @@ namespace UserHandleSpace
             //ikparent.transform.rotation = Quaternion.Euler(aai.list[0].rotation);
         }
         /// <summary>
-        /// Set IK transform (single)
+        /// Set IK transform (single) NOT USE
         /// </summary>
         /// <param name="param">CSV-string: [0] - ikname index, [1] - p=position, r=rotation, [2] - x, y, z, [3] - float value</param>
         public void SetIKTransformEach(string param)
@@ -1325,6 +1341,14 @@ namespace UserHandleSpace
                 else if (i == (int)IKBoneType.RightLeg)
                 {
                     aai.list.Add(mirrorLR(hit, FindParts(list, IKbones[(int)IKBoneType.LeftLeg])));
+                }
+                else if (i == (int)IKBoneType.LeftToes)
+                {
+                    aai.list.Add(mirrorLR(hit, FindParts(list, IKbones[(int)IKBoneType.RightToes])));
+                }
+                else if (i == (int)IKBoneType.RightToes)
+                {
+                    aai.list.Add(mirrorLR(hit, FindParts(list, IKbones[(int)IKBoneType.LeftToes])));
                 }
 
             }
@@ -1521,9 +1545,13 @@ namespace UserHandleSpace
             aro.targetType = AF_TARGETTYPE.VRM;
 
             List<int> regBones = new List<int>();
-            for (int i = (int)ParseIKBoneType.EyeViewHandle; i < (int)ParseIKBoneType.LeftHandPose; i++)
+            for (int i = (int)ParseIKBoneType.EyeViewHandle; i < (int)ParseIKBoneType.Unknown; i++)
             {
-                aro.registerBoneTypes.Add(i);
+                if (ManageAnimation.IsVRMParseBoneType((ParseIKBoneType)i,false))
+                {
+                    aro.registerBoneTypes.Add(i);
+                }
+                
             }
             aro.registerMoveTypes.Add((int)AF_MOVETYPE.Translate);
             aro.registerMoveTypes.Add((int)AF_MOVETYPE.NormalTransform);
@@ -1914,8 +1942,9 @@ namespace UserHandleSpace
                 (int)ParseIKBoneType.LeftHand, (int)ParseIKBoneType.LeftLowerArm,
                 (int)ParseIKBoneType.RightShoulder,
                 (int)ParseIKBoneType.RightHand, (int)ParseIKBoneType.RightLowerArm,
-                (int)ParseIKBoneType.LeftLeg, (int)ParseIKBoneType.RightLeg,
-                (int)ParseIKBoneType.LeftLowerLeg, (int)ParseIKBoneType.RightLowerLeg
+                (int)ParseIKBoneType.LeftLeg, (int)ParseIKBoneType.RightLeg, 
+                (int)ParseIKBoneType.LeftLowerLeg, (int)ParseIKBoneType.RightLowerLeg,
+                (int)ParseIKBoneType.LeftToes, (int)ParseIKBoneType.RightToes
             };
 
             Transform[] bts = ikparent.GetComponentsInChildren<Transform>();

@@ -265,6 +265,8 @@ namespace UserHandleSpace
         LeftLeg,
         RightLowerLeg,
         RightLeg,
+        LeftToes = 20,
+        RightToes = 21,
     };
     public enum RangeIKBoneType
     {
@@ -661,6 +663,8 @@ namespace UserHandleSpace
         LeftHandPose,
         RightHandPose,
         BlendShape,
+        LeftToes,
+        RightToes,
 
         Unknown = 25,
         UseHumanBodyBones = 99

@@ -86,6 +86,7 @@ namespace LumisIkApp
         public float RightFootRotationWeight = 1f;
 
         public Transform RightToes = null;
+        public Vector3 RightToesReversed = Vector3.zero;
 
         [Space(10)]
         [Header("Left Leg")]
@@ -101,6 +102,7 @@ namespace LumisIkApp
         public float LeftFootRotationWeight = 1f;
 
         public Transform LeftToes = null;
+        public Vector3 LeftToesReversed = Vector3.zero;
 
         [Space(10)]
         [Header("Constraints")]
@@ -307,7 +309,11 @@ namespace LumisIkApp
             {
                 if (RightToes != null)
                 {
-                    animator.SetBoneLocalRotation(HumanBodyBones.RightToes, RightToes.localRotation);
+                    Vector3 rot = RightToes.localRotation.eulerAngles;
+                    if (RightToesReversed.x != 0) rot.x *= RightToesReversed.x;
+                    if (RightToesReversed.y != 0) rot.y *= RightToesReversed.y;
+                    if (RightToesReversed.z != 0) rot.z *= RightToesReversed.z;
+                    animator.SetBoneLocalRotation(HumanBodyBones.RightToes, Quaternion.Euler(rot));
                 }
             }
 
@@ -343,7 +349,11 @@ namespace LumisIkApp
             {
                 if (LeftToes != null)
                 {
-                    animator.SetBoneLocalRotation(HumanBodyBones.LeftToes, LeftToes.localRotation);
+                    Vector3 rot = LeftToes.localRotation.eulerAngles;
+                    if (LeftToesReversed.x != 0) rot.x *= LeftToesReversed.x;
+                    if (LeftToesReversed.y != 0) rot.y *= LeftToesReversed.y;
+                    if (LeftToesReversed.z != 0) rot.z *= LeftToesReversed.z;
+                    animator.SetBoneLocalRotation(HumanBodyBones.LeftToes, Quaternion.Euler(rot));
                 }
             }
             

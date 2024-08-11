@@ -240,7 +240,7 @@ namespace UserHandleSpace
             if (commonSize > 1f) commonSize = 1f;
             ikmarker_size = new Vector3(commonSize, commonSize, commonSize);
 
-            List<string> ignoreIKs = new List<string>(){ "Shoulder", "Aim", "Chest", "Head" };
+            List<string> ignoreIKs = new List<string>(){ "Shoulder", "Aim", "Chest", "Head", "LeftToes", "RightToes" };
 
             for (var i = 0; i < childCount; i++)
             {
@@ -1374,6 +1374,20 @@ namespace UserHandleSpace
             uholleg.SaveDefaultTransform();
             uholleg.RootTransform = ikparent.transform;
 
+            GameObject copylefttoes = (GameObject)Resources.Load("IKHandleLeftToes");
+            GameObject lefttoes = Instantiate(copylefttoes, copylefttoes.transform.position, Quaternion.identity, leftleg.transform);
+            UserHandleOperation uholtoes = lefttoes.GetComponent<UserHandleOperation>();
+            lefttoes.name = "LeftToes";
+            lefttoes.transform.rotation = CmnRotation;
+            lefttoes.tag = "IKHandle";
+            uholtoes.PartsName = "lefttoes";
+            uholtoes.SetRelatedAvatar(avatar);
+            Vector3 animLeftToesPos = animator.GetBoneTransform(HumanBodyBones.LeftToes).transform.position;
+            animLeftToesPos.x *= 1f;
+            lefttoes.transform.position = animLeftToesPos;
+            uholtoes.SaveDefaultTransform();
+            uholtoes.RootTransform = ikparent.transform;
+
 
 
             GameObject copyrightlowerleg = (GameObject)Resources.Load("IKHandleSphereRight");
@@ -1404,6 +1418,21 @@ namespace UserHandleSpace
             rightleg.transform.position = animRightFootPos;
             uhorleg.SaveDefaultTransform();
             uhorleg.RootTransform = ikparent.transform;
+
+            GameObject copyrighttoes = (GameObject)Resources.Load("IKHandleRightToes");
+            GameObject righttoes = Instantiate(copyrighttoes, copyrighttoes.transform.position, Quaternion.identity, rightleg.transform);
+            UserHandleOperation uhortoes = righttoes.GetComponent<UserHandleOperation>();
+            righttoes.name = "RightToes";
+            righttoes.transform.rotation = CmnRotation;
+            righttoes.tag = "IKHandle";
+            uhortoes.PartsName = "righttoes";
+            uhortoes.SetRelatedAvatar(avatar);
+            Vector3 animRightToesPos = animator.GetBoneTransform(HumanBodyBones.RightToes).transform.position;
+            animRightToesPos.x *= 1f;
+            righttoes.transform.position = animRightToesPos;
+            uhortoes.SaveDefaultTransform();
+            uhortoes.RootTransform = ikparent.transform;
+
 
             //---re-parent each bone.
             if (IsReparent) ReparentizeChild(ikparent, pelvis, aim, upperchest, leftshoulder, rightshoulder,  head);

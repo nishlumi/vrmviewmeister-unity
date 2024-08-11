@@ -55,9 +55,12 @@ namespace UserHandleSpace
             "LeftShoulder","LeftLowerArm", "LeftHand",
             "RightShoulder","RightLowerArm","RightHand",
             "LeftLowerLeg","LeftLeg",
-            "RightLowerLeg","RightLeg"
+            "RightLowerLeg","RightLeg",
+            "","",
+            "",
+            "LeftToes","RightToes"
         };
-        const int IKbonesCount = 17;
+        const int IKbonesCount = 19;
 
         const int HEIGHT_X = 0;
         const int HEIGHT_Y = 1;
@@ -337,7 +340,10 @@ namespace UserHandleSpace
                     "LeftShoulder","LeftLowerArm", "LeftHand",
                     "RightShoulder","RightLowerArm","RightHand",
                     "LeftLowerLeg","LeftLeg",
-                    "RightLowerLeg","RightLeg"
+                    "RightLowerLeg","RightLeg",
+                    "", "",
+                    "",
+                    "LeftToes", "RightToes"
                 };
             }
         }
@@ -357,6 +363,35 @@ namespace UserHandleSpace
                     break;
                 }
             }
+            return ret;
+        }
+
+        /// <summary>
+        /// Check wheather parameter's ParseIKBoneType is VRM bone.
+        /// </summary>
+        /// <param name="ptype"></param>
+        /// <param name="includeIKParent"></param>
+        /// <returns></returns>
+        public static bool IsVRMParseBoneType(ParseIKBoneType ptype, bool includeIKParent = true)
+        {
+            bool ret = false;
+            if (includeIKParent == true)
+            {
+                if (ptype == ParseIKBoneType.IKParent)
+                {
+                    ret = true;
+                }
+            }
+            
+            if ((ptype >= ParseIKBoneType.EyeViewHandle) && (ptype <= ParseIKBoneType.RightLeg))
+            {
+                ret = true;
+            }
+            else if ((ptype >= ParseIKBoneType.LeftToes) && (ptype <= ParseIKBoneType.RightToes))
+            {
+                ret = true;
+            }
+
             return ret;
         }
         public void SetValFromOuter(string param)
@@ -2390,8 +2425,8 @@ namespace UserHandleSpace
                 ParseIKBoneType.RightShoulder,
                 ParseIKBoneType.RightHand, ParseIKBoneType.RightLowerArm,
 
-                ParseIKBoneType.LeftLeg,ParseIKBoneType.LeftLowerLeg,
-                ParseIKBoneType.RightLeg,ParseIKBoneType.RightLowerLeg,
+                ParseIKBoneType.LeftLeg,ParseIKBoneType.LeftLowerLeg,ParseIKBoneType.LeftToes,
+                ParseIKBoneType.RightLeg,ParseIKBoneType.RightLowerLeg,ParseIKBoneType.RightToes,
                 ParseIKBoneType.EyeViewHandle
             };
             List<ParseIKBoneType> sortArr = new List<ParseIKBoneType>(sortedIndex);

@@ -427,7 +427,8 @@ namespace UserHandleSpace
                 //---check numbers of received value.
 
 
-                if ((atp.vrmBone >= ParseIKBoneType.IKParent) && (atp.vrmBone <= ParseIKBoneType.RightLeg))
+                //if ((atp.vrmBone >= ParseIKBoneType.IKParent) && (atp.vrmBone <= ParseIKBoneType.RightLeg))
+                if (IsVRMParseBoneType(atp.vrmBone))
                 {
 
                     if (valueCount > 2)
@@ -555,7 +556,9 @@ namespace UserHandleSpace
                 //---check numbers of received value.
 
 
-                if ((atp.vrmBone >= ParseIKBoneType.IKParent) && (atp.vrmBone <= ParseIKBoneType.RightLeg))
+                //if ((atp.vrmBone >= ParseIKBoneType.IKParent) && (atp.vrmBone <= ParseIKBoneType.RightLeg))
+                if (IsVRMParseBoneType(atp.vrmBone))
+
                 {
 
                     if (valueCount > 2)
@@ -2804,46 +2807,49 @@ namespace UserHandleSpace
             naframe.memo = frame.memo;
 
             //---for Translate only
-            for (int i = 0; i < (int)ParseIKBoneType.LeftHandPose; i++)
+            for (int i = 0; i < (int)ParseIKBoneType.Unknown; i++)
             {
-                
-                string pikt = i.ToString();
-                List<string> translateLst = frame.movingData.FindAll(match =>
+                if (IsVRMParseBoneType((ParseIKBoneType)i))
                 {
-                    string[] lst = match.Split(',');
-                    if (lst.Length > 2)
+                    string pikt = i.ToString();
+                    List<string> translateLst = frame.movingData.FindAll(match =>
                     {
-                        if (
-                            (lst[0] == pikt) &&  //---ParseIKBoneType
-                            (lst[2] == "position") //---raw string for AF_MOVETYPE
-                        )
+                        string[] lst = match.Split(',');
+                        if (lst.Length > 2)
                         {
-                            return true;
+                            if (
+                                (lst[0] == pikt) &&  //---ParseIKBoneType
+                                (lst[2] == "position") //---raw string for AF_MOVETYPE
+                            )
+                            {
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
                         }
                         else
                         {
                             return false;
                         }
-                    }
-                    else
+                    });
+                    if (translateLst.Count > 0)
                     {
-                        return false;
+                        AnimationTranslateTargetParts attp = new AnimationTranslateTargetParts((ParseIKBoneType)i, AF_MOVETYPE.Translate);
+
+                        foreach (string line in translateLst)
+                        {
+                            attp = CsvToFrameTranslateData(actor, actor.targetType, line, attp);
+                        }
+                        naframe.translateMovingData.Add(attp);
                     }
-                });
-                if (translateLst.Count > 0)
-                {
-                    AnimationTranslateTargetParts attp = new AnimationTranslateTargetParts((ParseIKBoneType)i, AF_MOVETYPE.Translate);
-                    
-                    foreach (string line in translateLst)
-                    {
-                        attp = CsvToFrameTranslateData(actor, actor.targetType, line, attp);
+                    if (actor.avatar.type != AF_TARGETTYPE.VRM)
+                    { //---VRM other than is IKParent only.
+                        break;
                     }
-                    naframe.translateMovingData.Add(attp);
                 }
-                if (actor.avatar.type != AF_TARGETTYPE.VRM)
-                { //---VRM other than is IKParent only.
-                    break;
-                }
+                
             }
             
 
@@ -3042,14 +3048,18 @@ namespace UserHandleSpace
                     {
                         naf.bodyInfoList.Add(new Vector3(item.x, item.y, item.z));
                     });*/
-                    int IKBoneCnt = (int)ParseIKBoneType.RightLeg + 1;
+                    int IKBoneCnt = (int)ParseIKBoneType.Unknown;
                     for (int bi = 0; bi < IKBoneCnt; bi++)
                     {
-                        if (bi < asm.bodyInfoList.Count) //bi < IKBoneCnt and bodyInfoList.Count
+                        if (IsVRMParseBoneType((ParseIKBoneType)bi))
                         {
-                            Vector3 item = asm.bodyInfoList[bi];
-                            naf.bodyInfoList.Add(new Vector3(item.x, item.y, item.z));
+                            if (bi < asm.bodyInfoList.Count) //bi < IKBoneCnt and bodyInfoList.Count
+                            {
+                                Vector3 item = asm.bodyInfoList[bi];
+                                naf.bodyInfoList.Add(new Vector3(item.x, item.y, item.z));
+                            }
                         }
+                        
                         
                     }
 
@@ -3084,44 +3094,48 @@ namespace UserHandleSpace
                             aframe.SetFromNative(naframe);
 
                             //---for Translate only
-                            for (int i = 0; i < (int)ParseIKBoneType.LeftHandPose; i++)
+                            for (int i = 0; i < (int)ParseIKBoneType.Unknown; i++)
                             {
-                                string pikt = i.ToString();
-                                List<string> translateLst = fr.movingData.FindAll(match =>
+                                if (IsVRMParseBoneType((ParseIKBoneType)i))
                                 {
-                                    string[] lst = match.Split(',');
-                                    if (lst.Length > 0)
+                                    string pikt = i.ToString();
+                                    List<string> translateLst = fr.movingData.FindAll(match =>
                                     {
-                                        if (
-                                            (lst[0] == pikt) &&  //---ParseIKBoneType
-                                            (lst[2] == "position") //---raw string for AF_MOVETYPE
-                                        )
+                                        string[] lst = match.Split(',');
+                                        if (lst.Length > 0)
                                         {
-                                            return true;
+                                            if (
+                                                (lst[0] == pikt) &&  //---ParseIKBoneType
+                                                (lst[2] == "position") //---raw string for AF_MOVETYPE
+                                            )
+                                            {
+                                                return true;
+                                            }
+                                            else
+                                            {
+                                                return false;
+                                            }
                                         }
                                         else
                                         {
                                             return false;
                                         }
-                                    }
-                                    else
+                                    });
+                                    if (translateLst.Count > 0)
                                     {
-                                        return false;
+                                        AnimationTranslateTargetParts attp = new AnimationTranslateTargetParts((ParseIKBoneType)i, AF_MOVETYPE.Translate);
+                                        foreach (string line in translateLst)
+                                        {
+                                            attp = CsvToFrameTranslateData(naf, asm.targetType, line, attp);
+                                        }
+                                        naframe.translateMovingData.Add(attp);
                                     }
-                                });
-                                if (translateLst.Count > 0)
-                                {
-                                    AnimationTranslateTargetParts attp = new AnimationTranslateTargetParts((ParseIKBoneType)i, AF_MOVETYPE.Translate);
-                                    foreach (string line in translateLst)
-                                    {
-                                        attp = CsvToFrameTranslateData(naf, asm.targetType, line, attp);
+                                    if (naf.avatar.type != AF_TARGETTYPE.VRM)
+                                    { //---VRM other than is IKParent only.
+                                        break;
                                     }
-                                    naframe.translateMovingData.Add(attp);
                                 }
-                                if (naf.avatar.type != AF_TARGETTYPE.VRM)
-                                { //---VRM other than is IKParent only.
-                                    break;
-                                }
+                                
                             }
 
                             //---for Rotate/Scale/etc...

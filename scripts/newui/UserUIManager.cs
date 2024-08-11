@@ -492,10 +492,10 @@ namespace UserUISpace
         {
             OperateActiveVRM oav =  GameObject.Find("IKHandleParent").GetComponent<OperateActiveVRM>();
 
-            CameraOperation1 camo1 = GameObject.Find("WebXRCameraSet").GetComponent<CameraOperation1>();
-            TextField anp_input1 = rootElement.Q<TextField>("anp_input1");
-            camo1.CenteringCameraForAvatar(oav.ActiveAvatar.name);
-            return;
+            //CameraOperation1 camo1 = GameObject.Find("WebXRCameraSet").GetComponent<CameraOperation1>();
+            //TextField anp_input1 = rootElement.Q<TextField>("anp_input1");
+            //camo1.CenteringCameraForAvatar(oav.ActiveAvatar.name);
+            //return;
 
             ManageAvatarTransform mat = oav.ActiveAvatar.GetComponent<ManageAvatarTransform>();
             mat.GetIKTransformAll_body();

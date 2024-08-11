@@ -398,7 +398,8 @@ namespace UserHandleSpace
 
                         //---for blendable: get information of previous frame
 
-                        if ((movedata.vrmBone >= ParseIKBoneType.EyeViewHandle) && (movedata.vrmBone <= ParseIKBoneType.RightLeg))
+                        //if ((movedata.vrmBone >= ParseIKBoneType.EyeViewHandle) && (movedata.vrmBone <= ParseIKBoneType.RightLeg))
+                        if (IsVRMParseBoneType(movedata.vrmBone,false))
                         {
                             GameObject realObject = null;// naa.ikparent.transform.Find(IKBoneNames[index]).gameObject;
                             foreach (Transform bt in bts)
@@ -902,7 +903,8 @@ namespace UserHandleSpace
                         }
                         */
                         
-                        if ((movedata.vrmBone >= ParseIKBoneType.EyeViewHandle) && (movedata.vrmBone <= ParseIKBoneType.RightLeg))
+                        //if ((movedata.vrmBone >= ParseIKBoneType.EyeViewHandle) && (movedata.vrmBone <= ParseIKBoneType.RightLeg))
+                        if (IsVRMParseBoneType(movedata.vrmBone, false))
                         {
                             GameObject realObject = null;// naa.ikparent.transform.Find(IKBoneNames[index]).gameObject;
                             foreach (Transform bt in bts)
@@ -4416,8 +4418,8 @@ namespace UserHandleSpace
                         (int)ParseIKBoneType.RightShoulder,
                         (int)ParseIKBoneType.RightHand, (int)ParseIKBoneType.RightLowerArm,
 
-                        (int)ParseIKBoneType.LeftLeg,(int)ParseIKBoneType.LeftLowerLeg, 
-                        (int)ParseIKBoneType.RightLeg,(int)ParseIKBoneType.RightLowerLeg,
+                        (int)ParseIKBoneType.LeftLeg,(int)ParseIKBoneType.LeftLowerLeg, (int)ParseIKBoneType.LeftToes,
+                        (int)ParseIKBoneType.RightLeg,(int)ParseIKBoneType.RightLowerLeg, (int)ParseIKBoneType.RightToes,
                         (int)ParseIKBoneType.EyeViewHandle
                         
                     };

@@ -1156,6 +1156,17 @@ namespace UserVRMSpace
                     //vik.constraints.Add(vic);
 
                 }
+                else if (hans.name.IndexOf("LeftToes") > -1)
+                {
+                    Transform pt = animator.GetBoneTransform(HumanBodyBones.LeftToes);
+
+                    Vector3 hanspos = pt.position;
+                    hanspos.x = 0f;
+                    hanspos.z = 2f;
+                    hans.transform.localPosition = hanspos;
+                    vik.LeftToes = hans.transform;
+                    vik.LeftToesReversed.x = 0f;
+                }
                 else if (hans.name.IndexOf("RightLeg") > -1)
                 {
                     Transform pt = animator.GetBoneTransform(HumanBodyBones.RightFoot);
@@ -1185,6 +1196,18 @@ namespace UserVRMSpace
                     vic.LimitFrom.z = 15f;
                     vic.LimitTo.z = -15f;
                     //vik.constraints.Add(vic);
+                }
+                else if (hans.name.IndexOf("RightToes") > -1)
+                {
+                    Transform pt = animator.GetBoneTransform(HumanBodyBones.RightToes);
+
+                    Vector3 hanspos = pt.position;
+                    hanspos.x = 0f;
+                    hanspos.z = 2f;
+                    hans.transform.localPosition = hanspos;
+
+                    vik.RightToes = hans.transform;
+                    vik.RightToesReversed.x = 0f;
                 }
             }
             //animator.gameObject.GetComponent<UserHandleSpace.OperateLoadedVRM>().SetVisibleAvatar(1);
