@@ -2237,7 +2237,7 @@ namespace UserHandleSpace
             Camera cam = naa.avatar.GetComponent<Camera>();
             if (movedata.animationType == AF_MOVETYPE.Camera)
             {
-                if (options.isExecuteForDOTween == 1)
+                if (options.isBuildDoTween == 1)
                 { //---execute the animation and the preview
                     switch (movedata.animPlaying)
                     {
@@ -2263,6 +2263,10 @@ namespace UserHandleSpace
                             break;
                     }
                     
+                }
+                else if (options.isBuildDoTween == 0)
+                {
+                    olc.SetCameraPlaying(movedata.animPlaying);
                 }
             }
             /*
@@ -3815,7 +3819,7 @@ namespace UserHandleSpace
         /// <param name="avatar"></param>
         public void ClearGenerateAnimationFrame(NativeAnimationAvatar avatar)
         {
-            if (avatar.type == AF_TARGETTYPE.VRM)
+            if ((avatar.avatar != null) && (avatar.type == AF_TARGETTYPE.VRM))
             {
                 //---for general animation clip
                 VVMMotionRecorder vmrec = avatar.avatar.GetComponent<VVMMotionRecorder>();
@@ -5079,7 +5083,7 @@ namespace UserHandleSpace
             if (options.isPropertyOnly != 1)
             {
                 AnimationTargetParts atcam1 = new AnimationTargetParts();
-                atcam1.animPlaying = olc.GetCameraPlaying();
+                atcam1.animPlaying = olc.GetCameraPlaying(0);
 
                 if (olc.GetCameraPlaying() == UserAnimationState.Play)
                 {
@@ -5093,7 +5097,7 @@ namespace UserHandleSpace
                 {
                     atcam1.animationType = AF_MOVETYPE.Camera;// CameraOff;
                 }
-                atcam1.cameraPlaying = (int)olc.GetCameraPlaying();
+                atcam1.cameraPlaying = (int)olc.GetCameraPlaying(0);
                 movingData.Add(atcam1);
             }
             if (options.isDefineOnly != 1)

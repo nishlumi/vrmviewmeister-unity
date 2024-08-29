@@ -496,7 +496,7 @@ namespace UserHandleSpace
             ret[1] = maxbounds.size.y; //GetMaximumHeightRenderer(glist);
             ret[2] = maxbounds.size.z; //GetMaximumDepthRenderer(glist); //---z dimension is same as x's size.
 
-            Debug.Log("max ren=" + ret[0].ToString() + "," +  ret[1].ToString() + "," +  ret[2].ToString());
+            //Debug.Log("max ren=" + ret[0].ToString() + "," +  ret[1].ToString() + "," +  ret[2].ToString());
 
             /*
             Animator anim = transform.GetComponent<Animator>();

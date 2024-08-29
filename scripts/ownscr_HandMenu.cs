@@ -542,51 +542,66 @@ namespace UserHandleSpace
         }
         public void ResetTransformCurrentObject(bool ismove, bool isrotate, bool issize)
         {
-            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
-            //int ishit = AnimationMan.GetCastIndexByAvatar(AnimationMan.VRARSelectedAvatarName, true);
-            if (nav != null)
+            if (sv_targettype == "c")
             {
-
-                if (nav.type == AF_TARGETTYPE.VRM)
+                if (ismove)
                 {
-                    if (sv_targettype == "o")
-                    {
-                        nav.avatar.GetComponent<OperateLoadedVRM>().relatedTrueIKParent.GetComponent<OtherObjectDummyIK>().LoadDefaultTransform(ismove, isrotate);
-                    }
-                    else if (sv_targettype == "b")
-                    {
-                        SelectBoneObj.GetComponent<UserHandleOperation>().LoadDefaultTransform(ismove, isrotate);
-                    }
-                    
+                    cameraset.transform.position = new Vector3(0, 0, 0);
                 }
-                else
+                if (isrotate)
                 {
-                    if (ismove)
-                    {
-                        nav.avatar.transform.position = new Vector3(0, 0, 0);
-                        nav.ikparent.transform.position = new Vector3(0, 0, 0);
-                    }
-                    if (isrotate)
-                    {
-                        nav.avatar.transform.rotation = Quaternion.Euler(0, 0, 0);
-                        nav.ikparent.transform.rotation = Quaternion.Euler(0, 0, 0);
-                    }
-                    if (issize)
-                    {
-                        nav.avatar.transform.localScale = Vector3.one;
-                    }
-
-                    OtherObjectDummyIK oodik = null;
-                    if (nav.ikparent.TryGetComponent<OtherObjectDummyIK>(out oodik))
-                    {
-                        oodik.LoadDefaultTransform(ismove, isrotate);
-
-
-                    }
-
+                    cameraset.transform.rotation = Quaternion.Euler(0, 0, 0);
                 }
-
             }
+            else
+            {
+                NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+                //int ishit = AnimationMan.GetCastIndexByAvatar(AnimationMan.VRARSelectedAvatarName, true);
+                if (nav != null)
+                {
+
+                    if (nav.type == AF_TARGETTYPE.VRM)
+                    {
+                        if (sv_targettype == "o")
+                        {
+                            nav.avatar.GetComponent<OperateLoadedVRM>().relatedTrueIKParent.GetComponent<OtherObjectDummyIK>().LoadDefaultTransform(ismove, isrotate);
+                        }
+                        else if (sv_targettype == "b")
+                        {
+                            SelectBoneObj.GetComponent<UserHandleOperation>().LoadDefaultTransform(ismove, isrotate);
+                        }
+
+                    }
+                    else
+                    {
+                        if (ismove)
+                        {
+                            nav.avatar.transform.position = new Vector3(0, 0, 0);
+                            nav.ikparent.transform.position = new Vector3(0, 0, 0);
+                        }
+                        if (isrotate)
+                        {
+                            nav.avatar.transform.rotation = Quaternion.Euler(0, 0, 0);
+                            nav.ikparent.transform.rotation = Quaternion.Euler(0, 0, 0);
+                        }
+                        if (issize)
+                        {
+                            nav.avatar.transform.localScale = Vector3.one;
+                        }
+
+                        OtherObjectDummyIK oodik = null;
+                        if (nav.ikparent.TryGetComponent<OtherObjectDummyIK>(out oodik))
+                        {
+                            oodik.LoadDefaultTransform(ismove, isrotate);
+
+
+                        }
+
+                    }
+
+                }
+            }
+            
         }
 
     }
@@ -1017,43 +1032,58 @@ namespace UserHandleSpace
         }
         public void ResetTransformCurrentObject(bool ismove, bool isrotate, bool issize)
         {
-            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
-            //int ishit = AnimationMan.GetCastIndexByAvatar(AnimationMan.VRARSelectedAvatarName, true);
-            if (nav != null)
+            if (sv_targettype == "c")
             {
-                
-                if (nav.type == AF_TARGETTYPE.VRM)
+                if (ismove)
                 {
-                    nav.avatar.GetComponent<OperateLoadedVRM>().relatedTrueIKParent.GetComponent<OtherObjectDummyIK>().LoadDefaultTransform(ismove, isrotate);
+                    cameraManager.transform.position = new Vector3(0, 0, 0);
                 }
-                else
+                if (isrotate)
                 {
-                    if (ismove)
+                    cameraManager.transform.rotation = Quaternion.Euler(0, 0, 0);
+                }
+            }
+            else
+            {
+                NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+                //int ishit = AnimationMan.GetCastIndexByAvatar(AnimationMan.VRARSelectedAvatarName, true);
+                if (nav != null)
+                {
+
+                    if (nav.type == AF_TARGETTYPE.VRM)
                     {
-                        nav.avatar.transform.position = new Vector3(0, 0, 0);
-                        nav.ikparent.transform.position = new Vector3(0, 0, 0);
+                        nav.avatar.GetComponent<OperateLoadedVRM>().relatedTrueIKParent.GetComponent<OtherObjectDummyIK>().LoadDefaultTransform(ismove, isrotate);
                     }
-                    if (isrotate)
+                    else
                     {
-                        nav.avatar.transform.rotation = Quaternion.Euler(0, 0, 0);
-                        nav.ikparent.transform.rotation = Quaternion.Euler(0, 0, 0);
-                    }
-                    if (issize)
-                    {
-                        nav.avatar.transform.localScale = Vector3.one;
+                        if (ismove)
+                        {
+                            nav.avatar.transform.position = new Vector3(0, 0, 0);
+                            nav.ikparent.transform.position = new Vector3(0, 0, 0);
+                        }
+                        if (isrotate)
+                        {
+                            nav.avatar.transform.rotation = Quaternion.Euler(0, 0, 0);
+                            nav.ikparent.transform.rotation = Quaternion.Euler(0, 0, 0);
+                        }
+                        if (issize)
+                        {
+                            nav.avatar.transform.localScale = Vector3.one;
+                        }
+
+                        OtherObjectDummyIK oodik = null;
+                        if (nav.ikparent.TryGetComponent<OtherObjectDummyIK>(out oodik))
+                        {
+                            oodik.LoadDefaultTransform(ismove, isrotate);
+
+
+                        }
+
                     }
 
-                    OtherObjectDummyIK oodik = null;
-                    if (nav.ikparent.TryGetComponent<OtherObjectDummyIK>(out oodik))
-                    {
-                        oodik.LoadDefaultTransform(ismove, isrotate);
-                        
-                        
-                    }
-                    
                 }
-                
             }
+            
         }
 
         public void ShowHandMenu(bool isopen_handmenu)

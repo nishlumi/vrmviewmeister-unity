@@ -666,7 +666,7 @@ namespace UserHandleSpace
                 int dist = 1;
                 if (i > 0)
                 {
-                    dist = actor.frames[i].index - actor.frames[i - 1].index + 1;
+                    dist = actor.frames[i].index - actor.frames[i - 1].index;
                 }
                 actor.frames[i].duration = baseDuration * (float)dist;
                     
@@ -2507,7 +2507,7 @@ namespace UserHandleSpace
                                 }
 
 
-                                //--refer each parts position (original: global )
+                                //--refer each parts position (original: global )                                
                                 Vector3 cur_whole = nav.bodyInfoList[bodyInx];
                                 Vector3 role_whole = destination.bodyInfoList[bodyInx];
                                 
@@ -3071,17 +3071,41 @@ namespace UserHandleSpace
                 //---DO NOT set this timing.
                 //keyFrameSeq.SetEase(frame.ease);
 
-                
+                //---if actor is equipped object, do not transform it.
+                bool isExecuteTransform = true;
+                if (
+                    (targetObject.avatar.type != AF_TARGETTYPE.VRM) &&
+                    (targetObject.avatar.type != AF_TARGETTYPE.SystemEffect) &&
+                    (targetObject.avatar.type != AF_TARGETTYPE.Audio) &&
+                    (targetObject.avatar.type != AF_TARGETTYPE.Text) &&
+                    (targetObject.avatar.type != AF_TARGETTYPE.UImage) &&
+                    (targetObject.avatar.type != AF_TARGETTYPE.Stage)
+                )
+                {
+                    OperateLoadedBase olo = targetObject.avatar.avatar.GetComponent<OperateLoadedBase>();
+                    OtherObjectDummyIK ooik = olo.relatedHandleParent.GetComponent<OtherObjectDummyIK>();
+                    if (ooik != null)
+                    {
+                        if (ooik.isEquipping) isExecuteTransform = false;
+                    }
+                    
+                }
+
+
                 //---moving data loop for 1 avatar
                 //for (int i = frame.movingData.Count - 1; i >= 0; i--)
 
                 //---loop of translateMovingData
-                for (int i = 0; i < frame.translateMovingData.Count; i++)
+                if (isExecuteTransform)
                 {
-                    AnimationTranslateTargetParts transdata = frame.translateMovingData[i];
-                    //---execute for Translate
-                    keyFrameSeq = ParseForTranslateCommon(keyFrameSeq, frame, transdata, targetObject, null, aro);
+                    for (int i = 0; i < frame.translateMovingData.Count; i++)
+                    {
+                        AnimationTranslateTargetParts transdata = frame.translateMovingData[i];
+                        //---execute for Translate
+                        keyFrameSeq = ParseForTranslateCommon(keyFrameSeq, frame, transdata, targetObject, null, aro);
+                    }
                 }
+                
                 
 
                 //---loop of movingData
@@ -3096,7 +3120,10 @@ namespace UserHandleSpace
                     else
                     {
                         //---execute for Rotate, Scale, Jump, Shake
-                        keyFrameSeq = ParseForCommon(keyFrameSeq, frame, movedata, targetObject, null, aro);
+                        if (isExecuteTransform)
+                        {
+                            keyFrameSeq = ParseForCommon(keyFrameSeq, frame, movedata, targetObject, null, aro);
+                        }
 
                         if (targetObject.targetType == AF_TARGETTYPE.VRM)
                         {
@@ -3258,6 +3285,8 @@ namespace UserHandleSpace
                     }
 
                 }
+                                
+                
 
                 NativeAnimationFrame frame = GetFrame(actor, aro.index, isFinalize);
 
