@@ -13,7 +13,7 @@ using LumisIkApp;
 using TMPro;
 using DG.Tweening;
 using System.Threading.Tasks;
-using Cysharp.Threading.Tasks;
+
 
 namespace UserHandleSpace
 {
@@ -1084,6 +1084,10 @@ namespace UserHandleSpace
         /// <returns></returns>
         public GameObject CreateVVMIKHandle(GameObject avatar, bool IsReparent = false)
         {
+            Quaternion CmnRotation = Quaternion.Euler(new Vector3(0, 180, 0));
+            Quaternion CmdZeroRotation = Quaternion.Euler(Vector3.zero);
+
+
             GameObject ikhp = manim.ikArea; 
             OperateActiveVRM ovrm = ikhp.GetComponent<OperateActiveVRM>();
             OperateLoadedVRM avatar_olvrm = avatar.GetComponent<OperateLoadedVRM>();
@@ -1123,7 +1127,12 @@ namespace UserHandleSpace
              */
 
 
-
+            //---for bone ik marker
+            /*GameObject blankparent = new GameObject();
+            blankparent.name = "BoneParent";
+            blankparent.transform.SetParent(ikparent.transform);
+            blankparent.transform.rotation = CmnRotation;
+            */
 
             if (!ovrm.isMoveMode)
             {
@@ -1131,8 +1140,6 @@ namespace UserHandleSpace
                 ovrm.ShowHandleBody(false, trueIKParent);
             }
 
-            Quaternion CmnRotation = Quaternion.Euler(new Vector3(0, 180, 0));
-            Quaternion CmdZeroRotation = Quaternion.Euler(Vector3.zero);
 
             avatar_olvrm.relatedHandleParent = ikparent;
             UserGroundOperation ugo = ikparent.AddComponent<UserGroundOperation>();
@@ -1259,6 +1266,7 @@ namespace UserHandleSpace
             leftsld.SaveDefaultTransform();
             leftsld.RootTransform = ikparent.transform;
             ugo.LeftShoulderIK = leftshoulder.transform;
+            
 
 
             GameObject copyleftlowerarm = (GameObject)Resources.Load("IKHandleSphereLeft");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -1289,6 +1297,46 @@ namespace UserHandleSpace
             lefthand.transform.position = animLeftHandPos;
             uholefthand.SaveDefaultTransform();
             uholefthand.RootTransform = ikparent.transform;
+
+            //---test
+            /*Transform testleftsho = animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
+            Transform testleftupla = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm);
+            Transform testleftla = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
+            Transform testlefthand = animator.GetBoneTransform(HumanBodyBones.LeftHand);
+
+            GameObject realleftupperarm = Instantiate(copyleftlowerarm, copyleftlowerarm.transform.position, Quaternion.identity, blankparent.transform);
+            Destroy(realleftupperarm.GetComponent<UserHandleOperation>());
+            UserBoneHandleOperation ubhoupperarm = realleftupperarm.AddComponent<UserBoneHandleOperation>();
+            realleftupperarm.transform.position = new Vector3(testleftupla.position.x * -1f, testleftupla.position.y, testleftupla.position.z);
+            realleftupperarm.transform.localRotation = testleftupla.localRotation;
+            realleftupperarm.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+            realleftupperarm.transform.SetParent(blankparent.transform);
+            realleftupperarm.name = "RealLeftUpperArm";
+            ubhoupperarm.TargetBone = testleftupla;
+            ubhoupperarm.SaveDefaultTransform();
+
+            GameObject realleftarm = Instantiate(copyleftlowerarm, copyleftlowerarm.transform.position, Quaternion.identity, realleftupperarm.transform);
+            Destroy(realleftarm.GetComponent<UserHandleOperation>());
+            UserBoneHandleOperation ubho = realleftarm.AddComponent<UserBoneHandleOperation>();
+            realleftarm.transform.position = new Vector3(testleftla.position.x * -1, testleftla.position.y, testleftla.position.z);
+            realleftarm.transform.localRotation = testleftla.localRotation;
+            realleftarm.transform.localScale = new Vector3(1, 1, 1);
+            realleftarm.transform.SetParent(realleftupperarm.transform);
+            realleftarm.name = "RealLeftLowerArm";
+            ubho.TargetBone = testleftla;
+            ubho.SaveDefaultTransform();
+
+            GameObject reallefthand = Instantiate(copyleftlowerarm, copyleftlowerarm.transform.position, Quaternion.identity, realleftarm.transform);
+            Destroy(reallefthand.GetComponent<UserHandleOperation>());
+            UserBoneHandleOperation ubhohand = reallefthand.AddComponent<UserBoneHandleOperation>();
+            reallefthand.transform.position = new Vector3(testlefthand.position.x * -1, testlefthand.position.y, testlefthand.position.z);
+            reallefthand.transform.localRotation = testlefthand.localRotation;
+            reallefthand.transform.localScale = new Vector3(1, 1, 1);
+            reallefthand.transform.SetParent(realleftarm.transform);
+            reallefthand.name = "RealLeftLowerHand";
+            ubhohand.TargetBone = testlefthand;
+            ubhohand.SaveDefaultTransform();*/
+            //---
 
 
 
@@ -1382,9 +1430,18 @@ namespace UserHandleSpace
             lefttoes.tag = "IKHandle";
             uholtoes.PartsName = "lefttoes";
             uholtoes.SetRelatedAvatar(avatar);
-            Vector3 animLeftToesPos = animator.GetBoneTransform(HumanBodyBones.LeftToes).transform.position;
-            animLeftToesPos.x *= 1f;
-            lefttoes.transform.position = animLeftToesPos;
+            Vector3 animLeftToesPos = Vector3.zero;
+            if (animator.GetBoneTransform(HumanBodyBones.LeftToes) != null)
+            {
+                animLeftToesPos = animator.GetBoneTransform(HumanBodyBones.LeftToes).transform.position;
+                animLeftToesPos.x *= 1f;
+                lefttoes.transform.position = animLeftToesPos;
+            }
+            else
+            {
+                uholtoes.IsEnableBone = false;
+            }
+            
             uholtoes.SaveDefaultTransform();
             uholtoes.RootTransform = ikparent.transform;
 
@@ -1427,9 +1484,18 @@ namespace UserHandleSpace
             righttoes.tag = "IKHandle";
             uhortoes.PartsName = "righttoes";
             uhortoes.SetRelatedAvatar(avatar);
-            Vector3 animRightToesPos = animator.GetBoneTransform(HumanBodyBones.RightToes).transform.position;
-            animRightToesPos.x *= 1f;
-            righttoes.transform.position = animRightToesPos;
+            Vector3 animRightToesPos = Vector3.zero;
+            if (animator.GetBoneTransform(HumanBodyBones.RightToes) != null)
+            {
+                animRightToesPos = animator.GetBoneTransform(HumanBodyBones.RightToes).transform.position;
+                animRightToesPos.x *= 1f;
+                righttoes.transform.position = animRightToesPos;
+            }
+            else
+            {
+                uhortoes.IsEnableBone = false;
+            }
+            
             uhortoes.SaveDefaultTransform();
             uhortoes.RootTransform = ikparent.transform;
 
@@ -1693,6 +1759,7 @@ namespace UserHandleSpace
         {
             if (target != null) Addressables.ReleaseInstance(target);
         }
+        
     }
 
 }

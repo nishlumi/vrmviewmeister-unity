@@ -13,7 +13,7 @@ using RootMotion.FinalIK;
 using UniGLTF;
 using UniGLTF.Extensions.VRMC_vrm;
 using UniVRM10;
-using VRMShaders;
+//using VRMShaders;
 
 using UserHandleSpace;
 using UserUISpace;
@@ -979,6 +979,7 @@ namespace UserVRMSpace
             contextRoot.AddComponent<UniVRM10.VRM10Viewer.VRM10Blinker>();
             Animator conanime = contextRoot.GetComponent<Animator>();
 
+
             GameObject ikworld = managa.ikArea; 
 
             //Transform thead = conanime.GetBoneTransform(HumanBodyBones.Head);
@@ -1022,6 +1023,8 @@ namespace UserVRMSpace
 
             olvrm.ListGravityInfo();
             olvrm.RegisterUserMaterial();
+            olvrm.SetAnimator(testanim);
+
             //olvrm.ListProxyBlendShape();
             //---change material Standard to VRM10
             var umat = olvrm.ListUserMaterialObject();
@@ -1093,6 +1096,7 @@ namespace UserVRMSpace
 
                     RuntimeAnimatorController ruanim = Instantiate<RuntimeAnimatorController>((RuntimeAnimatorController)Resources.Load("vvmik_anicon"));
                     conanime.runtimeAnimatorController = ruanim;
+                    olvrm.SetRuntimeAnimator(ruanim);
 
                     VvmIk vik = contextRoot.AddComponent<VvmIk>();
                     SetupVVMIK(ikparent, conanime, vik, null, bodyBounds, IsReparentBone);
@@ -1969,6 +1973,12 @@ namespace UserVRMSpace
                 sphereCollider.isTrigger = true;
                 SphereCollider copysph = copyoth.GetComponent<SphereCollider>();
                 sphereCollider.radius = copysph.radius;
+            }
+            else if (ptype == UserPrimitiveType.Plane)
+            {
+                MeshCollider meshCollider = oth.AddComponent<MeshCollider>();
+                meshCollider.isTrigger = true;
+                meshCollider.convex = true;
             }
             
 

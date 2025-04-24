@@ -922,6 +922,12 @@ namespace UserVRMSpace
             for (int i = 0; i < cnt; i++)
             {
                 GameObject hans = bts[i].gameObject; // ikhandles.transform.GetChild(i).gameObject;
+                Rigidbody rd = bts[i].GetComponent<Rigidbody>();
+                if (rd != null)
+                {
+                    rd.drag = 100f;
+                    rd.angularDrag = 20f;
+                }
                 if (hans.name.IndexOf("Head") > -1)
                 {
                     Transform necktrans = animator.GetBoneTransform(HumanBodyBones.Neck);
@@ -1084,13 +1090,16 @@ namespace UserVRMSpace
                     }
                     else*/
                     {
-                        newpos.y = upche.position.y + 0.05f;
-                        //newpos.y = ((spine.position.y + upche.position.y) * 0.01f) * 95f;
+                        Debug.Log("vrm hips="+ upche.position.y.ToString());
+                        Debug.Log("vrm pelvis=" + (upche.position.y + 0.04f).ToString());
+                        newpos.y = upche.position.y;
+                        newpos.y += 0.04f;
                     }
                     newpos.x = spine.position.x;
                     
                     newpos.z = spine.position.z * -1;
                     hans.transform.position = newpos;
+                    Debug.Log("real  pelvis="+hans.transform.position.y.ToString());
 
                     vik.waist = hans.transform;
                 }
@@ -1136,7 +1145,7 @@ namespace UserVRMSpace
 
                     Vector3 hanspos = pt.position;
                     hanspos.x *= -1f;
-                    hanspos.y = 0.06f;
+                    hanspos.y = hans.transform.localScale.y * 0.5f; //pt.position.y; // 0.06f;
                     hanspos.z *= -1f;
                     hans.transform.localPosition = hanspos;
 
@@ -1160,12 +1169,16 @@ namespace UserVRMSpace
                 {
                     Transform pt = animator.GetBoneTransform(HumanBodyBones.LeftToes);
 
-                    Vector3 hanspos = pt.position;
-                    hanspos.x = 0f;
-                    hanspos.z = 2f;
-                    hans.transform.localPosition = hanspos;
-                    vik.LeftToes = hans.transform;
-                    vik.LeftToesReversed.x = 0f;
+                    if (pt != null)
+                    {
+                        Vector3 hanspos = pt.position;
+                        hanspos.x = 0f;
+                        hanspos.z = 2f;
+                        hans.transform.localPosition = hanspos;
+                        vik.LeftToes = hans.transform;
+                        vik.LeftToesReversed.x = 0f;
+                    }
+                    
                 }
                 else if (hans.name.IndexOf("RightLeg") > -1)
                 {
@@ -1179,7 +1192,7 @@ namespace UserVRMSpace
 
                     Vector3 hanspos = pt.position;
                     hanspos.x *= -1f;
-                    hanspos.y = 0.06f;
+                    hanspos.y = hans.transform.localScale.y * 0.5f; // pt.position.y; //0.06f;
                     hanspos.z *= -1f;
                     hans.transform.localPosition = hanspos;
 
@@ -1201,13 +1214,17 @@ namespace UserVRMSpace
                 {
                     Transform pt = animator.GetBoneTransform(HumanBodyBones.RightToes);
 
-                    Vector3 hanspos = pt.position;
-                    hanspos.x = 0f;
-                    hanspos.z = 2f;
-                    hans.transform.localPosition = hanspos;
+                    if (pt != null)
+                    {
+                        Vector3 hanspos = pt.position;
+                        hanspos.x = 0f;
+                        hanspos.z = 2f;
+                        hans.transform.localPosition = hanspos;
 
-                    vik.RightToes = hans.transform;
-                    vik.RightToesReversed.x = 0f;
+                        vik.RightToes = hans.transform;
+                        vik.RightToesReversed.x = 0f;
+                    }
+                    
                 }
             }
             //animator.gameObject.GetComponent<UserHandleSpace.OperateLoadedVRM>().SetVisibleAvatar(1);

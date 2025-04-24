@@ -11,13 +11,14 @@ using UnityEngine.Networking;
 using UserHandleSpace;
 using RootMotion.FinalIK;
 using VRM;
-using VRMShaders;
+//using VRMShaders;
 using UniVRM10;
 using DG.Tweening;
 using LumisIkApp;
 using UniGLTF;
 using TriLibCore.Dae.Schema;
 using RootMotion.Demos;
+using static RootMotion.FinalIK.RagdollUtility;
 
 namespace UserHandleSpace
 {
@@ -53,6 +54,7 @@ namespace UserHandleSpace
         public List<BasicBlendShapeKey> blendShapeList;
 
         public bool isMoveMode;
+        public bool isIKMode;
 
         public int equipType; //Flag for animation: -1 - unequip, 0 - no change, 1 - to equip
         public AvatarEquipmentClass equipDestinations;
@@ -63,6 +65,10 @@ namespace UserHandleSpace
         private Vrm10Instance vrminstance;
         private UniVRM10.VRM10Viewer.VRM10Blinker blink;
         public MaterialProperties userSharedProperties;
+        public Animator vrmanimator;
+        private RuntimeAnimatorController runtimeAnimator;
+        
+
 
         private ManageAnimation manim;
 
@@ -79,7 +85,9 @@ namespace UserHandleSpace
         public AvatarFingerInHand LeftFingerBkup;
         public AvatarFingerInHand RightFingerBkup;
 
-        private OperateVRMExporter ovrmex;
+        private float lastEnabledPelvisHipsDiff = 0;
+
+        //NOT USE private OperateVRMExporter ovrmex;
         private Vrm10AnimationInstance vrmaInst;
         private Animation VrmaNativeAnimation;
         public UserAnimationState animationStartFlag;  //1 - play, 0 - stop, 2 - playing, 3 - seeking, 4 - pause
@@ -147,10 +155,11 @@ namespace UserHandleSpace
             //---set  up IKMapping.
             constructIKMappingList();
 
-            //---set up exporter
-            ovrmex = new OperateVRMExporter();
+            //---set up exporter NOT USE
+            //ovrmex = new OperateVRMExporter();
 
             triggerCurrentAnimOnFinished = false;
+            isIKMode = true;
         }
 
         // Update is called once per frame
@@ -194,26 +203,30 @@ namespace UserHandleSpace
         {
             base.OnDestroy();
 
-            foreach (KeyValuePair<string, Material> kvp in userSharedMaterials)
+            if (userSharedMaterials != null)
             {
-                Material mat = kvp.Value;
-                { //---nullize old texture ( not destroy here )
-                    if (userSharedTextureFiles.ContainsKey(kvp.Key))
-                    {
-                        if ((userSharedTextureFiles[kvp.Key].textureIsCamera == 0) && (userSharedTextureFiles[kvp.Key].texturePath != ""))
+                foreach (KeyValuePair<string, Material> kvp in userSharedMaterials)
+                {
+                    Material mat = kvp.Value;
+                    { //---nullize old texture ( not destroy here )
+                        if (userSharedTextureFiles.ContainsKey(kvp.Key))
                         {
-                            manim.UnReferMaterial(OneMaterialType.Texture, userSharedTextureFiles[kvp.Key].texturePath);
+                            if ((userSharedTextureFiles[kvp.Key].textureIsCamera == 0) && (userSharedTextureFiles[kvp.Key].texturePath != ""))
+                            {
+                                manim.UnReferMaterial(OneMaterialType.Texture, userSharedTextureFiles[kvp.Key].texturePath);
+                            }
+
+                            mat.SetTexture("_MainTex", null);
                         }
 
-                        mat.SetTexture("_MainTex", null);
                     }
-
+                    mat = null;
                 }
-                mat = null;
+                userSharedMaterials.Clear();
             }
-            userSharedMaterials.Clear();
-            userSharedTextureFiles.Clear();
-            backupTextureFiles.Clear();
+            
+            if (userSharedTextureFiles != null) userSharedTextureFiles.Clear();
+            if (backupTextureFiles != null) backupTextureFiles.Clear();
             Renderer[] mrs = GetComponentsInChildren<Renderer>();
             foreach (var mr in mrs)
             {
@@ -240,6 +253,14 @@ namespace UserHandleSpace
             context = cont;
         }
         */
+        public void SetAnimator(Animator animator)
+        {
+            vrmanimator = animator;
+        }
+        public void SetRuntimeAnimator(RuntimeAnimatorController rac)
+        {
+            runtimeAnimator = rac;
+        }
         public Bounds GetTPoseBodyInfo()
         {
             return bodyInfoTPose;
@@ -383,6 +404,28 @@ namespace UserHandleSpace
             }
             return ret;
         }
+        public string GetIKHandleCurrentSelected()
+        {
+            String ret = "";
+            UserHandleOperation[] children = relatedHandleParent.transform.GetComponentsInChildren<UserHandleOperation>();
+            foreach (var child in children)
+            {
+                if (child.is_current_marker)
+                {
+                    ret = child.PartsName;
+                    break;
+                }
+            }
+
+            return ret;
+        }
+        public void GetIKHandleCurrentSelectedFromOuter()
+        {
+            String ret = GetIKHandleCurrentSelected();
+#if !UNITY_EDITOR && UNITY_WEBGL
+        ReceiveStringVal(ret);
+#endif
+        }
         /// <summary>
         /// To recover the IK transform(position, rotation) by HumanBodyBones of avatar self.
         /// </summary>
@@ -399,6 +442,7 @@ namespace UserHandleSpace
         }
         public override void EnableIK(bool flag)
         {
+            /*
             BipedIK bik = gameObject.TryGetComponent<BipedIK>(out bik) ? bik : null;
             CCDIK cik = gameObject.TryGetComponent<CCDIK>(out cik) ? cik : null;
             VvmIk vik = gameObject.TryGetComponent<VvmIk>(out vik) ? vik : null;
@@ -410,9 +454,47 @@ namespace UserHandleSpace
             if (bik != null) bik.enabled = flag;
             if (cik != null) cik.enabled = flag;
             if (vik != null) vik.enabled = flag;
+            */
+            
+            if (flag)
+            {
+                //vrmanimator.runtimeAnimatorController = runtimeAnimator;
+                vrmanimator.enabled = true;
+                EnableRotationLimit(1);
+            }
+            else
+            {
+                Vector3 hiprot = vrmanimator.GetBoneTransform(HumanBodyBones.Hips).transform.localRotation.eulerAngles;
+                Vector3 hippos = vrmanimator.GetBoneTransform(HumanBodyBones.Hips).transform.localPosition;
 
+                //vrmanimator.runtimeAnimatorController = null;
+                EnableRotationLimit(0);
+                vrmanimator.enabled = false;
+
+                //Vector3 rot = relatedTrueIKParent.transform.rotation.eulerAngles;
+                //rot.y = rot.y - 180;
+
+                vrmanimator.GetBoneTransform(HumanBodyBones.Hips).transform.localRotation = Quaternion.Euler(hiprot);
+                vrmanimator.GetBoneTransform(HumanBodyBones.Hips).transform.position = hippos;
+
+                Debug.Log("disabling hips=" + hippos.y.ToString());
+            }
+            var uhos = relatedHandleParent.GetComponentsInChildren<UserHandleOperation>();
+            foreach (var child in uhos)
+            {
+                child.IsFixTransform = flag;
+            }
+            isIKMode = flag;
         }
+        public void EnableIKFromOuter(int param)
+        {
+            EnableIK(param == 1 ? true : false);
+        }
+        public bool GetIKStatus()
+        {
 
+            return isIKMode;
+        }
         /// <summary>
         /// Change enable/disable RotationLimitedHinge of LowerLeg / Foot
         /// </summary>
@@ -608,7 +690,7 @@ namespace UserHandleSpace
         /// Convert HumanBodyBones transform to This app IK transform
         /// </summary>
         /// <returns></returns>
-        public IEnumerator ApplyBoneTransformToIKTransform(Animator animator)
+        public IEnumerator ApplyBoneTransformToIKTransform()
         {
             const int BIPEDIK = 1;
             const int VVMIK = 2;
@@ -624,89 +706,87 @@ namespace UserHandleSpace
 
             //---start condition: a weight of each IK target == 0
 
-            Transform bleye = animator.GetBoneTransform(HumanBodyBones.LeftEye);
-            Transform breye = animator.GetBoneTransform(HumanBodyBones.RightEye);
-            Transform bhead = animator.GetBoneTransform(HumanBodyBones.Head);
-            Transform bneck = animator.GetBoneTransform(HumanBodyBones.Neck);
-            Transform bupperchest = animator.GetBoneTransform(HumanBodyBones.UpperChest);
-            Transform bchest = animator.GetBoneTransform(HumanBodyBones.Chest);
-            Transform bspine = animator.GetBoneTransform(HumanBodyBones.Spine);
-            Transform bleftshoulder = animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
-            Transform brightshoulder = animator.GetBoneTransform(HumanBodyBones.RightShoulder);
-            Transform bleftlowerarm = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
-            Transform brightlowerarm = animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
-            Transform blefthand = animator.GetBoneTransform(HumanBodyBones.LeftHand);
-            Transform brighthand = animator.GetBoneTransform(HumanBodyBones.RightHand);
-            Transform bpelvis = animator.GetBoneTransform(HumanBodyBones.Hips);
-            Transform bleftlowerleg = animator.GetBoneTransform(HumanBodyBones.LeftLowerLeg);
-            Transform brightlowerleg = animator.GetBoneTransform(HumanBodyBones.RightLowerLeg);
-            Transform bleftfoot = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
-            Transform brightfoot = animator.GetBoneTransform(HumanBodyBones.RightFoot);
+            //---HumanBodyBones transform
+            Transform bleye = vrmanimator.GetBoneTransform(HumanBodyBones.LeftEye);
+            Transform breye = vrmanimator.GetBoneTransform(HumanBodyBones.RightEye);
+            Transform bhead = vrmanimator.GetBoneTransform(HumanBodyBones.Head);
+            Transform bneck = vrmanimator.GetBoneTransform(HumanBodyBones.Neck);
+            Transform bupperchest = vrmanimator.GetBoneTransform(HumanBodyBones.UpperChest);
+            Transform bchest = vrmanimator.GetBoneTransform(HumanBodyBones.Chest);
+            Transform bspine = vrmanimator.GetBoneTransform(HumanBodyBones.Spine);
+            Transform bleftshoulder = vrmanimator.GetBoneTransform(HumanBodyBones.LeftShoulder);
+            Transform brightshoulder = vrmanimator.GetBoneTransform(HumanBodyBones.RightShoulder);
+            Transform bleftlowerarm = vrmanimator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
+            Transform brightlowerarm = vrmanimator.GetBoneTransform(HumanBodyBones.RightLowerArm);
+            Transform blefthand = vrmanimator.GetBoneTransform(HumanBodyBones.LeftHand);
+            Transform brighthand = vrmanimator.GetBoneTransform(HumanBodyBones.RightHand);
+            Transform bleftfinger = vrmanimator.GetBoneTransform(HumanBodyBones.LeftIndexDistal);
+            Transform brightfinger = vrmanimator.GetBoneTransform(HumanBodyBones.RightIndexDistal);
+            Transform bpelvis = vrmanimator.GetBoneTransform(HumanBodyBones.Hips);
+            Transform bleftlowerleg = vrmanimator.GetBoneTransform(HumanBodyBones.LeftLowerLeg);
+            Transform brightlowerleg = vrmanimator.GetBoneTransform(HumanBodyBones.RightLowerLeg);
+            Transform bleftfoot = vrmanimator.GetBoneTransform(HumanBodyBones.LeftFoot);
+            Transform brightfoot = vrmanimator.GetBoneTransform(HumanBodyBones.RightFoot);
+            Transform blefttoes = vrmanimator.GetBoneTransform(HumanBodyBones.LeftToes);
+            Transform brighttoes = vrmanimator.GetBoneTransform(HumanBodyBones.RightToes);
+
+            //---IK-marker transform
+            Transform pelvis = relatedHandleParent.transform.Find("Pelvis");
+            Transform aim = pelvis.transform.Find("Aim");
+            Transform chest = aim.transform.Find("Chest");
+            Transform head = chest.transform.Find("Head");
+            Transform lsho = chest.transform.Find("LeftShoulder");
+            Transform rsho = chest.transform.Find("RightShoulder");
 
 
             //---spine and hips---------------------------------------------------------------------------
-            Transform pelvis = relatedHandleParent.transform.Find("Pelvis");
             if (pelvis != null)
             {
+                /**
+                 * 1. Disable IK
+                 * 2. Pelvisの子のAimをIKParentの直下に移動する
+                 * 3. PelvisのPositionにHipsをセットする（Yは+0.04f）
+                 * 4. AimをPelvisの子に戻す
+                 * 5. Enable IK
+                 * 
+                 */
                 if (isIK > 0)
                 {
-                    pelvis.position = bpelvis.position;
+                    //---Aim's parent is IKParent
+                    aim.SetParent(relatedHandleParent.transform);
                     yield return null;
-                    Vector3 bpeltmp1 = bpelvis.rotation.eulerAngles;
-                    //bpeltmp1.y += -180f;
-                    //bpeltmp1.y = Mathf.Repeat(bpeltmp1.y, 360f);
-                    pelvis.rotation = Quaternion.Euler(bpeltmp1);
-                    //pelvis.Rotate(0, 180, 0);
+
+                    //Vector3 bpeltmp1 = bpelvis.rotation.eulerAngles;
+                    //pelvis.rotation = Quaternion.Euler(bpeltmp1);
                     if (isIK == VVMIK)
                     {
-                        Vector3 rot = bpelvis.rotation.eulerAngles + new Vector3(0, 180f, 0);
-                        rot.y = Mathf.Repeat(rot.y + 180f, 360f) - 180f;
-                        pelvis.rotation = Quaternion.Euler( rot );
+                        //Vector3 rot = bpelvis.rotation.eulerAngles + new Vector3(0, 180f, 0);
+                        //rot.y = Mathf.Repeat(rot.y + 180f, 360f) - 180f;
+                        //pelvis.rotation = Quaternion.Euler( rot );
+
+                        //---new IK to FK
+                        pelvis.rotation = bpelvis.rotation;
                         
                     }
+                    yield return null;
+                    Debug.Log("pelvis.pos=" + JsonUtility.ToJson(pelvis.position));
+                    Debug.Log("bpelvis.pos=" + JsonUtility.ToJson(bpelvis.position));
+                    //pelvis.localPosition = new Vector3(bpelvis.localPosition.x, bpelvis.localPosition.y + 0.04f, bpelvis.localPosition.z);
+                    pelvis.position = new Vector3(bspine.position.x, bpelvis.position.y+0.02f, bspine.position.z);
+                    yield return null;
+
+                    //---recover Aim's parent
+                    aim.SetParent(pelvis);
                     yield return null;
                 }
                 
             }
             //---UpperChest, Chest and Aim------------------------------------------------------------------
-            Transform aim = relatedHandleParent.transform.Find("Aim");
             if (aim != null)
             {
                 Vector3 pos = Vector3.zero;
                 Vector3 rot = Vector3.zero;
-                /*if (bupperchest != null)
-                {
-                    pos = bupperchest.position;
-                    rot = bupperchest.rotation.eulerAngles;
-                }
-                else */
-                if (isIK == BIPEDIK)
-                {
-                    if (bupperchest != null)
-                    {
-                        pos = bupperchest.position;
-                        rot = bupperchest.rotation.eulerAngles;
-
-                        aim.position = bupperchest.TransformPoint(bupperchest.localPosition - Vector3.back);
-                    }
-                    else if (bchest != null) 
-                    {
-                        pos = bchest.position;
-                        rot = bchest.rotation.eulerAngles;
-
-                        aim.position = bchest.TransformPoint(bchest.localPosition - Vector3.back);
-                    }
-                    
-
-                    //aim.position = pos;
-                    //aim.Translate(Vector3.back, Space.Self);
-                    //aim.position = bchest.TransformPoint(bchest.localPosition + Vector3.back);
-                    ///yield return null;
-
-                    aim.rotation = Quaternion.Euler(new Vector3(0, 180, 0));
-                    yield return null;
-                }
-                else if (isIK == VVMIK)
+                if (isIK == VVMIK)
                 {
                     if (bchest != null)
                     {
@@ -726,23 +806,18 @@ namespace UserHandleSpace
                 }
                 
             }
-            Transform chest = relatedHandleParent.transform.Find("Chest");
             if (chest != null)
             {
-                if (bchest != null)
+                if (bneck != null)
                 {
-                    chest.position = bchest.position;
-                    chest.rotation = bchest.rotation;
+                    chest.position = bneck.position;
+                    chest.rotation = bneck.rotation;
                 }
                 else
                 {
                     chest.position = bspine.position;
                     chest.rotation = bspine.rotation;
                 }
-                //Vector3 bnecktmp1 = bneck.localRotation.eulerAngles;
-                ////bnecktmp1.y += -180f;
-                //chest.position = bneck.position;
-                //chest.rotation = Quaternion.Euler(bnecktmp1.x, bnecktmp1.y, bnecktmp1.z);
                 yield return null;
             }
 
@@ -752,7 +827,7 @@ namespace UserHandleSpace
             {
                 Vector3 pos = (bleye.position + breye.position) / 2f;
                 //Vector3 rot = (bleye.rotation.eulerAngles + breye.rotation.eulerAngles) / 2f;
-                pos = bleye.TransformPoint(bleye.localPosition - Vector3.back);
+                pos = bleye.TransformPoint(bleye.position - Vector3.back);
 
                 //eye.rotation = Quaternion.Euler(rot);
                 //yield return null;
@@ -762,7 +837,6 @@ namespace UserHandleSpace
                 yield return null;
 
             }*/
-            Transform head = relatedHandleParent.transform.Find("Head");
             if (head != null)
             {
                 head.position = bhead.position;
@@ -774,11 +848,8 @@ namespace UserHandleSpace
             if (lookat != null)
             {
                 Vector3 pos = bhead.TransformPoint(bhead.localPosition - Vector3.back);
-                //Vector3 rot = bhead.rotation.eulerAngles;
-                //lookat.rotation = Quaternion.Euler(rot);
                 yield return null;
 
-                //pos.z--;
                 lookat.position = pos - new Vector3(0, 0, 0.15f);
                 yield return null;
             }
@@ -790,11 +861,14 @@ namespace UserHandleSpace
             {
                 lhand.position = new Vector3(blefthand.position.x, blefthand.position.y, blefthand.position.z);
                 yield return null;
-
-                Vector3 rot = blefthand.rotation.eulerAngles;
-                //rot.y += -180f;
-                //rot.y = Mathf.Repeat(rot.y, 360f);
+                
+                Vector3 rot = blefthand.localRotation.eulerAngles;
+                //rot.y -= 90f;
+                //rot.x -= 180f;
+                //rot.z -= 180f;
                 lhand.rotation = Quaternion.Euler(rot);
+                lhand.Rotate(Vector3.up, -90, Space.Self);
+                //lhand.localRotation = blefthand.localRotation;
                 yield return null;
             }
             Transform lla = relatedHandleParent.transform.Find("LeftLowerArm");
@@ -803,11 +877,12 @@ namespace UserHandleSpace
                 lla.position = bleftlowerarm.position;
                 yield return null;
             }
-            Transform lsho = relatedHandleParent.transform.Find("LeftShoulder");
             if (lsho != null)
             {
-                lsho.position = bleftshoulder.position;
-                lsho.rotation = bleftshoulder.rotation;
+                Vector3 hanspos = bleftshoulder.localPosition;
+                hanspos.x -= 0.6f;
+                lsho.localPosition = hanspos;
+                lsho.localRotation = bleftshoulder.localRotation;
                 yield return null;
             }
             Transform rhand = relatedHandleParent.transform.Find("RightHand");
@@ -817,9 +892,12 @@ namespace UserHandleSpace
                 yield return null;
 
                 Vector3 rot = brighthand.rotation.eulerAngles;
-                //rot.y += -180f;
+                //rot.y += 90;
+                //rot.x -= 180f;
+                //rot.z -= 180f;
                 //rot.y = Mathf.Repeat(rot.y, 360f);
                 rhand.rotation = Quaternion.Euler(rot);
+                //rhand.localRotation = brighthand.localRotation;
                 yield return null;
             }
             Transform rla = relatedHandleParent.transform.Find("RightLowerArm");
@@ -828,11 +906,12 @@ namespace UserHandleSpace
                 rla.position = brightlowerarm.position;
                 yield return null;
             }
-            Transform rsho = relatedHandleParent.transform.Find("RightShoulder");
             if (rsho != null)
             {
-                rsho.position = brightshoulder.position;
-                rsho.rotation = brightshoulder.rotation;
+                Vector3 hanspos = brightshoulder.localPosition;
+                hanspos.x+= 0.6f;
+                rsho.localPosition = hanspos;
+                rsho.localRotation = brightshoulder.localRotation;
                 yield return null;
             }
 
@@ -841,11 +920,10 @@ namespace UserHandleSpace
             Transform lfoot = relatedHandleParent.transform.Find("LeftLeg");
             if (lfoot != null)
             {
-                lfoot.position = new Vector3(bleftfoot.position.x, bleftfoot.position.y, bleftfoot.position.z);
+                lfoot.position = new Vector3(bleftfoot.position.x, bleftfoot.position.y-0.03f, bleftfoot.position.z);
                 yield return null;
 
                 Vector3 rot = bleftfoot.rotation.eulerAngles;
-                //rot.y += 180;
                 lfoot.rotation = Quaternion.Euler(rot);
                 
                 yield return null;
@@ -856,11 +934,17 @@ namespace UserHandleSpace
                 lllg.position = bleftlowerleg.position + new Vector3(0,0,-0.1f);
                 yield return null;
             }
+            Transform ltoes = lfoot.transform.Find("LeftToes");
+            if (ltoes != null)
+            {
+                ltoes.position = blefttoes.position;
+                ltoes.rotation = blefttoes.rotation;
+            }
 
             Transform rfoot = relatedHandleParent.transform.Find("RightLeg");
             if (rfoot != null)
             {
-                rfoot.position = new Vector3(brightfoot.position.x, brightfoot.position.y, brightfoot.position.z);
+                rfoot.position = new Vector3(brightfoot.position.x, brightfoot.position.y-0.03f, brightfoot.position.z);
                 yield return null;
 
                 Vector3 rot = brightfoot.rotation.eulerAngles;
@@ -874,14 +958,34 @@ namespace UserHandleSpace
                 rllg.position = brightlowerleg.position + new Vector3(0, 0, -0.1f);
                 yield return null;
             }
+            Transform rtoes = rfoot.transform.Find("LeftToes");
+            if (rtoes != null)
+            {
+                rtoes.position = brighttoes.position;
+                rtoes.rotation = brighttoes.rotation;
+            }
+
+            //---IKParent------------------------------------------------------------------------------------
+            {
+                Vector3 vrmpos = transform.position;
+
+                relatedTrueIKParent.transform.position = vrmpos;
+                relatedTrueIKParent.transform.rotation = transform.rotation;
+
+                //---set 0 to vrm transform
+                transform.position = Vector3.zero;
+                transform.rotation = Quaternion.identity;
+            }
 
 
             //---finally, already recover IK weight and FixTransform
             //   as preparing, proceed Frame
             yield return null;
             
-            //EnableIK(true);
-            StartCoroutine(EnableIKOperationMode(true));
+
+            //---Enable IK-system at HERE !!!
+            EnableIK(true);
+            //StartCoroutine(EnableIKOperationMode(true));
         }
         public void ApplyNaturalRotationGoal(string partsname)
         {
@@ -910,6 +1014,161 @@ namespace UserHandleSpace
                 rightleg.transform.localRotation = rightlowerleg.transform.localRotation;
             }
         }
+
+        /// <summary>
+        /// Get IK-marker position 
+        /// </summary>
+        /// <param name="param"></param>
+        /// <returns></returns>
+        public override Vector3 GetTransformIKMarker(string param)
+        {
+            Vector3 ret = Vector3.zero;
+            GameObject parts = GetIKHandle(param);
+            if (parts != null)
+            {
+                ret = parts.transform.position;
+            }
+            
+            return ret;
+        }
+        public override void GetTransformIKMarkerFromOuter(string param)
+        {
+            Vector3 parts = GetTransformIKMarker(param);
+            string ret = parts.x.ToString() + "," + parts.y.ToString() + "," + parts.z.ToString();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+
+        /// <summary>
+        /// Set referrence avatar/IK-marker position to IK-marker or avatar position.
+        /// </summary>
+        /// <param name="param">0 - from: avatar id, 1 - from: parts, 2 - to: parts(none is ""), 3 - offset.x, 4 - offset.y, 5 - offset.z)</param>
+        public override void SetPositionIKMarkerFromOuter(string param)
+        {
+            //0 - from: avatar id, 1 - from: parts, 2 - to: parts(none is ""), 3 - offset.x, 4 - offset.y, 5 - offset.z)
+            string[] arr = param.Split(",");
+            Vector3 pos = Vector3.zero;
+
+            if (arr[0] == "maincamera")
+            {
+                pos = Camera.main.transform.position;
+            }
+            else
+            {
+                NativeAnimationAvatar cast = manim.GetCastByAvatar(arr[0]);
+                if (cast != null)
+                {
+                    //---get source avatar
+                    if (cast.type == AF_TARGETTYPE.VRM)
+                    {
+                        OperateLoadedVRM olvrm = cast.avatar.GetComponent<OperateLoadedVRM>();
+                        pos = olvrm.GetPosition();
+                        if (arr[1].Trim() != "")
+                        { //---source is parts (real name)
+                            pos = olvrm.GetTransformIKMarker(arr[1]);
+                        }
+                    }
+                    else
+                    {
+                        pos = cast.avatar.GetComponent<OperateLoadedBase>().GetPosition();
+                    }
+                }
+            }
+            
+
+            //---execute positionning
+            float x = float.TryParse(arr[3], out x) ? x : -1;
+            float y = float.TryParse(arr[4], out y) ? y : -1;
+            float z = float.TryParse(arr[5], out z) ? z : -1;
+
+            pos.x += x;
+            pos.y += y;
+            pos.z += z;
+            if (arr[2].Trim() == "")
+            { //---avatar own
+                SetPosition(pos);
+            }
+            else
+            { //---vrm's parts
+                GameObject parts = GetIKHandle(arr[2]);
+                if (parts != null)
+                {
+                    parts.transform.position = pos;
+                }
+                else
+                { //---if specified name don't exists in parts IK marker, use parent ik marker.
+                    SetPosition(pos);
+                }
+            }
+        }
+        /// <summary>
+        /// Set referrence avatar/IK-marker rotation to IK-marker or avatar rotation.
+        /// </summary>
+        /// <param name="param">0 - from: avatar id, 1 - from: parts, 2 - to: parts(none is ""), 3 - offset.x, 4 - offset.y, 5 - offset.z, 6 - reverse(1/0))</param>
+        public override void SetRotationIKMarkerFromOuter(string param)
+        {
+            Vector3 pos = Vector3.zero;
+
+            //0 - from: avatar id, 1 - from: parts, 2 - to: parts(none is "")
+            string[] arr = param.Split(",");
+
+            if (arr[0] == "maincamera")
+            {
+                pos = Camera.main.transform.position;
+            }
+            else
+            {
+                NativeAnimationAvatar cast = manim.GetCastByAvatar(arr[0]);
+
+                if (cast != null)
+                {
+
+                    //---get source avatar
+                    if (cast.type == AF_TARGETTYPE.VRM)
+                    {
+                        OperateLoadedVRM olvrm = cast.avatar.GetComponent<OperateLoadedVRM>();
+                        pos = olvrm.GetPosition();
+                        if (arr[1].Trim() != "")
+                        { //---source is parts (real name)
+                            pos = olvrm.GetTransformIKMarker(arr[1]);
+                        }
+                    }
+                    else
+                    {
+                        pos = cast.avatar.GetComponent<OperateLoadedBase>().GetPosition();
+                    }
+                }
+            }
+
+            //---execute rotation
+            if (arr[2].Trim() == "")
+            { //---avatar own
+                SetLookAt(pos);
+                Vector3 rot = GetRotation();
+                rot.y -= 180f;
+                SetRotation(rot);
+            }
+            else
+            { //---vrm's parts
+                GameObject parts = GetIKHandle(arr[2]);
+                if (parts != null)
+                {
+                    parts.transform.LookAt(pos);
+                }
+                else
+                {
+                    SetLookAt(pos);
+                    Vector3 rot = GetRotation();
+                    if (arr[6] == "1") rot.y -= 180f;
+                    SetRotation(rot);
+                }
+            }
+        }
+        //===============================================================================================================================
+        //  FK functions
+
+
         //===============================================================================================================================
         //  Gravity 
 
@@ -1232,6 +1491,7 @@ namespace UserHandleSpace
             string gravityjs = JsonUtility.ToJson(gravityList);
 
             string movemode = (isMoveMode == true) ? "1" : "0";
+            string ikmode = (isIKMode == true) ? "1" : "0";
 
             List<string> animclips = ListAnimationClips();            
             string jsclip = string.Join('=', animclips);
@@ -1811,6 +2071,7 @@ namespace UserHandleSpace
         public void ReloadProxyCustomExpression()
         {
             RunExpression.ReloadCustomClip(vrminstance);
+            
         }
 
         /// <summary>
@@ -2588,6 +2849,7 @@ namespace UserHandleSpace
 
             UnequipObject((HumanBodyBones)index, name);
         }
+        /*
         public IEnumerator SaveVRM()
         {
             //---Export VRM to byte array 
@@ -2604,7 +2866,7 @@ namespace UserHandleSpace
             ReceiveStringVal(ret);
 #endif
 
-        }
+        }*/
 
         //===============================================================================================================================
         //  IK handle
@@ -2679,8 +2941,9 @@ namespace UserHandleSpace
             {
                 //VRMLookAtHead vlook = gameObject.GetComponent<VRMLookAtHead>();
                 //js = vlook.Target.gameObject.name;
-                vrminstance.LookAtTargetType = VRM10ObjectLookAt.LookAtTargetTypes.CalcYawPitchToGaze;
-                js = vrminstance.Gaze.gameObject.name;
+                vrminstance.LookAtTargetType = VRM10ObjectLookAt.LookAtTargetTypes.SpecifiedTransform; //.CalcYawPitchToGaze;
+                //js = vrminstance.Gaze.gameObject.name;
+                js = vrminstance.LookAtTarget.gameObject.name;
             }
             else if (parts == IKBoneType.LookAt)
             {
@@ -2840,7 +3103,8 @@ namespace UserHandleSpace
             {
                 //VRMLookAtHead vlook = gameObject.GetComponent<VRMLookAtHead>();
                 //vlook.Target = target;
-                vrminstance.Gaze = target;
+                //vrminstance.Gaze = target;
+                vrminstance.LookAtTarget = target;
                 
             }
             else if (parts == IKBoneType.LookAt)
@@ -2988,7 +3252,7 @@ namespace UserHandleSpace
         }
 
         /// <summary>
-        /// naturalize ik goal rotation
+        /// naturalize ik goal rotation 
         /// </summary>
         /// <param name="isEnable"></param>
         public void SetIKGoalRotation2Natural(bool isEnable, string bonename)
@@ -3710,6 +3974,46 @@ namespace UserHandleSpace
             ReloadProxyCustomExpression();
 
             yield return null;
+        }
+
+
+        //===test onin skin
+        public new void CreateOnionSkinObject(ManageAnimation manim)
+        {
+            GameObject newobj = GameObject.Instantiate(transform.gameObject);
+            Destroy(newobj.transform.GetComponent<VvmIk>());
+            Destroy(newobj.transform.GetComponent<ManageAvatarTransform>());
+            Destroy(newobj.transform.GetComponent<VVMMotionRecorder>());
+            Destroy(newobj.transform.GetComponent<BVHRecorder>());
+
+            SkinnedMeshRenderer[] children = newobj.transform.GetComponentsInChildren<SkinnedMeshRenderer>();
+            foreach (SkinnedMeshRenderer child in children)
+            {
+                child.material.SetColor("_Color",manim.cfg_onion_skin_color);
+                child.material.SetInt("_AlphaMode", 2);
+                child.material.SetInt("_TransparentWithZWrite", 1);
+                
+            }
+            MeshRenderer[] meshchildren = newobj.transform.GetComponentsInChildren<MeshRenderer>();
+            foreach (MeshRenderer mesh in meshchildren)
+            {
+                for (int i = 0; i < mesh.materials.Length; i++)
+                {
+                    mesh.material.SetColor("_Color", manim.cfg_onion_skin_color);
+                    if (mesh.materials[i].HasInt("_AlphaMode")) mesh.material.SetInt("_AlphaMode", 2);
+                    if (mesh.materials[i].HasInt("_TransparentWithZWrite")) mesh.material.SetInt("_TransparentWithZWrite", 1);
+                }
+                
+            }
+
+            //---
+
+            Transform onion = manim.transform.Find("OnionSkinArea");
+            newobj.transform.SetParent(onion);
+        }
+        public void CreateOnionSkinObjectFromOuter()
+        {
+            CreateOnionSkinObject(manim);
         }
     }
 

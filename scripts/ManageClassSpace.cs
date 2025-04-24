@@ -56,6 +56,8 @@ namespace UserHandleSpace
         public string textureRole = "";
         public string texturePath = "";
         public Color emissioncolor = Color.white;
+        public Vector2 textureTiling = Vector2.one;
+        public Vector2 textureOffset = Vector2.zero;
         //---standard
         public float metallic = 0;
         public float glossiness = 0;
@@ -946,6 +948,7 @@ namespace UserHandleSpace
     public class AnimationTranslateTargetParts
     {
         public ParseIKBoneType vrmBone;
+        public HumanBodyBones vrmHumanBodyBones;
         public AF_MOVETYPE animationType;
         public List<Vector3> values;
         public int jumpNum;
@@ -956,6 +959,7 @@ namespace UserHandleSpace
             jumpNum = 0;
             jumpPower = 1f;
             vrmBone = ParseIKBoneType.IKParent;
+            vrmHumanBodyBones = HumanBodyBones.Hips;
             animationType = AF_MOVETYPE.Rest;
             values = new List<Vector3>();
         }
@@ -982,6 +986,7 @@ namespace UserHandleSpace
         public float duration;
         public Ease ease;
         public string memo;
+        public string keycolor;
 
         public List<string> movingData = new List<string>();
         //public List<AnimationTargetParts> movingData = new List<AnimationTargetParts>();
@@ -994,6 +999,7 @@ namespace UserHandleSpace
             duration = 0.1f;
             ease = Ease.Linear;
             memo = "";
+            keycolor = "#FF0000";
         }
         public AnimationFrame SCopy()
         {
@@ -1014,6 +1020,7 @@ namespace UserHandleSpace
             duration = naf.duration;
             ease = naf.ease;
             memo = naf.memo;
+            keycolor = naf.keycolor;
         }
     }
     [Serializable]
@@ -1052,7 +1059,7 @@ namespace UserHandleSpace
             ease = af.ease;
             memo = af.memo;
         }
-        public AnimationTargetParts FindMovingData(AF_MOVETYPE movetype, ParseIKBoneType bone = ParseIKBoneType.Unknown)
+        public AnimationTargetParts FindMovingData(AF_MOVETYPE movetype, HumanBodyBones hBone,  ParseIKBoneType bone = ParseIKBoneType.Unknown)
         {
             return movingData.Find(match =>
             {
@@ -1060,27 +1067,34 @@ namespace UserHandleSpace
                 {
                     if (bone == ParseIKBoneType.Unknown) return true;
 
-                    if (match.vrmBone == bone) return true;
+                    if (bone == ParseIKBoneType.UseHumanBodyBones)
+                    {
+                        if ((match.vrmBone == bone) && (match.vrmHumanBodyBone == hBone)) return true;
+                    }
+                    else
+                    {
+                        if (match.vrmBone == bone) return true;
+                    }
+                    
                     return false;
                 }
                 return false;
             });
         }
-        public AnimationTranslateTargetParts FindTranslateMoving(AF_MOVETYPE movetype, ParseIKBoneType bone = ParseIKBoneType.Unknown)
+        public AnimationTranslateTargetParts FindTranslateMoving(AF_MOVETYPE movetype, HumanBodyBones hBone, ParseIKBoneType bone = ParseIKBoneType.Unknown)
         {
-            return translateMovingData.Find(match =>
+            int ishit = FindIndexTranslateMoving(movetype, hBone, bone);
+            if (ishit > -1)
             {
-                if (match.animationType == movetype)
-                {
-                    if (bone == ParseIKBoneType.Unknown) return true;
-
-                    if (match.vrmBone == bone) return true;
-                    return false;
-                }
-                return false;
-            });
+                return translateMovingData[ishit];
+            }
+            else
+            {
+                return null;
+            }
+            
         }
-        public int FindIndexTranslateMoving(AF_MOVETYPE movetype, ParseIKBoneType bone = ParseIKBoneType.Unknown)
+        public int FindIndexTranslateMoving(AF_MOVETYPE movetype, HumanBodyBones hBone, ParseIKBoneType bone = ParseIKBoneType.Unknown)
         {
             return translateMovingData.FindIndex(match =>
             {
@@ -1088,41 +1102,60 @@ namespace UserHandleSpace
                 {
                     if (bone == ParseIKBoneType.Unknown) return true;
 
-                    if (match.vrmBone == bone) return true;
+                    if (bone == ParseIKBoneType.UseHumanBodyBones)
+                    {
+                        if ((match.vrmBone == bone) && (match.vrmHumanBodyBones == hBone)) return true;
+                    }
+                    else
+                    {
+                        if (match.vrmBone == bone) return true;
+                    }
                     return false;
                 }
                 return false;
             });
         }
-        public void SetMovingData(AF_MOVETYPE movetype, ParseIKBoneType bone, AnimationTargetParts atp)
-        {
+        public void SetMovingData(AF_MOVETYPE movetype, HumanBodyBones hBone, ParseIKBoneType bone, AnimationTargetParts atp)
+        { //---NOT USE
             int index = movingData.FindIndex(match =>
             {
-                if (match.vrmBone == bone)
+                if (match.vrmBone == ParseIKBoneType.UseHumanBodyBones)
                 {
-                    return true;
+                    if ((match.vrmHumanBodyBone == hBone) && (match.vrmBone == bone)) return true;
                 }
                 else
                 {
-                    return false;
+                    if (match.vrmBone == bone)
+                    {
+                        return true;
+                    }
                 }
+                return false;
             });
             if (index > -1)
             {
                 movingData[index] = atp;
             }
         }
-        public List<AnimationTargetParts> FindListOfMovingData(AF_MOVETYPE movetype, ParseIKBoneType bone = ParseIKBoneType.Unknown)
-        {
+        public List<AnimationTargetParts> FindListOfMovingData(AF_MOVETYPE movetype, HumanBodyBones hBone, ParseIKBoneType bone = ParseIKBoneType.Unknown)
+        { //---NOT USE
             return movingData.FindAll(match =>
             {
-                if (match.animationType == movetype)
+                if (match.vrmBone == ParseIKBoneType.UseHumanBodyBones)
                 {
-                    if (bone == ParseIKBoneType.Unknown) return true;
-
-                    if (match.vrmBone == bone) return true;
-                    return false;
+                    if ((match.animationType == movetype) && (match.vrmHumanBodyBone == hBone) && (match.vrmBone == bone)) return true;
                 }
+                else
+                {
+                    if (match.animationType == movetype)
+                    {
+                        if (bone == ParseIKBoneType.Unknown) return true;
+
+                        if (match.vrmBone == bone) return true;
+                        return false;
+                    }
+                }
+                
                 return false;
             });
         }
@@ -1230,6 +1263,7 @@ namespace UserHandleSpace
         public float duration;
         public Ease ease;
         public string memo;
+        public string keycolor;
 
         public List<string> movingData = new List<string>();
 
@@ -1241,6 +1275,7 @@ namespace UserHandleSpace
             duration = 0.1f;
             ease = Ease.Linear;
             memo = "";
+            keycolor = "";
         }
         public AnimationSingleFrame SCopy()
         {
@@ -2141,6 +2176,7 @@ namespace UserHandleSpace
         public Ease ease = Ease.Linear;
 
         public string memo = "";
+        public string keycolor = "";
 
         //public ParseIKBoneType registerBone = ParseIKBoneType.None;
         //public AF_MOVETYPE registerMove = AF_MOVETYPE.Rest;
@@ -2352,6 +2388,7 @@ namespace UserHandleSpace
         }
         public void CallKeyOperation(GameObject ik, TMPro.TextMeshProUGUI tgui = null)
         {
+            /*
             if (Input.GetKey(KeyCode.W))
             { //to front
                 if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
@@ -2435,6 +2472,7 @@ namespace UserHandleSpace
 
                 }
             }
+            */
             if (Input.GetKey(KeyCode.Q))
             { //rotation  mode
                 //opemode = 1;

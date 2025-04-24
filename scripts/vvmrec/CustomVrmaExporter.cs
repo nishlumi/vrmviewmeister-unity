@@ -5,7 +5,7 @@ using System.Linq;
 using UniGLTF;
 using UniHumanoid;
 using UnityEngine;
-using VRMShaders;
+//using VRMShaders;
 using UniVRM10;
 
 namespace UserHandleSpace
@@ -629,7 +629,8 @@ namespace UserHandleSpace
             //_data.Gltf.extensions = new glTFExtensionExport();
 
             //Export(new RuntimeTextureSerializer());
-            base.Export(new RuntimeTextureSerializer());
+            //base.Export(new RuntimeTextureSerializer());
+            base.Export();
 
             //---copy and sort frames
             List<CustomVrmaDataStore.ExportFrame> frames = SortFrames(targetFrames);
@@ -696,7 +697,7 @@ namespace UserHandleSpace
             }
 
             //---TEST: LookAt bone (LeftEye, RightEye) no lookat ???
-            /*foreach (var kv in datastore.m_lookats)
+            foreach (var kv in datastore.m_lookats)
             {
                 var output = _data.ExtendBufferAndGetAccessorIndex(GenerateTotalRotations(kv.Key, frames).ToArray());
                 var sampler = gltfAnimation.samplers.Count;
@@ -716,7 +717,7 @@ namespace UserHandleSpace
                         path = "rotation",
                     },
                 });
-            }*/
+            }
 
             
 

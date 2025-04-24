@@ -461,7 +461,7 @@ namespace UserUISpace
             AnimationParsingOptions apo = new AnimationParsingOptions();
             apo.isExecuteForDOTween = 1;
             apo.isBuildDoTween = 1;
-            apo.isCompileAnimation = 0;
+            apo.isCompileAnimation = 1;
             apo.isLoop = 0;
             apo.endDelay = 1.5f;
 
@@ -498,7 +498,11 @@ namespace UserUISpace
             //return;
 
             ManageAvatarTransform mat = oav.ActiveAvatar.GetComponent<ManageAvatarTransform>();
-            mat.GetIKTransformAll_body();
+            //mat.GetIKTransformAll_body();
+
+            var cast = manim.GetCastByAvatar(oav.ActiveAvatar.name);
+            string param = cast.roleName + "," + ((int)cast.type).ToString() + ",0";
+            manim.SaveSingleMotion(param);
             return;
 
             //---2024/07/24
@@ -901,7 +905,7 @@ namespace UserUISpace
 
             if (ovrm != null)
             {
-                StartCoroutine(ovrm.ApplyBoneTransformToIKTransform(oav.ActiveAvatar.GetComponent<Animator>()));
+                StartCoroutine(ovrm.ApplyBoneTransformToIKTransform());
                 
             }
         }
@@ -912,7 +916,16 @@ namespace UserUISpace
 
             if (ovrm != null)
             {
-                StartCoroutine(ovrm.EnableIKOperationMode(false));
+                //StartCoroutine(ovrm.EnableIKOperationMode(false));
+                bool flag = ovrm.GetIKStatus();
+                if (flag == true)
+                {
+                    ovrm.EnableIK(!flag);
+                }
+                else
+                {
+                    StartCoroutine(ovrm.ApplyBoneTransformToIKTransform());
+                }
 
             }
 

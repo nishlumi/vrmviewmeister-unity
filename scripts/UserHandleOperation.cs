@@ -6,15 +6,20 @@ using UnityEngine.UI;
 using DG.Tweening;
 using RootMotion.FinalIK;
 using LumisIkApp;
+using System.Runtime.InteropServices;
 
 namespace UserHandleSpace
 {
-    
+
     /// <summary>
     /// Management class for each IK handle (child)
     /// </summary>
     public class UserHandleOperation : MonoBehaviour
     {
+        [DllImport("__Internal")]
+        private static extern void SaveCurrentIKMarker(string val);
+
+
         public enum OperateType
         {
             MOVE = 0,
@@ -22,6 +27,7 @@ namespace UserHandleSpace
         }
         //public GameObject avatar;
         public bool IsFixTransform;
+        public bool IsEnableBone;
         public string PartsName;
         public GameObject relatedAvatar;
         private VvmIk VvmIk;
@@ -38,6 +44,7 @@ namespace UserHandleSpace
         private OperateLoadedVRM ovrm;
         private ManageAvatarTransform mat;
         private ManageAnimation manim;
+        private OperateActiveVRM oavrm;
 
         private const float cns_lowerleg_z = 0.05f;
 
@@ -50,12 +57,15 @@ namespace UserHandleSpace
 
             //mat = relatedAvatar.GetComponent<ManageAvatarTransform>();
             manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+
+            oavrm = GameObject.Find("IKHandleParent").GetComponent<OperateActiveVRM>();
             
         }
         // Start is called before the first frame update
         void Start()
         {
             IsFixTransform = true;
+            IsEnableBone = true;
 
             VvmIk = relatedAvatar.GetComponent<VvmIk>();
 
@@ -755,6 +765,18 @@ namespace UserHandleSpace
             ovrm = relatedAvatar.GetComponent<OperateLoadedVRM>();
 
         }
+        private void OnMouseDown()
+        {
+            if (gameObject.layer != LayerMask.NameToLayer("HiddenHandle"))
+            {
+                
+                oavrm.SelectedIKHandle = transform;
+#if !UNITY_EDITOR && UNITY_WEBGL
+                    SaveCurrentIKMarker(gameObject.name);
+#endif
+            }
+
+        }
         public void CheckCurrentMarker()
         {
             is_current_marker = false;
@@ -764,6 +786,7 @@ namespace UserHandleSpace
                 if (mr.sharedMaterials[i].shader.name.ToLower() == "custom/outline")
                 {
                     is_current_marker = true;
+
                     break;
                 }
             }

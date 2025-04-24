@@ -21,6 +21,8 @@ namespace UserHandleSpace
         public Transform LeftShoulderIK;
         public Transform RightShoulderIK;
 
+        public bool IsFixTransform = true;
+
         private Vector3 oldPosition;
         private Quaternion oldRotation;
         private Vector3 defaultPosition;

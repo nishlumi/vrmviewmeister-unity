@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using DG.Tweening;
+using LumisIkApp;
 
 
 namespace UserHandleSpace
@@ -476,6 +477,11 @@ namespace UserHandleSpace
                 {
                     ret = boxc.isTrigger == true ? 0 : 1;
                 }
+                MeshCollider mesh = GetComponent<MeshCollider>();
+                if (mesh != null)
+                {
+                    ret = mesh.isTrigger == true ? 0 : 1;
+                }
             }
             else if (targetType == AF_TARGETTYPE.VRM)
             { //---VRM is no collision as whole body.
@@ -671,6 +677,24 @@ namespace UserHandleSpace
             }
             
             
+        }
+        public void SetLookAt(Vector3 rot)
+        {
+            if (targetType == AF_TARGETTYPE.VRM)
+            {
+                relatedTrueIKParent.transform.LookAt(rot, Vector3.up);
+            }
+            else
+            {
+                if (relatedHandleParent != null)
+                {
+                    relatedHandleParent.transform.LookAt(rot, Vector3.up);
+                }
+                else
+                {
+                    gameObject.transform.LookAt(rot, Vector3.up);
+                }
+            }
         }
         public void SetRotationFromOuter(string param)
         {
@@ -917,6 +941,129 @@ namespace UserHandleSpace
             ReceiveStringVal(renderTextureParentId);
 #endif
         }
+        //#########################################################################################################################
+
+        /// <summary>
+        /// Get IK-marker position 
+        /// </summary>
+        /// <param name="param"></param>
+        /// <returns></returns>
+        public virtual Vector3 GetTransformIKMarker(string param)
+        {
+            Vector3 ret = Vector3.zero;
+            
+            ret = GetPosition();
+
+            return ret;
+        }
+        public virtual void GetTransformIKMarkerFromOuter(string param)
+        {
+            Vector3 parts = GetTransformIKMarker(param);
+            string ret = parts.x.ToString() + "," + parts.y.ToString() + "," + parts.z.ToString();
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+
+        /// <summary>
+        /// Set referrence avatar/IK-marker position to IK-marker or avatar position.
+        /// </summary>
+        /// <param name="param">0 - from: avatar id, 1 - from: parts, 2 - to: parts(none is ""), 3 - offset.x, 4 - offset.y, 5 - offset.z)</param>
+        public virtual void SetPositionIKMarkerFromOuter(string param)
+        {
+            ManageAnimation manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+
+            //0 - from: avatar id, 1 - from: parts, 2 - to: parts(none is ""), 3 - offset.x, 4 - offset.y, 5 - offset.z)
+            string[] arr = param.Split(",");
+            Vector3 pos = Vector3.zero;
+            if (arr[0] == "maincamera")
+            {
+                pos = Camera.main.transform.position;
+            }
+            else
+            {
+                NativeAnimationAvatar cast = manim.GetCastByAvatar(arr[0]);
+                if (cast != null)
+                {
+
+                    //---get source avatar
+                    if (cast.type == AF_TARGETTYPE.VRM)
+                    {
+                        OperateLoadedVRM olvrm = cast.avatar.GetComponent<OperateLoadedVRM>();
+                        pos = olvrm.GetPosition();
+                        if (arr[1].Trim() != "")
+                        { //---source is parts (real name)
+                            pos = olvrm.GetTransformIKMarker(arr[1]);
+                        }
+                    }
+                    else
+                    {
+                        pos = cast.avatar.GetComponent<OperateLoadedBase>().GetPosition();
+                    }
+                }
+            }
+            
+
+            //---execute positionning
+            float x = float.TryParse(arr[3], out x) ? x : -1;
+            float y = float.TryParse(arr[4], out y) ? y : -1;
+            float z = float.TryParse(arr[5], out z) ? z : -1;
+
+            pos.x += x;
+            pos.y += y;
+            pos.z += z;
+
+            { //---avatar own
+                SetPosition(pos);
+            }
+        }
+        /// <summary>
+        /// Set referrence avatar/IK-marker rotation to IK-marker or avatar rotation.
+        /// </summary>
+        /// <param name="param">0 - from: avatar id, 1 - from: parts, 2 - to: parts(none is ""), 3 - offset.x, 4 - offset.y, 5 - offset.z, 6 - reverse(1/0))</param>
+        public virtual void SetRotationIKMarkerFromOuter(string param)
+        {
+            ManageAnimation manim = GameObject.Find("AnimateArea").GetComponent<ManageAnimation>();
+            Vector3 pos = Vector3.zero;
+
+            //0 - from: avatar id, 1 - from: parts, 2 - to: parts(none is "")
+            string[] arr = param.Split(",");
+
+            if (arr[0] == "maincamera")
+            {
+                pos = Camera.main.transform.position;
+            }
+            else
+            {
+                NativeAnimationAvatar cast = manim.GetCastByAvatar(arr[0]);
+
+                if (cast != null)
+                {
+
+                    //---get source avatar
+                    if (cast.type == AF_TARGETTYPE.VRM)
+                    {
+                        OperateLoadedVRM olvrm = cast.avatar.GetComponent<OperateLoadedVRM>();
+                        pos = olvrm.GetPosition();
+                        if (arr[1].Trim() != "")
+                        { //---source is parts (real name)
+                            pos = olvrm.GetTransformIKMarker(arr[1]);
+                        }
+                    }
+                    else
+                    {
+                        pos = cast.avatar.GetComponent<OperateLoadedBase>().GetPosition();
+                    }
+                }
+            }
+            
+            { //---avatar own
+                SetLookAt(pos);
+                Vector3 rot = GetRotation();
+                if (arr[6] == "1") rot.y -= 180f;
+                SetRotation(rot);
+            }
+        }
 
         //############################################################################
         //  Material properties
@@ -992,7 +1139,7 @@ namespace UserHandleSpace
                         userSharedTextureFiles.Add(newkeyname, matp);
 
                         MaterialProperties backmatp = new MaterialProperties();
-                        backmatp.realTexture = mat.GetTexture("_MainTex");
+                        if (mat.HasTexture("_MainTex")) backmatp.realTexture = mat.GetTexture("_MainTex");
                         backmatp.texturePath = matp.texturePath;
                         backupTextureFiles.Add(newkeyname, backmatp);
                     }
@@ -1039,6 +1186,9 @@ namespace UserHandleSpace
                 matp.textureRole = userSharedTextureFiles[gobjName].textureRole;
                 matp.textureIsCamera = userSharedTextureFiles[gobjName].textureIsCamera;
 
+                matp.textureTiling = mat.mainTextureScale;
+                matp.textureOffset = mat.mainTextureOffset;
+
             }
             else if (mat.shader.name.ToLower() == SHAD_VRM10.ToLower())
             {
@@ -1062,6 +1212,9 @@ namespace UserHandleSpace
                 matp.texturePath = userSharedTextureFiles[gobjName].texturePath;
                 matp.textureRole = userSharedTextureFiles[gobjName].textureRole;
                 matp.textureIsCamera = userSharedTextureFiles[gobjName].textureIsCamera;
+
+                matp.textureTiling = mat.mainTextureScale;
+                matp.textureOffset = mat.mainTextureOffset;
             }
             else if (mat.shader.name.ToLower() == SHAD_STD.ToLower())
             {
@@ -1076,6 +1229,9 @@ namespace UserHandleSpace
                 matp.texturePath = userSharedTextureFiles[gobjName].texturePath;
                 matp.textureRole = userSharedTextureFiles[gobjName].textureRole;
                 matp.textureIsCamera = userSharedTextureFiles[gobjName].textureIsCamera;
+
+                matp.textureTiling = mat.mainTextureScale;
+                matp.textureOffset = mat.mainTextureOffset;
 
             }
             else if ((mat.shader.name.ToLower() == SHAD_WT.ToLower()) || (mat.shader.name.ToLower() == SHAD_SWT.ToLower()))
@@ -1232,7 +1388,10 @@ namespace UserHandleSpace
                         mat.GetFloat("_ShadeShift").ToString() + SEPSTR + 
                         mat.GetFloat("_ReceiveShadowRate").ToString() + SEPSTR + 
                         mat.GetFloat("_ShadingGradeRate").ToString() + SEPSTR + 
-                        mat.GetFloat("_LightColorAttenuation").ToString()
+                        mat.GetFloat("_LightColorAttenuation").ToString() + SEPSTR +
+                        //---v2 = 21
+                        mat.mainTextureScale.x.ToString() + "," + mat.mainTextureScale.y.ToString() + SEPSTR +
+                        mat.mainTextureOffset.x.ToString() + "," + mat.mainTextureOffset.y.ToString()
                     );                    
                 }
                 else if (mat.shader.name.ToLower() == SHAD_VRM10.ToLower())
@@ -1260,7 +1419,10 @@ namespace UserHandleSpace
                         mat.GetFloat("_ShadingShiftFactor").ToString() + SEPSTR +
                         "1" + SEPSTR +
                         "1" + SEPSTR +
-                        "0"
+                        "0" + SEPSTR +
+                        //---v2 = 21
+                        mat.mainTextureScale.x.ToString() + "," + mat.mainTextureScale.y.ToString() + SEPSTR +
+                        mat.mainTextureOffset.x.ToString() + "," + mat.mainTextureOffset.y.ToString()
                     );
 
                 }
@@ -1288,8 +1450,11 @@ namespace UserHandleSpace
                         "0.5" + SEPSTR + 
                         "0" + SEPSTR + 
                         "1" + SEPSTR + 
-                        "1" + SEPSTR + 
-                        "0"
+                        "1" + SEPSTR +
+                        "0" + SEPSTR +
+                        //---v2 = 21
+                        mat.mainTextureScale.x.ToString() + "," + mat.mainTextureScale.y.ToString() + SEPSTR +
+                        mat.mainTextureOffset.x.ToString() + "," + mat.mainTextureOffset.y.ToString()
                     );
                 }
                 else if ( (mat.shader.name.ToLower() == SHAD_WT.ToLower()) || (mat.shader.name.ToLower() == SHAD_SWT.ToLower()) )
@@ -1474,7 +1639,8 @@ namespace UserHandleSpace
                         "0",
                         ColorUtility.ToHtmlStringRGBA(Color.white),
                         "0", "1", "0", 
-                        "0.5", "0", "1", "1", "0"
+                        "0.5", "0", "1", "1", "0",
+                        mat.textureTiling.x.ToString() + "," + mat.textureTiling.y.ToString(),mat.textureOffset.x.ToString() + "," + mat.textureOffset.y.ToString(),
                     });
                 }
                 else if (mat.shaderName.ToLower() == SHAD_VRM.ToLower())
@@ -1493,7 +1659,8 @@ namespace UserHandleSpace
 
                         mat.cutoff.ToString(), mat.shadingshift.ToString(),
                         mat.receiveshadow.ToString(), mat.shadinggrade.ToString(),
-                        mat.lightcolorattenuation.ToString()
+                        mat.lightcolorattenuation.ToString(),
+                        mat.textureTiling.x.ToString() + "," + mat.textureTiling.y.ToString(),mat.textureOffset.x.ToString() + "," + mat.textureOffset.y.ToString(),
                     });
                 }
                 else if (mat.shaderName.ToLower() == SHAD_VRM10.ToLower())
@@ -1511,7 +1678,8 @@ namespace UserHandleSpace
                         mat.srcblend.ToString(), mat.dstblend.ToString(),
 
                         mat.cutoff.ToString(), mat.shadingshift.ToString(),
-                        "1", "1", "0"
+                        "1", "1", "0",
+                        mat.textureTiling.x.ToString() + "," + mat.textureTiling.y.ToString(),mat.textureOffset.x.ToString() + "," + mat.textureOffset.y.ToString(),
                     });
                 }
                 else if ((mat.shaderName.ToLower() == SHAD_WT.ToLower()) || (mat.shaderName.ToLower() == SHAD_SWT.ToLower()))
@@ -1964,6 +2132,28 @@ namespace UserHandleSpace
                             mat.SetFloat("_M_DstBlend", vmat.dstblend);
                         }
                     }
+                    else if (propname.ToLower() == "textiling")
+                    {
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_STD.ToLower()) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM.ToLower()) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM10.ToLower())
+                        )
+                        {
+                            mat.mainTextureScale = vmat.textureTiling;
+                        }
+                    }
+                    else if (propname.ToLower() == "texoffset")
+                    {
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_STD.ToLower()) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM.ToLower()) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM10.ToLower())
+                        )
+                        {
+                            mat.mainTextureOffset = vmat.textureOffset;
+                        }
+                    }
                     else if (propname.ToLower() == "fresnelscale")
                     {
                         if ((mat.shader.name.ToLower() == SHAD_WT.ToLower()) || (mat.shader.name.ToLower() == SHAD_SWT.ToLower()))
@@ -2036,28 +2226,28 @@ namespace UserHandleSpace
                     }
                     else if (propname.ToLower() == "strokedensity")
                     {
-                        if (mat.shader.name.ToLower() == SHAD_PSKE.ToLower())
+                        if ((mat.shader.name.ToLower() == SHAD_SKE.ToLower()) || (mat.shader.name.ToLower() == SHAD_PSKE.ToLower()))
                         {
                             mat.SetFloat("_StrokeDensity", vmat.strokedensity);
                         }
                     }
                     else if (propname.ToLower() == "addbrightness")
                     {
-                        if (mat.shader.name.ToLower() == SHAD_PSKE.ToLower())
+                        if ((mat.shader.name.ToLower() == SHAD_SKE.ToLower()) || (mat.shader.name.ToLower() == SHAD_PSKE.ToLower()))
                         {
                             mat.SetFloat("_AddBrightNess", vmat.addbrightness);
                         }
                     }
                     else if (propname.ToLower() == "multbrightness")
                     {
-                        if (mat.shader.name.ToLower() == SHAD_PSKE.ToLower())
+                        if ((mat.shader.name.ToLower() == SHAD_SKE.ToLower()) || (mat.shader.name.ToLower() == SHAD_PSKE.ToLower()))
                         {
                             mat.SetFloat("_MultBrightNess", vmat.multbrightness);
                         }
                     }
                     else if (propname.ToLower() == "shadowbrightness")
                     {
-                        if (mat.shader.name.ToLower() == SHAD_SKE.ToLower())
+                        if ((mat.shader.name.ToLower() == SHAD_SKE.ToLower()) || (mat.shader.name.ToLower() == SHAD_PSKE.ToLower()))
                         {
                             mat.SetFloat("_ShadowBrightNess", vmat.shadowbrightness);
                         }
@@ -2215,7 +2405,7 @@ namespace UserHandleSpace
                         if (ColorUtility.TryParseHtmlString(value, out col))
                         {
                             //mat.color = col;
-                            if ((mat.shader.name.ToLower() == SHAD_STD.ToLower()) || (mat.shader.name.ToLower() == SHAD_VRM.ToLower()) || (mat.shader.name.ToLower() == SHAD_CUSTOMCUTOUT.ToLower()))
+                            if ((mat.shader.name.ToLower() == SHAD_STD.ToLower()) || (mat.shader.name.ToLower() == SHAD_VRM.ToLower()) || (mat.shader.name.ToLower() == SHAD_VRM10.ToLower()) || (mat.shader.name.ToLower() == SHAD_CUSTOMCUTOUT.ToLower()))
                             {
                                 mat.SetColor("_Color", col);
                             }
@@ -2493,6 +2683,36 @@ namespace UserHandleSpace
                             mat.SetFloat("_M_DstBlend", fv);
                         }
                     }
+                    else if (propname.ToLower() == "textiling")
+                    {
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_STD.ToLower()) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM.ToLower()) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM10.ToLower())
+                        )
+                        {
+                            string[] arr = value.Split("\t");
+                            float x = float.TryParse(arr[0], out x) ? x : 0f;
+                            float y = float.TryParse(arr[1], out y) ? y : 0f;
+
+                            mat.mainTextureScale = new Vector2(x, y);
+                        }
+                    }
+                    else if (propname.ToLower() == "texoffset")
+                    {
+                        if (
+                            (mat.shader.name.ToLower() == SHAD_STD.ToLower()) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM.ToLower()) ||
+                            (mat.shader.name.ToLower() == SHAD_VRM10.ToLower())
+                        )
+                        {
+                            string[] arr = value.Split("\t");
+                            float x = float.TryParse(arr[0], out x) ? x : 0f;
+                            float y = float.TryParse(arr[1], out y) ? y : 0f;
+
+                            mat.mainTextureScale = new Vector2(x, y);
+                        }
+                    }
                     else if (propname.ToLower() == "fresnelscale")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
@@ -2613,7 +2833,7 @@ namespace UserHandleSpace
                     else if (propname.ToLower() == "strokedensity")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == SHAD_PSKE.ToLower())
+                        if ((mat.shader.name.ToLower() == SHAD_SKE.ToLower()) || (mat.shader.name.ToLower() == SHAD_PSKE.ToLower()))
                         {
                             mat.SetFloat("_StrokeDensity", fv);
                         }
@@ -2621,7 +2841,7 @@ namespace UserHandleSpace
                     else if (propname.ToLower() == "addbrightness")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == SHAD_PSKE.ToLower())
+                        if ((mat.shader.name.ToLower() == SHAD_SKE.ToLower()) || (mat.shader.name.ToLower() == SHAD_PSKE.ToLower()))
                         {
                             mat.SetFloat("_AddBrightNess", fv);
                         }
@@ -2629,7 +2849,7 @@ namespace UserHandleSpace
                     else if (propname.ToLower() == "multbrightness")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == SHAD_PSKE.ToLower())
+                        if ((mat.shader.name.ToLower() == SHAD_SKE.ToLower()) || (mat.shader.name.ToLower() == SHAD_PSKE.ToLower()))
                         {
                             mat.SetFloat("_MultBrightNess", fv);
                         }
@@ -2637,7 +2857,7 @@ namespace UserHandleSpace
                     else if (propname.ToLower() == "shadowbrightness")
                     {
                         float fv = float.TryParse(value, out fv) ? fv : 0;
-                        if (mat.shader.name.ToLower() == SHAD_SKE.ToLower())
+                        if ((mat.shader.name.ToLower() == SHAD_SKE.ToLower()) || (mat.shader.name.ToLower() == SHAD_PSKE.ToLower()))
                         {
                             mat.SetFloat("_ShadowBrightNess", fv);
                         }
@@ -2829,6 +3049,9 @@ namespace UserHandleSpace
                         seq.Join(DOVirtual.DelayedCall(duration, () => mat.EnableKeyword("EMISSION"), false));
                         if (mat.HasProperty("_EmissionColor")) seq.Join(mat.DOColor(value.emissioncolor, "_EmissionColor", duration));
 
+                        seq.Join(mat.DOTiling(value.textureTiling,duration));
+                        seq.Join(mat.DOOffset(value.textureOffset, duration));
+
                     }
                     else if (value.shaderName.ToLower() == SHAD_VRM.ToLower())
                     {
@@ -2852,6 +3075,9 @@ namespace UserHandleSpace
 
                         seq.Join(DOVirtual.DelayedCall(duration, () => mat.EnableKeyword("EMISSION"), false));
                         if (mat.HasProperty("_EmissionColor")) seq.Join(mat.DOColor(value.emissioncolor, "_EmissionColor", duration));
+
+                        seq.Join(mat.DOTiling(value.textureTiling, duration));
+                        seq.Join(mat.DOOffset(value.textureOffset, duration));
                     }
                     else if (value.shaderName.ToLower() == SHAD_VRM10.ToLower())
                     {
@@ -2873,6 +3099,9 @@ namespace UserHandleSpace
 
                         seq.Join(DOVirtual.DelayedCall(duration, () => mat.EnableKeyword("EMISSION"), false));
                         if (mat.HasProperty("_EmissionColor")) seq.Join(mat.DOColor(value.emissioncolor, "_EmissionColor", duration));
+
+                        seq.Join(mat.DOTiling(value.textureTiling, duration));
+                        seq.Join(mat.DOOffset(value.textureOffset, duration));
 
                     }
                     else if ((value.shaderName.ToLower() == SHAD_WT.ToLower()) || (value.shaderName.ToLower() == SHAD_SWT.ToLower()))
@@ -2995,6 +3224,80 @@ namespace UserHandleSpace
                 }
 
                 SetUserMaterial(line);
+            }
+            
+        }
+
+
+        //===test onin skin
+        public void CreateOnionSkinObject(ManageAnimation manim, AF_TARGETTYPE type)
+        {
+            if ((type == AF_TARGETTYPE.OtherObject) || (type == AF_TARGETTYPE.Image))
+            {
+                GameObject newobj = GameObject.Instantiate(transform.gameObject);
+                newobj.layer = LayerMask.NameToLayer("NoChangedObject");
+
+                ManageAvatarTransform tmp_mat = null;
+                if (newobj.transform.TryGetComponent<ManageAvatarTransform>(out tmp_mat)) Destroy(newobj.transform.GetComponent<ManageAvatarTransform>());
+
+                SkinnedMeshRenderer[] children = newobj.transform.GetComponentsInChildren<SkinnedMeshRenderer>();
+                foreach (SkinnedMeshRenderer child in children)
+                {
+                    child.material.SetColor("_Color", manim.cfg_onion_skin_color);
+                    child.material.SetInt("_AlphaMode", 2);
+                    child.material.SetInt("_TransparentWithZWrite", 1);
+
+                }
+                MeshRenderer[] meshchildren = newobj.transform.GetComponentsInChildren<MeshRenderer>();
+                foreach (MeshRenderer mesh in meshchildren)
+                {
+                    for (int i = 0; i < mesh.materials.Length; i++)
+                    {
+                        mesh.material.SetColor("_Color", manim.cfg_onion_skin_color);
+                        if (mesh.materials[i].HasInt("_AlphaMode")) mesh.material.SetInt("_AlphaMode", 2);
+                        if (mesh.materials[i].HasInt("_TransparentWithZWrite")) mesh.material.SetInt("_TransparentWithZWrite", 1);
+                    }
+
+                }
+
+                //---
+
+                Transform onion = manim.transform.Find("OnionSkinArea");
+                newobj.transform.SetParent(onion);
+            }
+            else if (
+                (type == AF_TARGETTYPE.Camera) ||
+                (type == AF_TARGETTYPE.Light) ||
+                (type == AF_TARGETTYPE.Effect)
+            )
+            {
+                GameObject newobj = GameObject.Instantiate(relatedHandleParent);
+                newobj.layer = LayerMask.NameToLayer("NoChangedObject");
+
+                SkinnedMeshRenderer[] children = newobj.transform.GetComponentsInChildren<SkinnedMeshRenderer>();
+                foreach (SkinnedMeshRenderer child in children)
+                {
+                    child.material.SetColor("_Color", manim.cfg_onion_skin_color);
+                    child.material.SetInt("_AlphaMode", 2);
+                    child.material.SetInt("_TransparentWithZWrite", 1);
+
+                }
+                MeshRenderer[] meshchildren = newobj.transform.GetComponentsInChildren<MeshRenderer>();
+                foreach (MeshRenderer mesh in meshchildren)
+                {
+                    for (int i = 0; i < mesh.materials.Length; i++)
+                    {
+                        mesh.material.SetColor("_Color", manim.cfg_onion_skin_color);
+                        if (mesh.materials[i].HasInt("_AlphaMode")) mesh.material.SetInt("_AlphaMode", 2);
+                        if (mesh.materials[i].HasInt("_TransparentWithZWrite")) mesh.material.SetInt("_TransparentWithZWrite", 1);
+                    }
+
+                }
+
+                //---
+
+                Transform onion = manim.transform.Find("OnionSkinArea");
+                newobj.transform.SetParent(onion);
             }
             
         }

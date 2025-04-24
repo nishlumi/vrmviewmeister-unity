@@ -72,6 +72,8 @@ namespace UserHandleSpace
                 catmats.Add(mat.metallic.ToString());
                 catmats.Add(mat.glossiness.ToString());
                 catmats.Add("#" + ColorUtility.ToHtmlStringRGBA(mat.emissioncolor));
+                catmats.Add(mat.textureTiling.x.ToString()); catmats.Add(mat.textureTiling.y.ToString());
+                catmats.Add(mat.textureOffset.x.ToString()); catmats.Add(mat.textureOffset.y.ToString());
             }
             //---VRM/MToon
             else if ((mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM.ToLower()) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM10.ToLower()))
@@ -113,6 +115,9 @@ namespace UserHandleSpace
                 catmats.Add(mat.receiveshadow.ToString());
                 catmats.Add(mat.shadinggrade.ToString());
                 catmats.Add(mat.lightcolorattenuation.ToString());
+
+                catmats.Add(mat.textureTiling.x.ToString()); catmats.Add(mat.textureTiling.y.ToString());
+                catmats.Add(mat.textureOffset.x.ToString()); catmats.Add(mat.textureOffset.y.ToString());
 
             }
             //---FX/Water4
@@ -243,6 +248,14 @@ namespace UserHandleSpace
                     mat.glossiness = float.TryParse(matc[inx++], out mat.glossiness) ? mat.glossiness : 0;
                     mat.emissioncolor = ColorUtility.TryParseHtmlString(matc[inx++], out mat.emissioncolor) ? mat.emissioncolor : Color.white;
 
+                    float x = float.TryParse(matc[inx++], out x) ? x : 1;
+                    float y = float.TryParse(matc[inx++], out y) ? y : 1;
+                    mat.textureTiling = new Vector2(x, y);
+
+                    x = float.TryParse(matc[inx++], out x) ? x : 0;
+                    y = float.TryParse(matc[inx++], out y) ? y : 0;
+                    mat.textureOffset = new Vector2(x, y);
+
                 }
                 else if ((mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM.ToLower()) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_VRM10.ToLower()))
                 {
@@ -272,8 +285,14 @@ namespace UserHandleSpace
                         mat.shadinggrade = float.TryParse(matc[inx++], out mat.shadinggrade) ? mat.shadinggrade : 1;
                         mat.lightcolorattenuation = float.TryParse(matc[inx++], out mat.lightcolorattenuation) ? mat.lightcolorattenuation : 0;
                     }
-                    
 
+                    float x = float.TryParse(matc[inx++], out x) ? x : 1;
+                    float y = float.TryParse(matc[inx++], out y) ? y : 1;
+                    mat.textureTiling = new Vector2(x, y);
+
+                    x = float.TryParse(matc[inx++], out x) ? x : 0;
+                    y = float.TryParse(matc[inx++], out y) ? y : 0;
+                    mat.textureOffset = new Vector2(x, y);
                 }
                 else if ( (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_WT.ToLower()) || (mat.shaderName.ToLower() == OperateLoadedBase.SHAD_SWT.ToLower()) )
                 {
@@ -438,6 +457,25 @@ namespace UserHandleSpace
 
                         if (movetype == "position")
                         {
+                            atp.animationType = AF_MOVETYPE.Translate;
+                            atp.values.Add(new Vector3(vec3[0], vec3[1], vec3[2]));
+                            atp.jumpNum = (int)vec3[3];
+                            atp.jumpPower = vec3[4];
+                        }
+                    }
+                }
+                else if (atp.vrmBone == ParseIKBoneType.UseHumanBodyBones)
+                {
+                    int ioptParts = int.TryParse(optParts, out ioptParts) ? ioptParts : 0;
+
+                    if (valueCount > 2)
+                    {
+                        //---Here, Value must be 3.
+                        float[] vec3 = TryParseFloatArray(lst, CSV_BEGINVAL, valueCount);
+
+                        if (movetype == "position")
+                        {
+                            atp.vrmHumanBodyBones = (HumanBodyBones)ioptParts;
                             atp.animationType = AF_MOVETYPE.Translate;
                             atp.values.Add(new Vector3(vec3[0], vec3[1], vec3[2]));
                             atp.jumpNum = (int)vec3[3];
@@ -1432,7 +1470,7 @@ namespace UserHandleSpace
                 if ((targetType == AF_TARGETTYPE.VRM) && (attp.vrmBone == ParseIKBoneType.UseHumanBodyBones))
                 {
                     //---real HumanBodyBones information
-                    //ret.Add(((int)attp.vrmHumanBodyBone).ToString());
+                    ret.Add(((int)attp.vrmHumanBodyBones).ToString());
                 }
                 else
                 {
@@ -2286,10 +2324,14 @@ namespace UserHandleSpace
             return string.Join(",", ret);
         }
 
-//===========================================================================================================================
-//  Load functions
-//===========================================================================================================================
-        public void NewProject()
+    //===========================================================================================================================
+    //  Load functions
+    //===========================================================================================================================
+        public void NewProjectFromOuter(float baseDuration)
+        {
+            NewProject(baseDuration);
+        }
+        public void NewProject(float baseDuration = 0f)
         {
             string ret = "";
             //try
@@ -2355,6 +2397,11 @@ namespace UserHandleSpace
 
                 //---new project
                 currentProject = new NativeAnimationProject(initialFrameCount);
+
+                //---set base duration
+                currentProject.baseDuration = baseDuration;
+                Debug.Log("newproject baseduration=" + currentProject.baseDuration.ToString());
+                
 
                 //[Edit point] 2022.09.xx
                 currentProject.version = PROJECT_VERSION;
@@ -2805,6 +2852,7 @@ namespace UserHandleSpace
             naframe.key = frame.key;
             naframe.ease = frame.ease;
             naframe.memo = frame.memo;
+            naframe.keycolor = frame.keycolor;
 
             //---for Translate only
             for (int i = 0; i < (int)ParseIKBoneType.Unknown; i++)
@@ -2851,6 +2899,45 @@ namespace UserHandleSpace
                 }
                 
             }
+            for (int i = 0; i < (int)HumanBodyBones.LastBone; i++)
+            {
+                if (i >= (int)HumanBodyBones.Jaw) continue;
+
+                List<string> HumanBodyBoneTransformList = frame.movingData.FindAll(match =>
+                {
+                    string[] lst = match.Split(',');
+                    if (lst.Length > 2)
+                    {
+                        if (
+                            (lst[0] == ((int)ParseIKBoneType.UseHumanBodyBones).ToString()) &&  //---ParseIKBoneType
+                            (lst[1] == i.ToString()) && //---HumanBodyBones
+                            (lst[2] == "position") //---raw string for AF_MOVETYPE
+                        )
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                });
+                if (HumanBodyBoneTransformList.Count > 0)
+                {
+                    AnimationTranslateTargetParts attp = new AnimationTranslateTargetParts(ParseIKBoneType.UseHumanBodyBones, AF_MOVETYPE.Translate);
+
+                    foreach (string line in HumanBodyBoneTransformList)
+                    {
+                        attp = CsvToFrameTranslateData(actor, actor.targetType, line, attp);
+                    }
+                    naframe.translateMovingData.Add(attp);
+                }
+            }
+            
             
 
             //---for Rotate/Scale/etc...
@@ -3088,17 +3175,21 @@ namespace UserHandleSpace
                             naframe.key = fr.key;
                             naframe.ease = fr.ease;
                             naframe.memo = fr.memo;
+                            naframe.keycolor = fr.keycolor;
                             naframe.useBodyInfo = UseBodyInfoType.TimelineCharacter;
 
                             AnimationFrame aframe = new AnimationFrame();
                             aframe.SetFromNative(naframe);
 
                             //---for Translate only
-                            for (int i = 0; i < (int)ParseIKBoneType.Unknown; i++)
+                            for (int i = 0; i < 100; i++)
                             {
-                                if (IsVRMParseBoneType((ParseIKBoneType)i))
-                                {
-                                    string pikt = i.ToString();
+                                string pikt = i.ToString();
+                                if (
+                                    (IsVRMParseBoneType((ParseIKBoneType)i)) ||
+                                    ((ParseIKBoneType)i == ParseIKBoneType.UseHumanBodyBones)
+                                )
+                                {                                    
                                     List<string> translateLst = fr.movingData.FindAll(match =>
                                     {
                                         string[] lst = match.Split(',');
@@ -3136,6 +3227,7 @@ namespace UserHandleSpace
                                     }
                                 }
                                 
+                                
                             }
 
                             //---for Rotate/Scale/etc...
@@ -3165,7 +3257,7 @@ namespace UserHandleSpace
                     
 
                     //---apply height difference with absorb to this avatar (VRM only)
-                    CalculateAllFrameForCurrent(nav, naf);
+                    CalculateAllFrameForCurrent(nav.bodyHeight, nav.bodyInfoList, naf);
                     //------update also the height of frame actor (NECCESARY): this avatar height --> frame actor height ( 1:1 )
                     Array.Copy(nav.bodyHeight, naf.bodyHeight, nav.bodyHeight.Length);
 
@@ -3215,6 +3307,7 @@ namespace UserHandleSpace
                     afg.key = frame.key;
                     afg.ease = frame.ease;
                     afg.memo = frame.memo;
+                    afg.keycolor = frame.keycolor;
                     //---translate to csv
                     foreach (AnimationTranslateTargetParts tmv in frame.translateMovingData)
                     {
@@ -3285,12 +3378,13 @@ namespace UserHandleSpace
 #endif
             return ret;
         }
-        
 
+
+        [ContextMenu("save single motion")]
         /// <summary>
         /// Get cast and frame actor's timeline for single motion file to save
         /// </summary>
-        /// <param name="param">CSV-string: [0] - roleName, [1] - type id</param>
+        /// <param name="param">CSV-string: [0] - roleName, [1] - type id, [2] - option: compiled=1/0</param>
         /// <returns>JSON format of AnimationSingleMotion</returns>
         public string SaveSingleMotion(string param)
         {
@@ -3299,12 +3393,28 @@ namespace UserHandleSpace
             string roleName = prm[0];
             int tmp = int.TryParse(prm[1], out tmp) ? tmp : 99;
             AF_TARGETTYPE type = (AF_TARGETTYPE)tmp;
+            string compilestr = prm[2];
 
             AnimationSingleMotion asm = new AnimationSingleMotion();
 
             asm.version = PROJECT_VERSION;
             asm.targetType = type;
-            asm.compiled = currentPlayingOptions.isCompileAnimation;
+            if (compilestr == "")
+            {
+                asm.compiled = currentPlayingOptions.isCompileAnimation;
+            }
+            else
+            {
+                if (compilestr == "1")
+                {
+                    asm.compiled = 1;
+                }
+                else
+                {
+                    asm.compiled = 0;
+                }
+            }
+            
 
             NativeAnimationFrameActor naf = GetFrameActorFromRole(roleName, type);
 
@@ -3326,6 +3436,7 @@ namespace UserHandleSpace
                     asf.finalizeIndex = frame.finalizeIndex;
                     asf.index = frame.index;
                     asf.key = frame.key;
+                    asf.keycolor = frame.keycolor;
 
                     //---translate to csv
                     foreach (AnimationTranslateTargetParts tmv in frame.translateMovingData)

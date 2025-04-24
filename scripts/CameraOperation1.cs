@@ -129,6 +129,7 @@ public class CameraOperation1 : MonoBehaviour
         //---special shortcut key---
         if (manim.keyOperationMode == KeyOperationMode.MoveCamera)
         {
+            /*
             if (Input.GetKey(KeyCode.W))
             {
                 
@@ -233,6 +234,7 @@ public class CameraOperation1 : MonoBehaviour
             {
 
             }
+            */
             if (Input.GetKey(KeyCode.R))
             {
                 ResetCameraFromOuter();
@@ -240,6 +242,7 @@ public class CameraOperation1 : MonoBehaviour
         }
         if (Input.GetKeyDown(KeyCode.M))
         {
+            /*
             if (manim.keyOperationMode == KeyOperationMode.MoveCamera)
             {
                 manim.keyOperationMode = KeyOperationMode.MoveAvatar;
@@ -253,6 +256,7 @@ public class CameraOperation1 : MonoBehaviour
                 KeyObjGlobalLocal.gameObject.SetActive(false);
             }
             GetComponent<CtrlOperateCamera>().keyOperationMode = manim.keyOperationMode;
+            */
         }
         if (Input.GetKey(KeyCode.I))
         {
@@ -655,6 +659,12 @@ public class CameraOperation1 : MonoBehaviour
         float x = float.TryParse(prm[0], out x) ? x : 0f;
         float y = float.TryParse(prm[1], out y) ? y : 0f;
         float z = 0f;
+
+        RotateCameraPos(x, y, z);
+
+    }
+    public void RotateCameraPos(float x, float y, float z)
+    {
         Vector3 pos = new Vector3(x, y, z);
 
         /*
@@ -681,8 +691,6 @@ public class CameraOperation1 : MonoBehaviour
 
         //targetObject.transform.position = mainCamera.transform.position;
         //targetObject.transform.Translate(Vector3.forward * manim.cfg_dist_cam2view);
-
-
     }
 
     /// <summary>
@@ -696,6 +704,11 @@ public class CameraOperation1 : MonoBehaviour
         float x = float.TryParse(prm[0], out x) ? x : 0f;
         float y = float.TryParse(prm[1], out y) ? y : 0f;
         float z = float.TryParse(prm[2], out z) ? z : 0f;
+        TranslateCameraPos(x, y, z);
+
+    }
+    public void TranslateCameraPos(float x, float y,float z)
+    {
         Vector3 pos = new Vector3(x, y, z);
 
         //Vector3 vec = execCameraMover(pos);
@@ -703,8 +716,6 @@ public class CameraOperation1 : MonoBehaviour
 
         mainCamera.transform.Translate(pos * manim.cfg_keymove_speed_trans);
         targetObject.transform.Translate(pos * manim.cfg_keymove_speed_trans);
-
-
     }
 
     /// <summary>
@@ -722,20 +733,21 @@ public class CameraOperation1 : MonoBehaviour
 
 
     }
+
     public void ShowTargetObject(string param)
     {
-        MeshRenderer mr = targetObject.GetComponent<MeshRenderer>();
-        Color col = mr.sharedMaterial.GetColor("_Color");
+        //MeshRenderer mr = targetObject.GetComponent<MeshRenderer>();
+        //Color col = mr.sharedMaterial.GetColor("_Color");
 
         if (param == "1")
         {
-            col.a = 0.2f;
+            targetObject.layer = LayerMask.NameToLayer("UI");
         }
         else
         {
-            col.a = 0f;
+            targetObject.layer = LayerMask.NameToLayer("HiddenHandle");
         }
-        mr.sharedMaterial.SetColor("_Color", col);
+        //mr.sharedMaterial.SetColor("_Color", col);
     }
     public void ChangeOperateTarget(KeyOperationMode kmode)
     {

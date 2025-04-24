@@ -97,6 +97,8 @@ namespace UserHandleSpace
         private StageKind ActiveStageType;
         private AsyncOperationHandle<GameObject> ActiveTargetStageHandle;
 
+        public GameObject StageForAR;
+
         public string ActiveUserStageMainTextureName;
         public string ActiveUserStageBumpmapTextureName;
 

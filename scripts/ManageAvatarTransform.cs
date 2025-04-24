@@ -7,6 +7,7 @@ using UnityEngine.UI;
 using UniVRM10;
 using DG.Tweening;
 using RootMotion.FinalIK;
+using UnityEngine.TextCore.LowLevel;
 
 namespace UserHandleSpace
 {
@@ -684,6 +685,47 @@ namespace UserHandleSpace
 #endif
             return aai.list;
         }
+        public void GetTPoseIKTransformAll()
+        {
+            OperateLoadedVRM ovrm = gameObject.GetComponent<OperateLoadedVRM>();
+            NativeAnimationAvatar nav = maa.GetCastByAvatar(gameObject.name);
+            List<UserHandleOperation> bts = new List<UserHandleOperation>(ovrm.relatedHandleParent.GetComponentsInChildren<UserHandleOperation>());
+
+            List<AvatarSingleIKTransform> ret = new List<AvatarSingleIKTransform>();
+
+            if (nav != null)
+            {
+                foreach (UserHandleOperation op in bts)
+                {
+                    ret.Add(new AvatarSingleIKTransform(op.gameObject.name, op.defaultPosition, op.defaultRotation.eulerAngles, 0, 0, 10, 10));
+                }
+                /*for (int i = 0; i < nav.bodyInfoList.Count; i++)
+                {
+                    Vector3 line = nav.bodyInfoList[i];
+                    string bonename = IKbones[i];
+                    if (i == 17) bonename = IKbones[20]; //LeftToes
+                    if (i == 18) bonename = IKbones[21]; //RightToes
+                    var btchild = bts.Find(v =>
+                    {
+                        if (v.name == bonename) return true;
+                        return false;
+                    });
+                    Vector3 rotation = Vector3.zero;
+                    if (btchild != null)
+                    {
+                        rotation = btchild.defaultRotation.eulerAngles;
+                    }
+                    ret.Add(new AvatarSingleIKTransform(bonename, line, rotation, 0,0, 10, 10));
+                }*/
+                AvatarAllIKParts aai = new AvatarAllIKParts();
+                aai.list = ret;
+
+                string js = JsonUtility.ToJson(aai);
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(js);
+#endif
+            }
+        }
         public void GetIKPelvisAndHeight()
         {
             List<AvatarSingleIKTransform> ret = new List<AvatarSingleIKTransform>();
@@ -820,12 +862,21 @@ namespace UserHandleSpace
             Collider col = ikparent.GetComponent<Collider>();
             Rigidbody rig = ikparent.GetComponent<Rigidbody>();
 
-            ikparent.transform.position = aai.list[0].position; // new Vector3(aai.list[i].x, aai.list[i].y, aai.list[i].z);
-            ikparent.transform.rotation = Quaternion.Euler(aai.list[0].rotation);
-            col.isTrigger = aai.list[0].useCollision == 1 ? false : true;
-            rig.useGravity = aai.list[0].useGravity == 1 ? true : false;
-            rig.drag = aai.list[0].drag;
-            rig.angularDrag = aai.list[0].anglarDrag;
+            int ikpIndex = aai.list.FindIndex(match =>
+            {
+                if (match.ikname.ToLower() == "ikparent") return true;
+                return false;
+            });
+            if (ikpIndex > -1)
+            {
+                ikparent.transform.position = aai.list[ikpIndex].position; // new Vector3(aai.list[i].x, aai.list[i].y, aai.list[i].z);
+                ikparent.transform.rotation = Quaternion.Euler(aai.list[ikpIndex].rotation);
+                col.isTrigger = aai.list[ikpIndex].useCollision == 1 ? false : true;
+                rig.useGravity = aai.list[ikpIndex].useGravity == 1 ? true : false;
+                rig.drag = aai.list[ikpIndex].drag;
+                rig.angularDrag = aai.list[ikpIndex].anglarDrag;
+            }
+            
             //seq.Join(ikparent.transform.DOMove(aai.list[0].position, 0.01f));
             //seq.Join(ikparent.transform.DORotate(aai.list[0].rotation, 0.01f));
         }
@@ -1499,18 +1550,21 @@ namespace UserHandleSpace
             return ret;
         }
         /// <summary>
-        /// Back up transform information of target avatar(VRM, OtherObject)
+        /// Back up transform information of target avatar(VRM, OtherObject) (now using)
         /// </summary>
-        /// <param name="param">avatar's type(VRM, etc...)</param>
+        /// <param name="param">0 - avatar's type(VRM, etc...), 1 - option(below)</param>
         /// <returns></returns>
         public string BackupAvatarTransform(string param)
         {
             string ret = "";
+            string[] arr = param.Split(',');
+            //[0] - avatar type
+            //[1] - option: compiled=1/0
             GameObject ikparent = null;
             AvatarTransformSaveClass atran = new AvatarTransformSaveClass();
             atran.version = ManageAnimation.PROJECT_VERSION;
 
-            if (param.ToLower() == "vrm")
+            if (arr[0].ToLower() == "vrm")
             {
                 
                 atran.sampleavatar = transform.gameObject.GetComponent<Vrm10Instance>().Vrm.Meta.Name;
@@ -1543,6 +1597,14 @@ namespace UserHandleSpace
             aro.index = 1;
             aro.targetId = gameObject.name;
             aro.targetType = AF_TARGETTYPE.VRM;
+            if (arr[1] == "1")
+            {
+                aro.isCompileForLibrary = 1;
+            }
+            else
+            {
+                aro.isCompileForLibrary = 0;
+            }
 
             List<int> regBones = new List<int>();
             for (int i = (int)ParseIKBoneType.EyeViewHandle; i < (int)ParseIKBoneType.Unknown; i++)
@@ -1566,8 +1628,10 @@ namespace UserHandleSpace
 
             AnimationFrameActor afactor = new AnimationFrameActor();
             afactor.SetFromNative(savedActor);
+            afactor.compiled = aro.isCompileForLibrary;
 
-            
+
+
             AnimationFrame afg = new AnimationFrame();
             afg.duration = fr.duration;
             afg.finalizeIndex = fr.finalizeIndex;
@@ -2094,48 +2158,17 @@ namespace UserHandleSpace
             }
             return seq;
         }
+
+        /// <summary>
+        /// Play pose (now using)
+        /// </summary>
+        /// <param name="param"></param>
         public void AnimateAvatarTransform(string param)
         {
             AvatarTransformSaveClass atran = JsonUtility.FromJson<AvatarTransformSaveClass>(param);
             GameObject ikparent = null;
             isOpenSaveMode = true;
-            /*
-            if (atran.type.ToLower() == "vrm")
-            {
-                OperateLoadedVRM olvrm = transform.gameObject.GetComponent<OperateLoadedVRM>();
-                ikparent = olvrm.relatedHandleParent;
-
-                
-                olvrm.SetEnableWholeIK(atran.useik);
-                
-            }
-            else
-            {
-                OperateLoadedOther olo = transform.gameObject.GetComponent<OperateLoadedOther>();
-                ikparent = olo.relatedHandleParent;
-            }
-
-            Sequence seq = DOTween.Sequence();
-            seq.OnComplete(() =>
-            {
-                isOpenSaveMode = false;
-            });
-            if (atran.useik == 1)
-            {
-                //seq = AnimateAllPosition2(seq, ikparent, atran.type, atran.bodyHeight, atran.positions, atran.duration);
-                StartCoroutine(AnimateAllPosition3(seq, ikparent, atran.type, atran.bodyInfoList, atran.positions, atran.duration));
-                seq = AnimateAllRotation(seq, ikparent, atran.type, atran.bodyinfo, atran.rotations, atran.duration);
-
-            }
-            else
-            {
-                seq = AnimateBoneRotation(seq, atran.type, atran.bonerotations, atran.duration);
-            }
-
-            AnimateHand(transform.gameObject, atran.type, atran.handpose, atran.duration);
-            AnimateBlendShape(transform.gameObject, atran.type, atran.blendshapes, atran.duration);
-
-            */
+            
             for (int i = 0; i < atran.frameData.bodyInfoList.Count; i++)
             {
                 Vector3 fi = atran.frameData.bodyInfoList[i];
@@ -2151,17 +2184,14 @@ namespace UserHandleSpace
             aro.isBuildDoTween = 0;
             aro.isExecuteForDOTween = 1;
             aro.targetType = AF_TARGETTYPE.VRM;
+            //aro.isCompileAnimation = atran.frameData.compiled;
             
             //---extract frame data from text file
             NativeAnimationFrameActor nact = new NativeAnimationFrameActor();
             nact.SetFromRaw(atran.frameData);
             //---get cast to action
             NativeAnimationAvatar nav = maa.GetCastByAvatar(gameObject.name); 
-            /*maa.currentProject.casts.Find(match =>
-            {
-                if (match.avatarId == gameObject.name) return true;
-                return false;
-            });*/
+            
             //---apply to frame actor
             nact.avatar = nav;
 
@@ -2171,12 +2201,20 @@ namespace UserHandleSpace
                 NativeAnimationFrame nframe = maa.ParseEffectiveFrame(nact, fr, atran.version);
                 nact.frames.Add(nframe);
             }
+            for (int di = 0; di < nav.bodyHeight.Length; di++)
+            {
+                Debug.Log("nav=" + nav.bodyHeight[di].ToString());
+            }
+            Debug.Log(nav.bodyInfoList.Count.ToString());
             for (int di = 0; di < nact.bodyHeight.Length; di++)
             {
                 Debug.Log("nact=" + nact.bodyHeight[di].ToString());
             }
+            Debug.Log(nact.bodyInfoList.Count.ToString());
             //---calculate difference of the height
-            maa.CalculateAllFrameForCurrent(nav, nact);
+            //  nav: own
+            //  nact: target pose data
+            maa.CalculateAllFrameForCurrent(nav.bodyHeight, nav.bodyInfoList, nact);
             Array.Copy(nav.bodyHeight, nact.bodyHeight, nav.bodyHeight.Length);
 
             Debug.Log("mat calculate end!");

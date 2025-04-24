@@ -29,11 +29,16 @@ namespace UserHandleSpace
         private static extern void ReceiveIntVal(int val);
         [DllImport("__Internal")]
         private static extern void ReceiveFloatVal(float val);
+        [DllImport("__Internal")]
+        private static extern void SaveCurrentIKMarker(string val);
+
 
         public GameObject ActiveAvatar;
         public GameObject ActiveIKHandle;
         public GameObject ActiveTrueIK;
         public SkinnedMeshRenderer ActiveFace;
+        public Transform SelectedIKHandle = null;
+
         [SerializeField] public GameObject OldActiveAvatar;
         public GameObject OldActiveIKHandle;
         public GameObject OldActiveTrueIK;
@@ -934,7 +939,10 @@ namespace UserHandleSpace
 
                 DisableHandle_Avatar(child);
             }
-            
+            SelectedIKHandle = null;
+#if !UNITY_EDITOR && UNITY_WEBGL
+            SaveCurrentIKMarker("");
+#endif
 
             //---check equipping item
             bool isEquip = false;

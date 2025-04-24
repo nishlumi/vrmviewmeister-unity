@@ -13,6 +13,8 @@ public class CtrlOperateCamera : MonoBehaviour
     private Vector2 move_value;
     private Vector2 rotate_value;
     [SerializeField]
+    private ManageAnimation manim;
+    [SerializeField]
     private CameraOperation1 camoperator;
     [SerializeField]
     private OperateActiveVRM oavrm;
@@ -38,7 +40,7 @@ public class CtrlOperateCamera : MonoBehaviour
         {
             if (keyOperationMode == UserHandleSpace.KeyOperationMode.MoveCamera)
             {
-                camoperator.TranslateCameraPosFromOuter(move_value.x.ToString() + ",0,0");
+                camoperator.TranslateCameraPos(move_value.x, 0, 0);
                 camoperator.ProgressCameraPosFromOuter(move_value.y);
             }
             else if (keyOperationMode == UserHandleSpace.KeyOperationMode.MoveAvatar) 
@@ -52,7 +54,7 @@ public class CtrlOperateCamera : MonoBehaviour
         {
             if (keyOperationMode == UserHandleSpace.KeyOperationMode.MoveCamera)
             {
-                camoperator.RotateCameraPosFromOuter(rotate_value.x.ToString() + "," + rotate_value.y.ToString());
+                camoperator.RotateCameraPos(rotate_value.x, rotate_value.y, 0);
             }
             else if (keyOperationMode == UserHandleSpace.KeyOperationMode.MoveAvatar)
             {
@@ -63,7 +65,7 @@ public class CtrlOperateCamera : MonoBehaviour
         {
             if (keyOperationMode == UserHandleSpace.KeyOperationMode.MoveCamera)
             {
-                camoperator.TranslateCameraPosFromOuter("0," + dig_value.y.ToString() + ",0");
+                camoperator.TranslateCameraPos(0, dig_value.y, 0);
             }
             else if (keyOperationMode == UserHandleSpace.KeyOperationMode.MoveAvatar)
             {
@@ -97,7 +99,7 @@ public class CtrlOperateCamera : MonoBehaviour
 
         if (keyOperationMode == UserHandleSpace.KeyOperationMode.MoveCamera)
         {
-            camoperator.TranslateCameraPosFromOuter(x + ",0,0");
+            camoperator.TranslateCameraPos(fx, 0, 0);
             camoperator.ProgressCameraPosFromOuter(fy);
         }
         else if (keyOperationMode == UserHandleSpace.KeyOperationMode.MoveAvatar)
@@ -115,7 +117,7 @@ public class CtrlOperateCamera : MonoBehaviour
 
         if (keyOperationMode == UserHandleSpace.KeyOperationMode.MoveCamera)
         {
-            camoperator.RotateCameraPosFromOuter(x + "," + y);
+            camoperator.RotateCameraPos(fx, fy, 0);
         }
         else if (keyOperationMode == UserHandleSpace.KeyOperationMode.MoveAvatar)
         {
@@ -132,7 +134,7 @@ public class CtrlOperateCamera : MonoBehaviour
 
         if (keyOperationMode == UserHandleSpace.KeyOperationMode.MoveCamera)
         {
-            camoperator.TranslateCameraPosFromOuter("0," + y + ",0");
+            camoperator.TranslateCameraPos(0, fy, 0);
         }
         else if (keyOperationMode == UserHandleSpace.KeyOperationMode.MoveAvatar)
         {
@@ -159,9 +161,14 @@ public class CtrlOperateCamera : MonoBehaviour
             }
         }
     }
+
+    //####################################################################################################################3
+    // Function for key, device operation
+    //####################################################################################################################3
     public void OnMove(InputAction.CallbackContext context)
     {        
         move_value = context.ReadValue<Vector2>();
+        Debug.Log("OnMove");
     }
     public void OnRotate(InputAction.CallbackContext context)
     {
@@ -171,6 +178,23 @@ public class CtrlOperateCamera : MonoBehaviour
     {
         dig_value = context.ReadValue<Vector2>();
     }
+    public void OnKeyRotateForward(InputAction.CallbackContext context)
+    {
+        camoperator.RotateCameraPos(Vector3.left.x * manim.cfg_keymove_speed_rot, 0, 0);
+    }
+    public void OnKeyRotateBackward(InputAction.CallbackContext context)
+    {
+        camoperator.RotateCameraPos(Vector3.right.x * manim.cfg_keymove_speed_rot, 0, 0);
+    }
+    public void OnKeyRotateLeft(InputAction.CallbackContext context)
+    {
+        camoperator.RotateCameraPos(0, Vector3.down.y * manim.cfg_keymove_speed_rot, 0);
+    }
+    public void OnKeyRotateRight(InputAction.CallbackContext context)
+    {
+        camoperator.RotateCameraPos(0, Vector3.up.y * manim.cfg_keymove_speed_rot, 0);
+    }
+
     /// <summary>
     /// Change operation target (MainCamera)
     /// </summary>
@@ -214,5 +238,18 @@ public class CtrlOperateCamera : MonoBehaviour
                 oavrm.ChangeOperationSpaceFromController();
             }
         }
+    }
+    public void OnKeyChangeTarget(InputAction.CallbackContext context)
+    {
+
+        if (manim.keyOperationMode == KeyOperationMode.MoveAvatar)
+        {
+            camoperator.ChangeOperateTarget(UserHandleSpace.KeyOperationMode.MoveCamera);
+        }
+        else
+        {
+            camoperator.ChangeOperateTarget(UserHandleSpace.KeyOperationMode.MoveAvatar);
+        }
+        keyOperationMode = manim.keyOperationMode;
     }
 }

@@ -121,6 +121,14 @@ var UIControllFromOuterPlugin = {
 			AppQueue.fixedExecute(mykey,value);
 		});
 	},
+	SaveCurrentIKMarker: function(val) {
+		var mykey = "saveCurrentIKMarker_unity2html";
+		var str = UTF8ToString(val);
+		
+		AppDB.temp.setItem(mykey,str).then(function(value){
+			AppQueue.fixedExecute(mykey,value);
+		});
+	},
 	ReceiveObjectVal : function (val) {
 		var str = UTF8ToString(val);
 		var js = JSON.parse(str);

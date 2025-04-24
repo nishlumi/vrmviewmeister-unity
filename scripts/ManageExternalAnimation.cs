@@ -11,7 +11,7 @@ using UserVRMSpace;
 using System.Linq;
 using System.Threading.Tasks;
 using UniGLTF;
-using VRMShaders;
+//using VRMShaders;
 using UnityEngine.Video;
 
 namespace UserHandleSpace

@@ -132,6 +132,7 @@ namespace UserHandleSpace
         public int cfg_vrarctrl_panel_right;
         public Vector3 cfg_vrar_camera_initpos;
         public bool cfg_vrar_save_camerapos;
+        public Color cfg_onion_skin_color;
 
         private string DevicePlatform = "";
         
@@ -216,6 +217,7 @@ namespace UserHandleSpace
             cfg_vrarctrl_panel_right = 0;
             cfg_vrar_camera_initpos = Vector3.zero;
             cfg_vrar_save_camerapos = false;
+            cfg_onion_skin_color = new Color(1f, 0, 0, 0.5f);
 
             IsEndVRAR = true;
 
@@ -319,6 +321,122 @@ namespace UserHandleSpace
                 av.ikparent = null;
             }
             materialManager.Dispose();
+
+            DestroyOnion();
+        }
+        [ContextMenu("Create Onion Skin")]
+        public void CreateAllOnionSkin()
+        {
+            CreateAllOnionSkinFromOuter("");
+        }
+        public void CreateAllOnionSkinFromOuter(string id = "")
+        {
+            foreach (NativeAnimationAvatar nav in currentProject.casts)
+            {
+                bool ishit = false;
+                //---specified object only
+                if (id == nav.avatarId) ishit = true;
+                //---space is default. all objects.
+                if (id == "") ishit = true;
+                
+                if (ishit)
+                {
+                    switch (nav.type)
+                    {
+                        case AF_TARGETTYPE.VRM:
+                            nav.avatar.GetComponent<OperateLoadedVRM>().CreateOnionSkinObject(this);
+                            break;
+                        case AF_TARGETTYPE.OtherObject:
+                            nav.avatar.GetComponent<OperateLoadedOther>().CreateOnionSkinObject(this, nav.type);
+                            break;
+                        case AF_TARGETTYPE.Camera:
+                            nav.avatar.GetComponent<OperateLoadedCamera>().CreateOnionSkinObject(this, nav.type);
+                            break;
+                        case AF_TARGETTYPE.Light:
+                            nav.avatar.GetComponent<OperateLoadedLight>().CreateOnionSkinObject(this, nav.type);
+                            break;
+                        case AF_TARGETTYPE.Effect:
+                            nav.avatar.GetComponent<OperateLoadedEffect>().CreateOnionSkinObject(this, nav.type);
+                            break;
+                        case AF_TARGETTYPE.Image:
+                            nav.avatar.GetComponent<OperateLoadedOther>().CreateOnionSkinObject(this, nav.type);
+                            break;
+                    }
+                }
+                
+            }
+        }
+        public void ChangeColorOnionSkin()
+        {
+            Transform[] objs = transform.Find("OnionSkinArea").GetComponentsInChildren<Transform>(); 
+
+            foreach (Transform nav in objs)
+            {
+                
+                SkinnedMeshRenderer[] children = nav.GetComponentsInChildren<SkinnedMeshRenderer>();
+                foreach (SkinnedMeshRenderer child in children)
+                {
+                    child.material.SetColor("_Color", cfg_onion_skin_color);
+                    child.material.SetInt("_AlphaMode", 2);
+                    child.material.SetInt("_TransparentWithZWrite", 1);
+
+                }
+                MeshRenderer[] meshchildren = nav.GetComponentsInChildren<MeshRenderer>();
+                foreach (MeshRenderer mesh in meshchildren)
+                {
+                    for (int i = 0; i < mesh.materials.Length; i++)
+                    {
+                        mesh.material.SetColor("_Color", cfg_onion_skin_color);
+                        if (mesh.materials[i].HasInt("_AlphaMode")) mesh.material.SetInt("_AlphaMode", 2);
+                        if (mesh.materials[i].HasInt("_TransparentWithZWrite")) mesh.material.SetInt("_TransparentWithZWrite", 1);
+                    }
+
+                }
+                
+            }
+        }
+        [ContextMenu("Delete All Onion Skin")]
+        public void DestroyOnion()
+        {
+            Transform onion = transform.Find("OnionSkinArea");
+            Transform[] children = onion.GetComponentsInChildren<Transform>();
+            foreach (Transform child in children)
+            {
+                if (child.gameObject.name != "OnionSkinArea")
+                {
+                    //---nullize material or shareMaterial
+                    MeshRenderer[] meshchildren = child.transform.GetComponentsInChildren<MeshRenderer>();
+                    foreach (MeshRenderer mesh in meshchildren)
+                    {
+                        mesh.material = null;
+                        for (int i = 0; i < mesh.materials.Length; i++)
+                        {
+                            mesh.materials[i] = null;
+                        }
+                        mesh.sharedMaterial = null;
+                        for (int i = 0; i < mesh.sharedMaterials.Length; i++)
+                        {
+                            mesh.sharedMaterials[i] = null;
+                        }
+                    }
+                    SkinnedMeshRenderer[] skinnedMeshRenderers = child.transform.GetComponentsInChildren<SkinnedMeshRenderer>();
+                    foreach (SkinnedMeshRenderer skin in  skinnedMeshRenderers)
+                    {
+                        skin.material = null;
+                        for (int i = 0; i < skin.materials.Length; i++)
+                        {
+                            skin.materials[i] = null;
+                        }
+                        skin.sharedMaterial = null;
+                        for (int i = 0; i < skin.sharedMaterials.Length; i++)
+                        {
+                            skin.sharedMaterials[i] = null;
+                        }
+                    }
+                    Destroy(child.gameObject);
+                }
+                
+            }
         }
         public void ChangeFullIKType(bool useFullIK)
         {
@@ -441,6 +559,12 @@ namespace UserHandleSpace
             {
                 configLab.SetValFromOuter(param);
                 cfg_vrar_save_camerapos = configLab.GetIntVal("vrar_save_camerapos", 0) == 1 ? true : false;
+            }
+            else if (prm[1] == "onion_skin_color")
+            {
+                Color col = new Color(1f, 0, 0, 0.5f);
+                ColorUtility.TryParseHtmlString(prm[2], out col);
+                cfg_onion_skin_color = col;
             }
         }
         //===========================================================================================================================
@@ -1930,7 +2054,7 @@ namespace UserHandleSpace
                     //------height: old:avatar --> new:tmpav
                     //Array.Copy(tmpav.bodyHeight, avatar.bodyHeight, tmpav.bodyHeight.Length);
 
-                    CalculateAllFrameForCurrent(avatar, naf);
+                    CalculateAllFrameForCurrent(avatar.bodyHeight, avatar.bodyInfoList, naf);
                     //------update also the height of frame actor (NECCESARY): this avatar height --> frame actor height ( 1:1 )
                     Array.Copy(tmpav.bodyHeight, naf.bodyHeight, tmpav.bodyHeight.Length);
 
@@ -2251,6 +2375,58 @@ namespace UserHandleSpace
                 }
             });
         }
+
+        /// <summary>
+        /// Set compiled flag
+        /// </summary>
+        /// <param name="param">0 - role ID, 1 - target type, 2 - flag value("1" or other)</param>
+        public void SetCompileFrameActor(string param)
+        {
+            string[] arr = param.Split(",");
+            string roleid = arr[0];
+            int typeid = int.TryParse(arr[1], out typeid) ? typeid : 0;
+            AF_TARGETTYPE targettype = (AF_TARGETTYPE)typeid;
+
+            NativeAnimationFrameActor nact = GetFrameActorFromRole(roleid, targettype);
+            if (nact != null)
+            {
+                if (arr[2] == "1")
+                {
+                    nact.compiled = 1;
+                }
+                else
+                {
+                    nact.compiled = 0;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get compiled flag
+        /// </summary>
+        /// <param name="param">0 - role ID, 1 - target type</param>
+        /// <returns>int value(1 or 0)</returns>
+        public void GetCompileFrameActorFromOuter(string param)
+        {
+            string[] arr = param.Split(",");
+            string roleid = arr[0];
+            int typeid = int.TryParse(arr[1], out typeid) ? typeid : 0;
+            AF_TARGETTYPE targettype = (AF_TARGETTYPE)typeid;
+
+            NativeAnimationFrameActor nact = GetFrameActorFromRole(roleid, targettype);
+            int ret = 0;
+            if (nact != null)
+            {
+                ret = nact.compiled;
+            }
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveIntVal(ret);
+#endif
+        }
+        public void SetVRMEnableIK(string param)
+        {
+
+        }
         /// <summary>
         /// To calculate body parts position 
         /// </summary>
@@ -2394,9 +2570,10 @@ namespace UserHandleSpace
         /// <summary>
         /// Calculate move data of all key-frame for specified avatar, apply absorb difference as this transform.
         /// </summary>
-        /// <param name="nav">This time animation avatar</param>
+        /// <param name="bodyHeight">bodyHeight of This time animation avatar</param>
+        /// <param name="bodyInfoList">bodyInfoList of This time animation avatar</param>
         /// <param name="destination">Frame actor data to change</param>
-        public void CalculateAllFrameForCurrent(NativeAnimationAvatar nav, NativeAnimationFrameActor destination)
+        public void CalculateAllFrameForCurrent(float[] bodyHeight, List<Vector3> bodyInfoList, NativeAnimationFrameActor destination)
         {
             //---This function is VRM only.
             if (destination.targetType != AF_TARGETTYPE.VRM)
@@ -2404,16 +2581,8 @@ namespace UserHandleSpace
                 return;
             }
 
-            /*for (int di = 0; di < destination.bodyHeight.Length; di++)
-            {
-                Debug.Log("dest=" + destination.bodyHeight[di].ToString());
-            }
-            for (int ni = 0; ni < nav.bodyHeight.Length; ni++)
-            {
-                Debug.Log("nav=" + nav.bodyHeight[ni].ToString());
-            }*/
 
-            ParseIKBoneType[] sortedIndex = new ParseIKBoneType[IKbonesCount] {
+            ParseIKBoneType[] sortedIndex = new ParseIKBoneType[] {
                 ParseIKBoneType.IKParent,
 
 
@@ -2442,36 +2611,13 @@ namespace UserHandleSpace
                     AnimationTranslateTargetParts movedata = naframe.translateMovingData[m];
                     
                     if (
-                        (movedata.animationType == AF_MOVETYPE.Translate) && 
-                        ((movedata.vrmBone >= ParseIKBoneType.EyeViewHandle) && (movedata.vrmBone <= ParseIKBoneType.RightLeg))
+                        (movedata.animationType == AF_MOVETYPE.Translate) &&
+                        (IsVRMParseBoneType(movedata.vrmBone, false))
                     )
                     {
+                        
                         //vrmBone : SORTED !
                         //bodyInfoList: original sort
-                        /*
-                        // change motion difference: new:nav --> old:destination 
-                        float[] curact = { nav.bodyHeight[0], nav.bodyInfoList[(int)movedata.vrmBone].y, nav.bodyInfoList[(int)movedata.vrmBone].z };
-                        float[] dstact = { destination.bodyHeight[0], destination.bodyInfoList[(int)movedata.vrmBone].y, destination.bodyInfoList[(int)movedata.vrmBone].z };
-
-                        
-                        if (movedata.vrmBone == ParseIKBoneType.EyeViewHandle)
-                        { //EyeViewHandle, y-axis is multiply VRM bound Y
-                            curact[1] = nav.bodyHeight[1];
-                            dstact[1] = destination.bodyHeight[1];
-                        }
-                        if ((movedata.vrmBone == ParseIKBoneType.LookAt) || (movedata.vrmBone == ParseIKBoneType.Aim))
-                        { //Aim and LookAt, z-axis is fixed base value * VRM bound Z
-                            curact[2] = 0.5f * nav.bodyHeight[2];
-                            dstact[2] = 0.5f * destination.bodyHeight[2];
-                        }
-                        else
-                        {
-                            curact[2] = 1;
-                            dstact[2] = 1;
-                        }
-                        for (int c = 0; c < curact.Length; c++) curact[c] = MathF.Round(curact[c], 6);
-                        for (int c = 0; c < dstact.Length; c++) dstact[c] = MathF.Round(dstact[c], 6);
-                        */
 
                         
                         //---judge sorted bone index, find real bone index
@@ -2508,10 +2654,10 @@ namespace UserHandleSpace
 
 
                                 //--refer each parts position (original: global )                                
-                                Vector3 cur_whole = nav.bodyInfoList[bodyInx];
-                                Vector3 role_whole = destination.bodyInfoList[bodyInx];
-                                
-                                
+                                Vector3 cur_whole = bodyInx < bodyInfoList.Count ?  bodyInfoList[bodyInx] : new Vector3(1f,1f,1f);
+                                Vector3 role_whole = bodyInx < destination.bodyInfoList.Count ? destination.bodyInfoList[bodyInx] : new Vector3(1f, 1f, 1f);
+
+
                                 {
                                     tmpx = role_whole.x.ToString("0.0000");
                                     role_whole.x = float.Parse (tmpx);
@@ -2525,11 +2671,11 @@ namespace UserHandleSpace
                                     role_whole.z = float.Parse(tmpx);
                                 }
 
-                                float cur_height_parts_y = (nav.bodyHeight[1] + cur_whole.y) / 2f;
+                                float cur_height_parts_y = (bodyHeight[1] + cur_whole.y) / 2f;
                                 float role_height_parts_y = (destination.bodyHeight[1] + role_whole.y) / 2f;
                                 
 
-                                float[] cur_whole_val = new float[3] { nav.bodyHeight[0], cur_height_parts_y, nav.bodyHeight[2] };
+                                float[] cur_whole_val = new float[3] { bodyHeight[0], cur_height_parts_y, bodyHeight[2] };
                                 float[] role_whole_val = new float[3] { destination.bodyHeight[0], role_height_parts_y, destination.bodyHeight[2] };
 
 
@@ -2571,6 +2717,76 @@ namespace UserHandleSpace
 
 
                         //destination.frames[i].movingData[m].position = newpos;
+                    }
+                    else if (movedata.vrmBone == ParseIKBoneType.UseHumanBodyBones)
+                    {
+                        //---if HumanBodyBones, calc Hips only
+                        if (movedata.vrmHumanBodyBones == HumanBodyBones.Hips)
+                        {
+                            for (var ti = 0; ti < movedata.values.Count; ti++)
+                            {
+                                Vector3 tranVal = movedata.values[ti];
+                                
+                                //---Round float value by string
+                                string tmpx = tranVal.x.ToString("0.0000");
+                                float ftmpx = float.Parse(tmpx);
+                                {
+                                    tranVal.x = ftmpx;
+                                }
+                                {
+                                    tmpx = tranVal.y.ToString("0.0000");
+                                    ftmpx = float.Parse(tmpx);
+                                    tranVal.y = ftmpx;
+                                }
+                                {
+                                    tmpx = tranVal.z.ToString("0.0000");
+                                    ftmpx = float.Parse(tmpx);
+                                    tranVal.z = ftmpx;
+                                }
+
+
+                                //--refer each parts position (original: global )
+                                Vector3 cur_whole = bodyInfoList[(int)ParseIKBoneType.Pelvis];
+                                Vector3 role_whole = destination.bodyInfoList[(int)ParseIKBoneType.Pelvis];
+
+
+                                {
+                                    tmpx = role_whole.x.ToString("0.0000");
+                                    role_whole.x = float.Parse(tmpx);
+                                }
+                                {
+                                    tmpx = role_whole.y.ToString("0.0000");
+                                    role_whole.y = float.Parse(tmpx);
+                                }
+                                {
+                                    tmpx = role_whole.z.ToString("0.0000");
+                                    role_whole.z = float.Parse(tmpx);
+                                }
+
+                                float cur_height_parts_y = (bodyHeight[1] + cur_whole.y) / 2f;
+                                float role_height_parts_y = (destination.bodyHeight[1] + role_whole.y) / 2f;
+
+
+                                float[] cur_whole_val = new float[3] { bodyHeight[0], cur_height_parts_y, bodyHeight[2] };
+                                float[] role_whole_val = new float[3] { destination.bodyHeight[0], role_height_parts_y, destination.bodyHeight[2] };
+
+
+                                //---body height version (original)
+                                //float[] cur_whole_val = nav.bodyHeight;
+                                //float[] role_whole_val = destination.bodyHeight;
+
+                                //Debug.Log("vrmBone=" + movedata.vrmBone.ToString());
+                                //Debug.Log($"  cur={cur_whole_val[0]}\t{cur_whole_val[1]}\t{cur_whole_val[2]}");
+                                //Debug.Log($"  role={role_whole_val[0]}\t{role_whole_val[1]}\t{role_whole_val[2]}");
+                                //Debug.Log($"  tranVal={tranVal.x}\t{tranVal.y}\t{tranVal.z}");
+                                //^^^ keyframe: local 
+
+                                Vector3 newpos = CalculateDifferenceByHeight(cur_whole_val, role_whole_val, tranVal, movedata.vrmBone, 1f, 1f, 1f);
+                                //Debug.Log($"  newpos={newpos.x}\t{newpos.y}\t{newpos.z}");
+
+                                destination.frames[i].translateMovingData[m].values[ti] = newpos;
+                            }
+                        }
                     }
                 }
             }
@@ -2730,6 +2946,64 @@ namespace UserHandleSpace
             ReceiveStringVal(js);
 #endif
         }
+        public void GetKeyColorFromOuter(string param)
+        {
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
+            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
+
+            string ret = "";
+            if (curframe != null)
+            {
+                ret = curframe.keycolor;
+            }
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+        public void SetKeyColor(string param)
+        {
+            if (currentProject.isReadOnly || currentProject.isSharing) return;
+
+            if (currentSeq != null)
+            {
+                currentSeq.Kill();
+                currentSeq = null;
+            }
+            string js = "{ }";
+
+            AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
+
+            NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
+
+            int nearmin = GetNearMinFrameIndex(actor, aro.index);
+            NativeAnimationFrame minframe = null;
+            int minframeIndex = -1;
+            if (minframe != null)
+            {
+                minframe = actor.frames[nearmin]; // GetFrame(actor, nearmin);
+                minframeIndex = minframe.index;
+            }
+
+            NativeAnimationFrame curframe = GetFrame(actor, aro.index);
+            if (curframe != null)
+            {
+                //---update "ease" only
+                curframe.keycolor = aro.keycolor;
+
+                js = "{ " +
+                    "\"roleName\": \"" + actor.targetRole + "\"," +
+                    "\"avatarId\" : \"" + actor.targetId + "\"," +
+                    "\"type\": " + (int)aro.targetType + "," +
+                    "\"nearMinIndex\": " + minframeIndex + "," +
+                    "\"index\":" + aro.index +
+                "}";
+            }
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(js);
+#endif
+        }
         public void GetDurationFromOuter(string param)
         {
             AnimationRegisterOptions aro = JsonUtility.FromJson<AnimationRegisterOptions>(param);
@@ -2777,6 +3051,7 @@ namespace UserHandleSpace
         }
         public void SetBaseDuration(float param)
         {
+            Debug.Log("base duration=" + param.ToString());
             if (param != 0f)
             {
                 currentProject.baseDuration = param;
@@ -2878,23 +3153,65 @@ namespace UserHandleSpace
             NativeAnimationFrameActor actor = GetFrameActorFromRole(aro.targetRole, aro.targetType);
 
             NativeAnimationFrame curframe = GetFrame(actor, aro.index);
+            
+            int nearindex = GetNearMinFrameIndex(actor, aro.index);
+            NativeAnimationFrame minframe = null;
+            if (nearindex > -1)
+            {
+                minframe = actor.frames[nearindex];
+            }
 
             List<string> retarr = new List<string>();
-            
-            curframe.translateMovingData.ForEach(m =>
+            int ishitprop = -1;
+            bool use_min = false;
+
+            if (curframe != null)
             {
-                retarr.Add(m.vrmBone.ToString());
-            });
-            int ishitprop = curframe.movingData.FindIndex(m =>
-            {
-                if ((m.animationType != AF_MOVETYPE.Translate) && (m.animationType != AF_MOVETYPE.Rotate) && (m.animationType != AF_MOVETYPE.Scale) &&
-                    (m.animationType != AF_MOVETYPE.Punch) && (m.animationType != AF_MOVETYPE.Shake)
-                )
+                curframe.translateMovingData.ForEach(m =>
                 {
-                    return true;
+                    retarr.Add(m.vrmBone.ToString());
+                });
+                ishitprop = curframe.movingData.FindIndex(m =>
+                {
+                    if ((m.animationType != AF_MOVETYPE.Translate) && (m.animationType != AF_MOVETYPE.Rotate) && (m.animationType != AF_MOVETYPE.Scale) &&
+                        (m.animationType != AF_MOVETYPE.Punch) && (m.animationType != AF_MOVETYPE.Shake)
+                    )
+                    {
+                        return true;
+                    }
+                    return false;
+                });
+                if (retarr.Count == 0)
+                {
+                    use_min = true;
                 }
-                return false;
-            });
+
+            }
+            else
+            {
+                use_min = true;
+            }
+
+            if ((minframe != null) && use_min)
+            {
+                minframe.translateMovingData.ForEach(m =>
+                {
+                    retarr.Add(m.vrmBone.ToString());
+                });
+                ishitprop = minframe.movingData.FindIndex(m =>
+                {
+                    if ((m.animationType != AF_MOVETYPE.Translate) && (m.animationType != AF_MOVETYPE.Rotate) && (m.animationType != AF_MOVETYPE.Scale) &&
+                        (m.animationType != AF_MOVETYPE.Punch) && (m.animationType != AF_MOVETYPE.Shake)
+                    )
+                    {
+                        return true;
+                    }
+                    return false;
+                });
+            }
+
+
+
             if (ishitprop > -1)
             {
                 retarr.Add("props");
@@ -3078,6 +3395,7 @@ namespace UserHandleSpace
                     (targetObject.avatar.type != AF_TARGETTYPE.SystemEffect) &&
                     (targetObject.avatar.type != AF_TARGETTYPE.Audio) &&
                     (targetObject.avatar.type != AF_TARGETTYPE.Text) &&
+                    (targetObject.avatar.type != AF_TARGETTYPE.Text3D) &&
                     (targetObject.avatar.type != AF_TARGETTYPE.UImage) &&
                     (targetObject.avatar.type != AF_TARGETTYPE.Stage)
                 )
@@ -3089,6 +3407,15 @@ namespace UserHandleSpace
                         if (ooik.isEquipping) isExecuteTransform = false;
                     }
                     
+                }
+                else if (targetObject.avatar.type == AF_TARGETTYPE.Text3D)
+                {
+                    OperateLoadedText olt = targetObject.avatar.avatar.GetComponent<OperateLoadedText>();
+                    OtherObjectDummyIK ooik = olt.relatedHandleParent.GetComponent<OtherObjectDummyIK>();
+                    if (ooik != null)
+                    {
+                        if (ooik.isEquipping) isExecuteTransform = false;
+                    }
                 }
 
 
@@ -3275,16 +3602,17 @@ namespace UserHandleSpace
             if (actor.avatar.avatar != null)
             {
                 //---if compiled animation, disable IK marker.
-                actor.compiled = currentPlayingOptions.isCompileAnimation;
-                if (currentPlayingOptions.isCompileAnimation == 1)
+                //actor.compiled = currentPlayingOptions.isCompileAnimation;
+                /*
+                if (actor.compiled == 1)
                 {
-                    OperateLoadedBase ovrm = actor.avatar.avatar.GetComponent<OperateLoadedBase>();
-                    if (ovrm != null)
+                    if (actor.avatar.avatar.TryGetComponent<OperateLoadedBase>(out var ovrm))
                     {
                         ovrm.EnableIK(false);
                     }
 
                 }
+                */
                                 
                 
 
@@ -3393,6 +3721,19 @@ namespace UserHandleSpace
                         //---for general animation clip
                         SetGeneralAnimationFrame(actor.avatar, aro.index, frame);
                         SetVRMAnimationFrame(actor.avatar, aro.index, frame);
+                        if (actor.avatar.type == AF_TARGETTYPE.VRM)
+                        {
+                            /*
+                            if (actor.compiled == 1)
+                            {
+                                OperateLoadedVRM olvrm = actor.avatar.avatar.GetComponent<OperateLoadedVRM>();
+                                if (olvrm != null)
+                                {
+                                    olvrm.ApplyBoneTransformToIKTransform();
+                                }
+                            }
+                            */
+                        }
                         /*
                         VVMMotionRecorder vmrec = actor.avatar.avatar.GetComponent<VVMMotionRecorder>();
                         if (vmrec != null)
@@ -3631,21 +3972,29 @@ namespace UserHandleSpace
             animateFlow.OnKill(() =>
             {
 
-                if (currentPlayingOptions.isCompileAnimation == 1)
+                //if (currentPlayingOptions.isCompileAnimation == 1)
                 {
                     foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
                     {
                         if ((actor.avatar != null) && (actor.avatar.avatar != null))
                         {
                             OperateLoadedBase ovrm = actor.avatar.avatar.GetComponent<OperateLoadedBase>();
-                            if (ovrm != null)
-                            {
-                                ovrm.EnableIK(true);
-                            }
+                            
                             if (actor.targetType == AF_TARGETTYPE.VRM)
                             {
                                 OperateLoadedVRM olvrm = actor.avatar.avatar.GetComponent<OperateLoadedVRM>();
+
+                                //---apply and finally enable IK (VRM only)
+                                StartCoroutine(olvrm.ApplyBoneTransformToIKTransform());
+
                                 olvrm.ListGravityInfo();
+                            }
+                            else
+                            {
+                                if (ovrm != null)
+                                { //---simply enable IK (other than VRM)
+                                    ovrm.EnableIK(true);
+                                }
                             }
                             
 
@@ -3667,11 +4016,17 @@ namespace UserHandleSpace
             });
 
             PreviewProcessBody(animateFlow, actor, aro, false);
+            animateFlow.Play();
         }
         public void StartAllTimeline(string param)
         {
             StartAllTimeline(JsonUtility.FromJson<AnimationParsingOptions>(param));
         }
+
+        /// <summary>
+        /// Start all animation playing.
+        /// </summary>
+        /// <param name="apo">options for playing an animation.</param>
         public void StartAllTimeline(AnimationParsingOptions apo)
         {
             currentPlayingOptions = apo; // JsonUtility.FromJson<AnimationParsingOptions>(param);
@@ -3728,15 +4083,19 @@ namespace UserHandleSpace
                         //---other, setting for each avatar type
                         if (actor.avatar.type == AF_TARGETTYPE.VRM)
                         {
-                            if (currentPlayingOptions.isCompileAnimation == 1)
+                            //---check EACH avatar's compiled flag.
+                            if (actor.compiled == 1)
                             {
                                 OperateLoadedVRM olvrm = actor.avatar.avatar.GetComponent<OperateLoadedVRM>();
                                 //---if natural roration is enable, forcely disable. (not recover)
-                                StartCoroutine(olvrm.EnableIKOperationMode(false));
-                                olvrm.SetIKGoalRotation2Natural(false, "leftarm");
-                                olvrm.SetIKGoalRotation2Natural(false, "rightarm");
-                                olvrm.SetIKGoalRotation2Natural(false, "leftleg");
-                                olvrm.SetIKGoalRotation2Natural(false, "rightleg");
+                                olvrm.EnableIK(false);
+                                //StartCoroutine(olvrm.EnableIKOperationMode(false));
+
+                                //---if disable IK, not neccesary below functions.
+                                //olvrm.SetIKGoalRotation2Natural(false, "leftarm");
+                                //olvrm.SetIKGoalRotation2Natural(false, "rightarm");
+                                //olvrm.SetIKGoalRotation2Natural(false, "leftleg");
+                                //olvrm.SetIKGoalRotation2Natural(false, "rightleg");
                             }
 
                         }
@@ -3852,6 +4211,8 @@ namespace UserHandleSpace
                 {
                     currentMarker = 1;
                 }
+
+                //---initialize index and marker.
                 if (currentPlayingOptions.endIndex <= 0) currentPlayingOptions.endIndex = currentProject.timelineFrameLength;
                 seqInIndex = 1;
                 foreach (NativeAnimationFrameActor actor in currentProject.timeline.characters)
@@ -3882,6 +4243,10 @@ namespace UserHandleSpace
             yield return null;
         }
 
+
+        /// <summary>
+        /// Pause all animation.
+        /// </summary>
         public void PauseAllTimeline()
         {
             if (!currentSeq.IsActive())
@@ -3910,6 +4275,10 @@ namespace UserHandleSpace
             
             
         }
+
+        /// <summary>
+        /// Stop all animation.
+        /// </summary>
         public void StopAllTimeline()
         {
             IsPlaying = false;
@@ -4005,11 +4374,11 @@ namespace UserHandleSpace
                         //---other, setting for each avatar type
                         if (actor.avatar.type == AF_TARGETTYPE.VRM)
                         {
-                            if (currentPlayingOptions.isCompileAnimation == 1)
+                            if (actor.compiled == 1)
                             {
                                 OperateLoadedVRM olvrm = actor.avatar.avatar.GetComponent<OperateLoadedVRM>();
                                 //---recover a bone rotation to IKPosition and IKRotation 
-                                StartCoroutine(olvrm.ApplyBoneTransformToIKTransform(actor.avatar.avatar.GetComponent<Animator>()));
+                                StartCoroutine(olvrm.ApplyBoneTransformToIKTransform());
                             }
 
                         }
@@ -4786,6 +5155,8 @@ namespace UserHandleSpace
                     else if (nav.type == AF_TARGETTYPE.VRM)
                     {
                         nav.avatar.GetComponent<OperateLoadedVRM>().ChangeNormalVRAR_IKTarget();
+                        //---normally, main collider ON
+                        nav.avatar.GetComponent<CapsuleCollider>().isTrigger = false;
                     }
                     if (isNormal)
                     {
@@ -4820,6 +5191,10 @@ namespace UserHandleSpace
 
                             oavrm.EnableHandle_Avatar(nav.ikparent, nav.type);
 
+                        }
+                        if (nav.type == AF_TARGETTYPE.VRM)
+                        {
+                            nav.avatar.GetComponent<CapsuleCollider>().isTrigger = true;
                         }
                     }
                 }
@@ -4928,6 +5303,7 @@ namespace UserHandleSpace
             }
             MobileARWindow.ShowUI(false);
             MobileARWindow.ShowVRMButton(false);
+            GetCastByAvatar("Stage").avatar.GetComponent<OperateStage>().StageForAR.SetActive(false);
 
             GizmoRenderer.SetActive(true);
             ObjectInfoView.SetActive(true);
@@ -4990,6 +5366,8 @@ namespace UserHandleSpace
             {
                 camxr.transform.position = new Vector3(cfg_vrar_camera_initpos.x, cfg_vrar_camera_initpos.y, cfg_vrar_camera_initpos.z);
             }
+            //---show shadow on stage
+            GetCastByAvatar("Stage").avatar.GetComponent<OperateStage>().StageForAR.SetActive(true);
             camxr.ToggleAR();
             IsEndVRAR = false;
         }

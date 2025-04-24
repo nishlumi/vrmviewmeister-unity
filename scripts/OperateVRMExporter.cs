@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UniGLTF;
 using UniVRM10;
-using VRMShaders;
+//using VRMShaders;
 
 
 namespace UserHandleSpace
@@ -11,7 +11,8 @@ namespace UserHandleSpace
 
 
     public class OperateVRMExporter 
-    {        
+    {       
+        /*
         public byte[] ExportSimple(GameObject model)
         {
             UniGLTF.GltfExportSettings sett = new UniGLTF.GltfExportSettings();
@@ -21,5 +22,6 @@ namespace UserHandleSpace
             return Vrm10Exporter.Export(model);
             
         }
+        */
     }
 }

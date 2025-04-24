@@ -540,7 +540,7 @@ namespace UserHandleSpace
 
             tran.localScale = beforeScale;
         }
-        public void ResetTransformCurrentObject(bool ismove, bool isrotate, bool issize)
+        public IEnumerator ResetTransformCurrentObject(bool ismove, bool isrotate, bool issize)
         {
             if (sv_targettype == "c")
             {
@@ -564,16 +564,25 @@ namespace UserHandleSpace
                     {
                         if (sv_targettype == "o")
                         {
+                            nav.avatar.GetComponent<OperateLoadedVRM>().relatedTrueIKParent.GetComponent<Rigidbody>().isKinematic = true;
                             nav.avatar.GetComponent<OperateLoadedVRM>().relatedTrueIKParent.GetComponent<OtherObjectDummyIK>().LoadDefaultTransform(ismove, isrotate);
+                            yield return null;
+                            nav.avatar.GetComponent<OperateLoadedVRM>().relatedTrueIKParent.GetComponent<Rigidbody>().isKinematic = false;
                         }
                         else if (sv_targettype == "b")
                         {
+                            SelectBoneObj.GetComponent<Rigidbody>().isKinematic = true;
                             SelectBoneObj.GetComponent<UserHandleOperation>().LoadDefaultTransform(ismove, isrotate);
+                            yield return null;
+                            SelectBoneObj.GetComponent<Rigidbody>().isKinematic = false;
                         }
 
                     }
                     else
                     {
+                        nav.avatar.GetComponent<Rigidbody>().isKinematic = true;
+                        nav.ikparent.GetComponent<Rigidbody>().isKinematic = true;
+
                         if (ismove)
                         {
                             nav.avatar.transform.position = new Vector3(0, 0, 0);
@@ -596,11 +605,15 @@ namespace UserHandleSpace
 
 
                         }
+                        yield return null;
+                        nav.avatar.GetComponent<Rigidbody>().isKinematic = false;
+                        nav.ikparent.GetComponent<Rigidbody>().isKinematic = false;
 
                     }
 
                 }
             }
+            yield return null;
             
         }
 

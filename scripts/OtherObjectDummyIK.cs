@@ -14,6 +14,8 @@ public class OtherObjectDummyIK : MonoBehaviour
     private static extern void ChangeTransformOnUpdate(string val);
     [DllImport("__Internal")]
     private static extern void ChangeDirectionalLightTransformOnUpdate(string val);
+    [DllImport("__Internal")]
+    private static extern void SaveCurrentIKMarker(string val);
 
 
     [SerializeField]
@@ -168,5 +170,17 @@ public class OtherObjectDummyIK : MonoBehaviour
             HasRectTransform = true;
             rectTransform = avatar.GetComponent<RectTransform>();
         }
+    }
+    private void OnMouseDown()
+    {
+        if (gameObject.layer != LayerMask.NameToLayer("HiddenHandle"))
+        {
+            
+            oavrm.SelectedIKHandle = transform;
+#if !UNITY_EDITOR && UNITY_WEBGL
+                    SaveCurrentIKMarker(gameObject.name);
+#endif
+        }
+
     }
 }

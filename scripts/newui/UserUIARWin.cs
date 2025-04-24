@@ -473,15 +473,15 @@ namespace UserUISpace
         }
         void arbtn_reset_move_OnClick()
         {
-            armf.ResetTransformCurrentObject(true, false, false);
+            StartCoroutine(armf.ResetTransformCurrentObject(true, false, false));
         }
         void arbtn_reset_rot_OnClick()
         {
-            armf.ResetTransformCurrentObject(false, true, false);
+            StartCoroutine(armf.ResetTransformCurrentObject(false, true, false));
         }
         void arbtn_reset_size_OnClick()
         {
-            armf.ResetTransformCurrentObject(false, false, true);
+            StartCoroutine(armf.ResetTransformCurrentObject(false, false, true));
         }
         void CommonBtnDownEvent()
         {

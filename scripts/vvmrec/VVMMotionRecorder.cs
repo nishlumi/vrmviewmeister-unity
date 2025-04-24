@@ -866,8 +866,15 @@ namespace UserHandleSpace
             }
             //---Look At bone
             var lookatmap = new Dictionary<HumanBodyBones, Transform>();
-            lookatmap[HumanBodyBones.LeftEye] = vinst.Humanoid.LeftEye.transform;
-            lookatmap[HumanBodyBones.RightEye] = vinst.Humanoid.RightEye.transform;
+            if (vinst.Humanoid.LeftEye != null)
+            {
+                lookatmap[HumanBodyBones.LeftEye] = vinst.Humanoid.LeftEye.transform;
+            }
+            if (vinst.Humanoid.RightEye != null)
+            {
+                lookatmap[HumanBodyBones.RightEye] = vinst.Humanoid.RightEye.transform;
+            }
+            
             foreach (var kv in lookatmap) {
                 var vrmBone = Vrm10HumanoidBoneSpecification.ConvertFromUnityBone(kv.Key);
                 var parent = GetParentBone(lookatmap, vrmBone) ?? transform;

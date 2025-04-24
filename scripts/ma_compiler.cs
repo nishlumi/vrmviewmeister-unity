@@ -8,6 +8,7 @@ using UnityEngine.Networking;
 using UnityEngine.Rendering.PostProcessing;
 using UniVRM10;
 using DG.Tweening;
+using System.ComponentModel;
 
 
 namespace UserHandleSpace
@@ -350,10 +351,12 @@ namespace UserHandleSpace
                 if (movedata.vrmBone == ParseIKBoneType.IKParent)
                 {
                     if (targetObjects.compiled == 1)
-                    { //---HumanBodyBones based 
+                    { //---HumanBodyBones based (position is Hips ONLY )
 
-                        if (movedata.jumpNum >= 1) seq.Join(naa.avatar.transform.DOJump(movedatavalues[0], movedata.jumpPower, movedata.jumpNum, frame.duration));
-                        seq.Join(naa.avatar.transform.DOPath(movedatavalues.ToArray(), frame.duration, PathType.CatmullRom));
+                        Transform hiptran = naa.avatar.transform;
+
+                        if (movedata.jumpNum >= 1) seq.Join(hiptran.DOJump(movedatavalues[0], movedata.jumpPower, movedata.jumpNum, frame.duration));
+                        seq.Join(hiptran.DOPath(movedatavalues.ToArray(), frame.duration, PathType.CatmullRom));
 
                         //---Path version
                         /*if (movedatavalues.Count > 1)
@@ -394,6 +397,24 @@ namespace UserHandleSpace
                 }
                 else
                 { //---Each IK parts---------------
+                    if (targetObjects.compiled == 1)
+                    {
+                        if (movedata.vrmHumanBodyBones == HumanBodyBones.Hips)
+                        { //---Only Hips, change position.
+                            Transform hipTransform = olvrm.vrmanimator.GetBoneTransform(movedata.vrmHumanBodyBones);
+                            List<Vector3> repoarr = new List<Vector3>();
+
+                            foreach (var v in movedatavalues)
+                            {
+                                //hipTransform.localPosition = v;
+                                repoarr.Add(CalculateDifferenceByHeight(naa.bodyHeight, targetObjects.bodyHeight, v, movedata.vrmBone, 1f, 1f, 1f));
+                            }
+                            //---if has jump, apply jump motion before positionning.
+                            if (movedata.jumpNum >= 1) seq.Join(hipTransform.DOJump(movedatavalues[movedatavalues.Count - 1], movedata.jumpPower, movedata.jumpNum, frame.duration));
+                            seq.Join(hipTransform.DOLocalPath(repoarr.ToArray(), frame.duration, PathType.CatmullRom));
+                        }
+                    }
+                    else
                     { //---Transform for IK
 
                         //---for blendable: get information of previous frame
@@ -422,7 +443,7 @@ namespace UserHandleSpace
                                 foreach (var v in movedatavalues)
                                 {
                                     //Debug.Log($"{realObject.name}={v.x}\t{v.y}\t{v.z}");
-                                    repoarr.Add(CalculateDifferenceByHeight(naa.bodyHeight, targetObjects.bodyHeight, v, movedata.vrmBone, 1f, 1f, 1f));                                    
+                                    repoarr.Add(CalculateDifferenceByHeight(naa.bodyHeight, targetObjects.bodyHeight, v, movedata.vrmBone, 1f, 1f, 1f));
                                 }
                                 /*for (int di = 0; di < targetObjects.bodyHeight.Length; di++)
                                 {
@@ -507,6 +528,7 @@ namespace UserHandleSpace
                     
                 }
             }
+            
             else if (targetObjects.targetType == AF_TARGETTYPE.Stage)
             {
                 OperateStage os = naa.avatar.GetComponent<OperateStage>();
@@ -566,8 +588,17 @@ namespace UserHandleSpace
                 if (options.isBuildDoTween == 0)
                 { //---when not motion, directly set last indexed movedatavalues
                     naa.avatar.transform.position = movedatavalues[movedatavalues.Count - 1];
+
+                    if (targetObjects.targetType == AF_TARGETTYPE.Text3D)
+                    {
+                        OperateLoadedText olt = targetObjects.avatar.avatar.GetComponent<OperateLoadedText>();
+                        olt.SetJump(movedata.jumpPower.ToString() + "," + movedata.jumpNum.ToString());
+                    }
+                    else
+                    {
+                        olb.SetJump(movedata.jumpPower.ToString() + "," + movedata.jumpNum.ToString());
+                    }
                     
-                    olb.SetJump(movedata.jumpPower.ToString() + "," + movedata.jumpNum.ToString());
                     
                 }
             }
@@ -781,6 +812,7 @@ namespace UserHandleSpace
             //===Each type======================================###
             if (targetObjects.targetType == AF_TARGETTYPE.VRM)
             {
+                OperateLoadedVRM olvrm = naa.avatar.GetComponent<OperateLoadedVRM>();
                 Transform[] bts = naa.ikparent.GetComponentsInChildren<Transform>();
                 GameObject trueik = naa.avatar.GetComponent<OperateLoadedVRM>().relatedTrueIKParent;
 
@@ -859,18 +891,28 @@ namespace UserHandleSpace
                     { //---Transform for HumanBodyBones
                         if (movedata.vrmBone == ParseIKBoneType.UseHumanBodyBones)
                         {
-                            Transform boneTransform = naa.avatar.GetComponent<Animator>().GetBoneTransform(movedata.vrmHumanBodyBone);
-                            if (movedata.animationType == AF_MOVETYPE.Rotate)
+                            Transform boneTransform = olvrm.vrmanimator.GetBoneTransform(movedata.vrmHumanBodyBone);
+                            if (boneTransform != null)
                             {
-                                if (options.isExecuteForDOTween == 1) seq.Join(boneTransform.DOLocalRotate(movedata.rotation, frame.duration));
-                                //if (options.isExecuteForDOTween == 1) seq.Join(boneTransform.DOBlendableLocalRotateBy(movedata.rotation, frame.duration).SetRelative(false));
-                                else boneTransform.localRotation = Quaternion.Euler(movedata.rotation);
+                                if (movedata.animationType == AF_MOVETYPE.Rotate)
+                                {
+                                    if (options.isExecuteForDOTween == 1)
+                                    {
+                                        seq.Join(boneTransform.DOLocalRotate(movedata.rotation, frame.duration, RotateMode.Fast));
+                                    }
+                                    //if (options.isExecuteForDOTween == 1) seq.Join(boneTransform.DOBlendableLocalRotateBy(movedata.rotation, frame.duration).SetRelative(false));
+                                    else
+                                    {
+                                        boneTransform.localRotation = Quaternion.Euler(movedata.rotation);
+                                    }
+                                }
+                                if (movedata.animationType == AF_MOVETYPE.Scale)
+                                {
+                                    if (options.isExecuteForDOTween == 1) seq.Join(boneTransform.DOScale(movedata.scale, frame.duration));
+                                    else boneTransform.localScale = movedata.scale;
+                                }
                             }
-                            if (movedata.animationType == AF_MOVETYPE.Scale)
-                            {
-                                if (options.isExecuteForDOTween == 1) seq.Join(boneTransform.DOScale(movedata.scale, frame.duration));
-                                else boneTransform.localScale = movedata.scale;
-                            }
+                            
                         }
                     }
 
@@ -917,6 +959,7 @@ namespace UserHandleSpace
                             }
 
                             //---Position (absorb a distance of height)
+                            /*
                             if (false) //(movedata.animationType == AF_MOVETYPE.Translate)
                             {
                                 List<Vector3> curList = naa.avatar.GetComponent<OperateLoadedVRM>().GetTPoseBodyList();
@@ -924,18 +967,18 @@ namespace UserHandleSpace
 
                                 Vector3 repos = movedata.position;
 
-                                /*repos = CalculateDifferenceInHeight(
-                                    curList[vbone],
-                                    frame.useBodyInfo == UseBodyInfoType.TimelineCharacter ? targetObjects.bodyInfoList[vbone] : curList[vbone],
-                                    movedata.position, movedata.vrmBone
-                                );*/
+                                //repos = CalculateDifferenceInHeight(
+                                //    curList[vbone],
+                                //    frame.useBodyInfo == UseBodyInfoType.TimelineCharacter ? targetObjects.bodyInfoList[vbone] : curList[vbone],
+                                //    movedata.position, movedata.vrmBone
+                                //);
 
                                 //---another version: Multiple height diff percentage to the pose value.
-                                /*if ((movedata.vrmBone == ParseIKBoneType.LeftLeg) || (movedata.vrmBone == ParseIKBoneType.RightLeg))
-                                { //---left and right leg(foot) is not change difference of the height. (as start position)
-                                    repos = movedata.position;
-                                }
-                                else*/
+                                //if ((movedata.vrmBone == ParseIKBoneType.LeftLeg) || (movedata.vrmBone == ParseIKBoneType.RightLeg))
+                                //{ //---left and right leg(foot) is not change difference of the height. (as start position)
+                                //    repos = movedata.position;
+                                //}
+                                //else
                                 //---Path version
                                 AnimationTranslateTargetParts attp = frame.FindTranslateMoving(AF_MOVETYPE.Translate, ParseIKBoneType.IKParent);
                                 if (attp.values.Count > 1)
@@ -958,7 +1001,7 @@ namespace UserHandleSpace
                                 if (options.isExecuteForDOTween == 1) seq.Join(realObject.transform.DOLocalMove(repos, frame.duration));
                                 else realObject.transform.localPosition = repos;
                                 
-                            }
+                            }*/
 
                             //---Rotation
                             if (movedata.animationType == AF_MOVETYPE.Rotate)
@@ -1226,7 +1269,7 @@ namespace UserHandleSpace
             OperateLoadedVRM ovrm = naa.avatar.GetComponent<OperateLoadedVRM>();
 
             //---HandPose
-            if (targetObjects.compiled != 1)
+            //if (targetObjects.compiled != 1) ### Finger motion use the IK
             {
                 if (movedata.animationType == AF_MOVETYPE.NormalTransform)
                 {
@@ -1556,8 +1599,8 @@ namespace UserHandleSpace
                                 if (naf_frame != null)
                                 { 
                                     //---get transform info of an equipment side.
-                                    AnimationTargetParts translate_atp = naf_frame.FindMovingData(AF_MOVETYPE.Translate);
-                                    AnimationTargetParts rotation_atp = naf_frame.FindMovingData(AF_MOVETYPE.Rotate);
+                                    AnimationTargetParts translate_atp = naf_frame.FindMovingData(AF_MOVETYPE.Translate, HumanBodyBones.Hips);
+                                    AnimationTargetParts rotation_atp = naf_frame.FindMovingData(AF_MOVETYPE.Rotate, HumanBodyBones.Hips);
                                     OperateLoadedBase cast_olb = equipitemCast.avatar.GetComponent<OperateLoadedBase>();
                                     if (cast_olb != null)
                                     { //---save transform info of key-frame to avatar object's OperateLoaded-component.
@@ -3236,11 +3279,15 @@ namespace UserHandleSpace
                             NativeAnimationFrame existedFrame = null;
                             Ease bkupease = Ease.Linear;
                             float bkupduration = 0.01f;
+                            string bkupmemo = "";
+                            string bkupkeycolor = "#FF4545";
                             if (findex < actor.frames.Count)
                             {
                                 existedFrame = actor.frames[findex];
                                 bkupease = existedFrame.ease;
                                 bkupduration = existedFrame.duration;
+                                bkupmemo = existedFrame.memo;
+                                bkupkeycolor = existedFrame.keycolor;
                             }
                             fr = SaveFrameData(aro.index, existedFrame, nearmin, actor, aro);
 
@@ -3249,6 +3296,8 @@ namespace UserHandleSpace
                             {
                                 fr.ease = bkupease; // actor.frames[findex].ease;
                                 fr.duration = bkupduration; // actor.frames[findex].duration;
+                                fr.memo = bkupmemo;
+                                fr.keycolor = bkupkeycolor;
                             }
                             
 
@@ -3862,16 +3911,17 @@ namespace UserHandleSpace
         {
             NativeAnimationFrame ret = null;
 
-            int hitindex = (existedFrame == null ? -1 : existedFrame.FindIndexTranslateMoving(AF_MOVETYPE.Translate, pi) ); 
+            int hitindex = (existedFrame == null ? -1 : existedFrame.FindIndexTranslateMoving(AF_MOVETYPE.Translate, cmn.vrmHumanBodyBone, pi) ); 
             if (options.isRegisterAppend == 0)
             {
                 //---if not found existed, directly create NEW "Translate"
                 AnimationTranslateTargetParts attp = new AnimationTranslateTargetParts(cmn.vrmBone, cmn.animationType);
+                attp.vrmHumanBodyBones = cmn.vrmHumanBodyBone;
                 attp.jumpNum = cmn.jumpNum;
                 attp.jumpPower = cmn.jumpPower;
                 attp.values.Add(cmn.position);
 
-                int nominx = aframe.FindIndexTranslateMoving(AF_MOVETYPE.Translate, pi);
+                int nominx = aframe.FindIndexTranslateMoving(AF_MOVETYPE.Translate, cmn.vrmHumanBodyBone,  pi);
                 if (nominx == -1)
                 {
                     aframe.translateMovingData.Add(attp);
@@ -3889,11 +3939,12 @@ namespace UserHandleSpace
                 if (existedFrame == null)
                 { //---if not found existed, directly create NEW "Translate"  
                     AnimationTranslateTargetParts attp = new AnimationTranslateTargetParts(cmn.vrmBone, cmn.animationType);
+                    attp.vrmHumanBodyBones = cmn.vrmHumanBodyBone;
                     attp.jumpNum = cmn.jumpNum;
                     attp.jumpPower = cmn.jumpPower;
                     attp.values.Add(cmn.position);
 
-                    int nominx = aframe.FindIndexTranslateMoving(AF_MOVETYPE.Translate, pi);
+                    int nominx = aframe.FindIndexTranslateMoving(AF_MOVETYPE.Translate, cmn.vrmHumanBodyBone, pi);
                     if (nominx == -1)
                     {
                         aframe.translateMovingData.Add(attp);
@@ -3907,7 +3958,7 @@ namespace UserHandleSpace
                 }
                 else
                 {
-                    var existedMov = existedFrame.FindTranslateMoving(AF_MOVETYPE.Translate, pi);
+                    var existedMov = existedFrame.FindTranslateMoving(AF_MOVETYPE.Translate, cmn.vrmHumanBodyBone, pi);
                     if ((existedMov != null) && (existedMov.values.Count > 0))
                     { //---add this time data to existed data.
 
@@ -3925,11 +3976,12 @@ namespace UserHandleSpace
                     else
                     { //---if not found existed, directly create NEW "Translate"
                         AnimationTranslateTargetParts attp = new AnimationTranslateTargetParts(cmn.vrmBone, cmn.animationType);
+                        attp.vrmHumanBodyBones = cmn.vrmHumanBodyBone;
                         attp.jumpNum = cmn.jumpNum;
                         attp.jumpPower = cmn.jumpPower;
                         attp.values.Add(cmn.position);
 
-                        int nominx = aframe.FindIndexTranslateMoving(AF_MOVETYPE.Translate, pi);
+                        int nominx = aframe.FindIndexTranslateMoving(AF_MOVETYPE.Translate, cmn.vrmHumanBodyBone, pi);
                         if (nominx == -1)
                         {
                             aframe.translateMovingData.Add(attp);
@@ -4067,6 +4119,7 @@ namespace UserHandleSpace
             else
             {
                 aframe.duration = (currentProject.baseDuration == 0f ? 0.001f : currentProject.baseDuration) * (float)dist;
+                Debug.Log("base_duration=" + currentProject.baseDuration.ToString() + ", dist=" + dist.ToString());
             }
             
             if (nearMinIndex != -1)
@@ -4112,8 +4165,11 @@ namespace UserHandleSpace
                 {
                     foreach (AnimationTargetParts cmn in retlstTranslate)
                     {
-                        //IKParent ~ RightLeg, this time
-                        if (aroo.FindBoneType(options, cmn.vrmBone) > -1)
+                        //IKParent ~ RightLeg, this time (IK-system) or HumanBodyBones
+                        bool ishit = (aroo.FindBoneType(options, cmn.vrmBone) > -1) || (cmn.vrmBone == ParseIKBoneType.UseHumanBodyBones);
+
+                        
+                        if (ishit)
                         {
                             aframe = RegisterAppendTranslateMotion(options, aframe, aframe, cmn.vrmBone, AF_MOVETYPE.Translate, cmn);
 
@@ -4148,14 +4204,25 @@ namespace UserHandleSpace
                 {
                     foreach (AnimationTargetParts cmn in retlstOTTranslate)
                     {
-                        //IKParent ~ RightLeg, this time
-                        if (aroo.FindBoneType(options, cmn.vrmBone) > -1)
+                        //IKParent ~ RightLeg, this time (IK-system) or HumanBodyBones
+                        bool ishit = (aroo.FindBoneType(options, cmn.vrmBone) > -1) || (cmn.vrmBone == ParseIKBoneType.UseHumanBodyBones);
+
+                        if (ishit)
                         {
                             int ishit_mv = aframe.movingData.FindIndex(match =>
                             {
-                                if ((match.vrmBone == cmn.vrmBone) &&
-                                   (match.animationType == cmn.animationType) 
-                                ) return true;
+                                if (match.vrmBone == ParseIKBoneType.UseHumanBodyBones)
+                                {
+                                    if ((match.vrmHumanBodyBone == cmn.vrmHumanBodyBone) &&
+                                        (match.animationType == cmn.animationType)) return true;
+                                }
+                                else
+                                {
+                                    if ((match.vrmBone == cmn.vrmBone) &&
+                                       (match.animationType == cmn.animationType)
+                                    ) return true;
+                                }
+                                
                                 return false;
                             });
                             //---not found, add newly
@@ -4169,6 +4236,7 @@ namespace UserHandleSpace
                                 aframe.movingData[ishit_mv] = cmn;
                             }
                         }
+                        
                     }
                     //aframe = CheckAndLoopAnimationTargetParts(aframe, retlstOTTranslate, options);
                 }
@@ -4377,31 +4445,45 @@ namespace UserHandleSpace
 
 
                     //---Transform for HumanBodyBones------------------------------------------
-                    if (options.isCompileForLibrary == 1) 
-                    {
+                    
+                    { //---FORCELY include all HumanBodyBones.
                         Animator animator = nact.avatar.avatar.GetComponent<Animator>();
-                        foreach (HumanBodyBones hBone in Enum.GetValues(typeof(HumanBodyBones)))
+                        
+                        //---save is Hips to RightToes
+                        for (int hBoneIndex = 0; hBoneIndex < (int)HumanBodyBones.LeftEye; hBoneIndex++)
                         {
-                            if (hBone != HumanBodyBones.LastBone)
+                            HumanBodyBones hBone = (HumanBodyBones)hBoneIndex;
+
+                            //exclude: Both Eye, Jaw, All fingers, LastBone
                             {
                                 Transform boneTran = animator.GetBoneTransform(hBone);
 
                                 if (boneTran != null)
                                 {
-                                    AnimationTargetParts[] atp = new AnimationTargetParts[3];
+                                    AnimationTargetParts[] atp = new AnimationTargetParts[2];
                                     atp[0] = new AnimationTargetParts();
                                     atp[1] = new AnimationTargetParts();
+                                    //atp[2] = new AnimationTargetParts();
                                     atp[0].vrmBone = ParseIKBoneType.UseHumanBodyBones;
                                     atp[1].vrmBone = ParseIKBoneType.UseHumanBodyBones;
+                                    //atp[2].vrmBone = ParseIKBoneType.UseHumanBodyBones;
                                     atp[0].vrmHumanBodyBone = hBone;
                                     atp[1].vrmHumanBodyBone = hBone;
-                                    atp[0].animationType = AF_MOVETYPE.Rotate;
-                                    atp[1].animationType = AF_MOVETYPE.Scale;
-                                    atp[0].rotation = boneTran.localRotation.eulerAngles;
-                                    atp[1].scale = boneTran.localScale;
+                                    //atp[2].vrmHumanBodyBone = hBone;
+                                    atp[0].animationType = AF_MOVETYPE.Translate;
+                                    atp[1].animationType = AF_MOVETYPE.Rotate;
+                                    //atp[2].animationType = AF_MOVETYPE.Scale;
+                                    atp[0].position = boneTran.localPosition;
+                                    //------position only: jump parts
+                                    atp[0].jumpNum = olb.GetJumpNum();
+                                    atp[0].jumpPower = olb.GetJumpPower();
+
+                                    atp[1].rotation = boneTran.localRotation.eulerAngles;
+                                    //atp[2].scale = boneTran.localScale;
 
                                     movingData.Add(atp[0]);
                                     movingData.Add(atp[1]);
+                                    //movingData.Add(atp[2]);
                                 }
                             }
                         }
