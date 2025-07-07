@@ -1198,7 +1198,9 @@ namespace UserHandleSpace
     {
         //public AnimationAvatar cast;
         //public AnimationFrameActor timeline;
-        public int version = 1;
+        public int version = 2;
+
+        public string thumbnail; //---version 2
 
         public AF_TARGETTYPE targetType = AF_TARGETTYPE.Unknown;
         public int compiled = 0;
@@ -1221,6 +1223,7 @@ namespace UserHandleSpace
             blendShapeList = new List<string>();
             gravityBoneList = new List<string>();
             frames = new List<AnimationSingleFrame>();
+            thumbnail = "";
         }
         public AnimationSingleMotion SCopy()
         {

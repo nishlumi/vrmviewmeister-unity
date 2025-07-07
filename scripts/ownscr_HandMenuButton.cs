@@ -205,7 +205,19 @@ namespace UserHandleSpace
             }
             else if (btnname == "hmbtn_mt_reset_pos")
             {
-                HandMenu.ResetTransformCurrentObject(true,false,false);
+                switch (HandMenu.GetMoveOperationType())
+                {
+                    case "translate":
+                        HandMenu.ResetTransformCurrentObject(true, false, false);
+                        break;
+                    case "rotate":
+                        HandMenu.ResetTransformCurrentObject(false, true, false);
+                        break;
+                    case "size":
+                        HandMenu.ResetTransformCurrentObject(false, false, true);
+                        break;
+                }
+                
             }
             else if (btnname == "hmbtn_mt_reset_rot")
             {

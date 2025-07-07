@@ -19,6 +19,7 @@ using UniGLTF;
 using TriLibCore.Dae.Schema;
 using RootMotion.Demos;
 using static RootMotion.FinalIK.RagdollUtility;
+using UnityEngine.Rendering.Universal;
 
 namespace UserHandleSpace
 {
@@ -188,6 +189,14 @@ namespace UserHandleSpace
                 //vrminstance.Runtime.Process();
                 //BSMeshs.ForEach(action => actio);
                 //vrminstance.Runtime.ReconstructSpringBone();
+            }
+
+            if (blink != null)
+            {
+                if (blink.enabled)
+                {
+                    vrminstance.Runtime.Expression.SetWeight(ExpressionKey.Blink, blink.BlinkValue);
+                }
             }
 
         }
@@ -1371,7 +1380,7 @@ namespace UserHandleSpace
                     });
                     seq.Join(DOVirtual.DelayedCall(duration, () =>
                     {
-                        vrminstance.Runtime.ReconstructSpringBone();
+                        vrminstance.Runtime.SpringBone.ReconstructSpringBone();
 
                     }));
                 }
@@ -1466,7 +1475,7 @@ namespace UserHandleSpace
                     vgi.dir.y = y;
                     vgi.dir.z = z;
                 });
-                vrminstance.Runtime.ReconstructSpringBone();
+                vrminstance.Runtime.SpringBone.ReconstructSpringBone();
             }
         }
 
@@ -1602,6 +1611,21 @@ namespace UserHandleSpace
             //LeftHandPoseController ctl = GetComponent<LeftHandPoseController>();
             //RightHandPoseController ctr = GetComponent<RightHandPoseController>();
 
+            if (handtype == "l")
+            {
+                LeftHandCtrl.ResetPose();
+                LeftHandCtrl.SetPose(posetype, value);
+                LeftCurrentHand = LeftHandCtrl.currentPose;
+            }
+            else
+            {
+                RightHandCtrl.ResetPose();
+                RightHandCtrl.SetPose(posetype, value);
+                RightCurrentHand = RightHandCtrl.currentPose;
+            }
+        }
+        public void PosingHand(string handtype, int posetype, float value)
+        {
             if (handtype == "l")
             {
                 LeftHandCtrl.ResetPose();
@@ -2119,6 +2143,11 @@ namespace UserHandleSpace
 #endif
         }
         //----- backup blendshape ---------------------=============================
+
+        /// <summary>
+        /// Get string list of VRM Blendshape/Expression
+        /// </summary>
+        /// <returns>format is Array[[Key name]=[Key value]=[Change flag]]</returns>
         public List<string> ListBackupAvatarBlendShape()
         {
             List<string> ret = new List<string>();
@@ -2390,6 +2419,20 @@ namespace UserHandleSpace
                 changeProxyBlendShapeByName(bskey, value);
 
                 SetBlendShapeToBackup(shapename, value);
+            }
+        }
+        public void changeProxyBlendShapeByNameValue(string name, float value)
+        {
+            ExpressionKey bskey = getVrm10ExpressionKey(name);
+            if (bskey.Name != "d%d")
+            {
+                //prox.AccumulateValue(bskey, value);
+                //prox.Apply();
+
+                //---1.x
+                changeProxyBlendShapeByName(bskey, value);
+
+                SetBlendShapeToBackup(name, value);
             }
         }
         /*
@@ -3470,7 +3513,8 @@ namespace UserHandleSpace
         public async Task<Vrm10AnimationInstance> StartLoadVRMAbody(byte[] data)
         {
             using GltfData gdata = new GlbBinaryParser(data, "test").Parse();
-            using var loader = new VrmAnimationImporter(gdata);
+            var vdata = new VrmAnimationData(gdata);
+            using var loader = new VrmAnimationImporter(vdata);
             var instance = await loader.LoadAsync(new ImmediateCaller());
 
             vrmaInst = instance.GetComponent<Vrm10AnimationInstance>();

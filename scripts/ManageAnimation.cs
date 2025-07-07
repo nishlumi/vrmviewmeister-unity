@@ -10,6 +10,7 @@ using UniVRM10;
 using UserVRMSpace;
 using System.Linq;
 using UserUISpace;
+using RuntimeGizmos;
 
 namespace UserHandleSpace
 {
@@ -173,6 +174,8 @@ namespace UserHandleSpace
         GameObject ObjectInfoView;
         [SerializeField]
         UserUIARWin MobileARWindow;
+        [SerializeField]
+        TransformGizmo transformGizmo;
 
         private void Awake()
         {
@@ -5155,8 +5158,8 @@ namespace UserHandleSpace
                     else if (nav.type == AF_TARGETTYPE.VRM)
                     {
                         nav.avatar.GetComponent<OperateLoadedVRM>().ChangeNormalVRAR_IKTarget();
-                        //---normally, main collider ON
-                        nav.avatar.GetComponent<CapsuleCollider>().isTrigger = false;
+                        nav.avatar.GetComponent<CapsuleCollider>().enabled = true;
+
                     }
                     if (isNormal)
                     {
@@ -5194,8 +5197,10 @@ namespace UserHandleSpace
                         }
                         if (nav.type == AF_TARGETTYPE.VRM)
                         {
-                            nav.avatar.GetComponent<CapsuleCollider>().isTrigger = true;
+                            nav.avatar.GetComponent<CapsuleCollider>().enabled = false;
                         }
+
+
                     }
                 }
                 
@@ -5265,6 +5270,7 @@ namespace UserHandleSpace
             if (DevicePlatform == "vr")
             {
                 MobileARWindow.ShowUI(false);
+                camxr.DeviceFlagStr = "v";
             }
             else
             {
@@ -5274,11 +5280,20 @@ namespace UserHandleSpace
                 if (nav.type == AF_TARGETTYPE.VRM)
                 {
                     MobileARWindow.ShowVRMButton(true);
+                    MobileARWindow.ReconstructExpressionList();
+                    MobileARWindow.ReconstructHandList();
+                    MobileARWindow.ReconstructAnimationClips();
                 }
                 else
                 {
-                    MobileARWindow.ShowVRMButton(false);
+                    MobileARWindow.ShowVRMButton(true);
+                    if (nav.type == AF_TARGETTYPE.OtherObject)
+                    {
+                        MobileARWindow.ReconstructAnimationClips();
+                    }                
+
                 }
+                camxr.DeviceFlagStr = "m";
             }
             
 
@@ -5286,6 +5301,8 @@ namespace UserHandleSpace
             camxr.GetComponent<CameraOperation1>().targetObject.SetActive(false);
             GizmoRenderer.SetActive(false);
             ObjectInfoView.SetActive(false);
+            //Camera.main.transform.GetComponent<TransformGizmo>().selectionMask ^= LayerMask.NameToLayer("Handle");
+            transformGizmo.enabled = false;
         }
 
         /// <summary>
@@ -5308,6 +5325,11 @@ namespace UserHandleSpace
             GizmoRenderer.SetActive(true);
             ObjectInfoView.SetActive(true);
             camxr.GetComponent<CameraOperation1>().targetObject.SetActive(true);
+            camxr.DeviceFlagStr = "n";
+            camxr.ChangedVRAR = false;
+            camxr.IsStartTapControl = false;
+            //Camera.main.transform.GetComponent<TransformGizmo>().selectionMask ^= LayerMask.NameToLayer("Handle");
+            transformGizmo.enabled = true;
 
         }
         public void EnterVR(string param)
@@ -5337,8 +5359,9 @@ namespace UserHandleSpace
             {
                 camxr.transform.position = new Vector3(cfg_vrar_camera_initpos.x, cfg_vrar_camera_initpos.y, cfg_vrar_camera_initpos.z);
             }
-            camxr.ToggleVR();
+            StartCoroutine(camxr.ToggleVR());
             IsEndVRAR = false;
+            camxr.ChangedVRAR = true;
         }
         public void EnterAR(string param)
         {
@@ -5368,8 +5391,9 @@ namespace UserHandleSpace
             }
             //---show shadow on stage
             GetCastByAvatar("Stage").avatar.GetComponent<OperateStage>().StageForAR.SetActive(true);
-            camxr.ToggleAR();
+            StartCoroutine(camxr.ToggleAR());
             IsEndVRAR = false;
+            camxr.ChangedVRAR = true;
         }
         public bool IsVRAR()
         {

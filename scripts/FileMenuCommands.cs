@@ -592,7 +592,7 @@ namespace UserVRMSpace
                 else
                 {
                     //StartCoroutine(LoadVRM_body(www.downloadHandler.data));
-                    PreviewVRM_body(www.downloadHandler.data, isBackHTML).ConfigureAwait(false);
+                    PreviewVRM_body(www.downloadHandler.data, isBackHTML).ConfigureAwait(true);
                     yield return null;
                     AcceptLoadVRMUnity();
                 }
@@ -634,11 +634,14 @@ namespace UserVRMSpace
         public async Task<RuntimeGltfInstance> PreviewLoad10x_VRM(byte[] data)
         {
             RuntimeGltfInstance ret = null;
+            UnitySupportedImageTypeDeserializer textureDeserializer = new(ImportedTexturesAccessibility.Readable);
+
             Vrm10Instance vinst = await Vrm10.LoadBytesAsync(data,
                 canLoadVrm0X: true,
                 showMeshes: false,
                 awaitCaller: GetIAwaitCaller(false),
-                materialGenerator: GetVrmMaterialGenerator(false)
+                materialGenerator: GetVrmMaterialGenerator(false),
+                textureDeserializer: textureDeserializer
             );
             if (vinst != null)
             {
@@ -709,11 +712,13 @@ namespace UserVRMSpace
         /// <returns></returns>
         public async Task PreviewVRM_body(byte[] data, bool isBackHTML)
         {
+            //Debug.Log("***start PreviewLoad10x_VRM;" + data.Length.ToString());
             //PreviewLoad066_VRM(data);
             //PreviewLoad08x_VRM(data);
             //await PreviewLoad09x_VRM(data);
             RuntimeGltfInstance vinst = await PreviewLoad10x_VRM(data);
 
+            //.Log("***vinst load check");
             if (vinst == null)
             {
                 //---return VRM Meta information to WebGL
@@ -760,6 +765,7 @@ namespace UserVRMSpace
 
                 Bounds maxbounds = mat.CalculateAllBounds(meshcnt);
 
+                //Debug.Log("*** end CalculateAllBounds; meshcnt=" + meshcnt.Count.ToString());
                 //--- load thumbnail
 
 
@@ -802,8 +808,13 @@ namespace UserVRMSpace
                 //hei = mat_f_mesh.bounds.max.y;
                 hei = maxbounds.size.y;
 
+                Debug.Log("***hei = maxbounds.size.y; hei=" + hei.ToString());
+
                 hei = System.Math.Round(hei, 2, System.MidpointRounding.AwayFromZero);
                 string strHeight = (hei * 100).ToString() + " cm";
+
+                //Debug.Log("   str hei=" + strHeight);
+
                 byte[] incolor = new byte[] { };
                 if (pendingVRMmeta.Thumbnail == null)
                 {
@@ -812,9 +823,12 @@ namespace UserVRMSpace
                 else
                 {
                     incolor = pendingVRMmeta.Thumbnail.EncodeToPNG();
+                    Debug.Log("thumbnail len=" + incolor.Length.ToString());
                 }
 
                 VRMObjectInformation vrmoi = new VRMObjectInformation();
+
+                //Debug.Log("*** VRMObjectInformation start;");
 
                 vrmoi.Title = pendingVRMmeta.Name;
                 vrmoi.Author = string.Join("\t", pendingVRMmeta.Authors);
@@ -835,10 +849,14 @@ namespace UserVRMSpace
                 vrmoi.AllowRedistribution = pendingVRMmeta.Redistribution ? (int)BasicUssageLicense.Allow : (int)BasicUssageLicense.Disallow;
                 vrmoi.useCreditNotation = pendingVRMmeta.CreditNotation == CreditNotationType.unnecessary ? (int)BasicUssageLicense.Allow : (int)BasicUssageLicense.Disallow;
 
+                //Debug.Log("*** pendingInstance.name = " + pendingInstance.gameObject.name);
                 vrmoi.id = pendingInstance.gameObject.name;
                 vrmoi.type = Enum.GetName(typeof(AF_TARGETTYPE), AF_TARGETTYPE.VRM);
 
+                
                 string json = JsonUtility.ToJson(vrmoi);
+
+                //Debug.Log("*** json len=" + json.Length);
 
                 //---get BlendShapes
                 SkinnedMeshRenderer aface = null;
@@ -942,6 +960,8 @@ namespace UserVRMSpace
             SkinnedMeshRenderer mat_b_mesh = null;
             float hei = 0;
 
+            //Debug.Log("***float hei = 0;" + contextRoot.name);
+
             if (meshcnt.Count == 1)
             {
                 mat_b = meshcnt[0];
@@ -979,6 +999,7 @@ namespace UserVRMSpace
             contextRoot.AddComponent<UniVRM10.VRM10Viewer.VRM10Blinker>();
             Animator conanime = contextRoot.GetComponent<Animator>();
 
+            //Debug.Log("***Add VRM10Blinker;");
 
             GameObject ikworld = managa.ikArea; 
 
@@ -1000,6 +1021,7 @@ namespace UserVRMSpace
             bc.radius = mat_b_mesh.bounds.extents.x * 0.5f;
             bc.height = hei; // mat_b_mesh.bounds.size.y;
 
+            //Debug.Log("***bodyBounds setup ;");
 
 
             //---Add neccesary Components
@@ -1166,6 +1188,7 @@ namespace UserVRMSpace
             StartCoroutine(olvrm.SetupAdditionalExpression());
             olvrm.InitializeBlendShapeList();
 
+
             yield return null;
 
             if (bik != null)
@@ -1209,7 +1232,9 @@ namespace UserVRMSpace
             VVMMotionRecorder vvmrec = contextRoot.AddComponent<VVMMotionRecorder>();
             vvmrec.PrepareExportVRMA(managa.transform.Find("tmpVRMA"), vinst);
 
-            
+            //---default disable autoblink
+            olvrm.SetBlinkFlag(0);
+
 
         }
 
@@ -1630,8 +1655,35 @@ namespace UserVRMSpace
                     boxc.center = new Vector3(0, boxc.size.y * 0.5f, 0);
                 }
             }
-            
-            
+
+            //---disable all colliders, whats OtherObject has as children. (Collider is own only)
+            var boxs = oth.transform.GetComponentsInChildren<BoxCollider>();
+            foreach (var box in boxs)
+            {
+                if (box.gameObject != oth)
+                {
+                    box.enabled = false;
+                }
+                
+            }
+            var sphs = oth.transform.GetComponentsInChildren<SphereCollider>();
+            foreach (var box in sphs)
+            {
+                if (box.gameObject != oth)
+                {
+                    box.enabled = false;
+                }
+
+            }
+            var meshs = oth.transform.GetComponentsInChildren<MeshCollider>();
+            foreach (var box in meshs)
+            {
+                if (box.gameObject != oth)
+                {
+                    box.enabled = false;
+                }
+
+            }
 
 
 

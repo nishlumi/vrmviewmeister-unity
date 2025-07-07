@@ -1267,7 +1267,7 @@ namespace UserHandleSpace
             NativeAnimationAvatar naa = targetObjects.avatar;
 
             OperateLoadedVRM ovrm = naa.avatar.GetComponent<OperateLoadedVRM>();
-
+            
             //---HandPose
             //if (targetObjects.compiled != 1) ### Finger motion use the IK
             {
@@ -1577,6 +1577,7 @@ namespace UserHandleSpace
                 void tmpfunc_equip(AvatarEquipSaveClass body)
                 {
                     //---check existed equipment
+                    Debug.Log("equip=" + body.bodybonename.ToString() + "=" +  body.equipitem.ToString());
                     AvatarEquipSaveClass equip = ovrm.equipDestinations.list.Find(match =>
                     {
                         if ((match.bodybonename == body.bodybonename) && (match.equipitem == body.equipitem)) return true;
@@ -1587,6 +1588,7 @@ namespace UserHandleSpace
                         NativeAnimationAvatar equipitemCast = GetCastInProject(body.equipitem);
                         if (equipitemCast != null)
                         { //---get an equippable avatar
+                            Debug.Log("object cast=" + equipitemCast.avatar.name + "=TARGETTYPE=" + equipitemCast.type.ToString());
                             //---load an equipment side FrameActor
                             NativeAnimationFrameActor nafact = GetFrameActorFromRole(equipitemCast.roleName, equipitemCast.type);
                             if (nafact != null)
@@ -1626,13 +1628,18 @@ namespace UserHandleSpace
                             ovrm.SetEquipFlag(movedata.equipType);
 
                             //---For unequipping
-                            ovrm.equipDestinations.list.ForEach(body =>
+                            //ovrm.equipDestinations.list.ForEach(body =>
+                            for (int edi = 0; edi < ovrm.equipDestinations.list.Count; edi++)
                             {
+                                var body = ovrm.equipDestinations.list[edi];
+
                                 AvatarEquipSaveClass equip = movedata.equipDestinations.Find(match =>
                                 {
                                     if ((match.bodybonename == body.bodybonename) && (match.equipitem == body.equipitem)) return true;
                                     return false;
                                 });
+                                if (movedata.equipDestinations.Count == 0) equip = null;
+
                                 if (equip == null) //---animation don't has this body equip...UNEQUIP
                                 {
                                     NativeAnimationAvatar cast = GetCastInProject(body.equipitem);
@@ -1642,25 +1649,31 @@ namespace UserHandleSpace
                                     }
 
                                 }
-                            });
+                            }
                             //---For equipping
-                            movedata.equipDestinations.ForEach(body =>
+                            //movedata.equipDestinations.ForEach(body =>
+                            /*for (int edi = 0; edi < movedata.equipDestinations.Count; edi++)
                             {
+                                var body = movedata.equipDestinations[edi];
+
                                 tmpfunc_equip(body);
-                            });
+                            }*/
 
                             //---new version(2024/01/06~)
-                            movedata.equipDestinations.ForEach(body =>
+                            //movedata.equipDestinations.ForEach(body =>
+                            for (int edi = 0; edi < movedata.equipDestinations.Count; edi++)
                             {
+                                var body = movedata.equipDestinations[edi];
+
                                 if (body.equipflag == 1)
                                 { //---start equip
-
+                                    tmpfunc_equip(body);
                                 }
                                 else if (body.equipflag == -1)
                                 { //---finish unequip
 
                                 }
-                            });
+                            }
 
                         }, false));
                     }
@@ -1669,15 +1682,22 @@ namespace UserHandleSpace
                         ovrm.SetEquipFlag(movedata.equipType);
 
                         //---For unequipping
-                        ovrm.equipDestinations.list.ForEach(body =>
+                        //ovrm.equipDestinations.list.ForEach(body =>
+                        for (int edi = 0; edi < ovrm.equipDestinations.list.Count; edi++)
                         {
-                            AvatarEquipSaveClass equip = movedata.equipDestinations.Find(match =>
+                            var body = ovrm.equipDestinations.list[edi];
+
+                            //AvatarEquipSaveClass equip = movedata.equipDestinations[ishit];
+                            int ishit = movedata.equipDestinations.FindIndex(match =>
                             {
                                 if ((match.bodybonename == body.bodybonename) && (match.equipitem == body.equipitem)) return true;
                                 return false;
                             });
-                            if (equip == null) //---animation don't has this body equip...UNEQUIP
+                            if (movedata.equipDestinations.Count == 0) ishit = -1;
+
+                            if (ishit == -1) //---animation don't has this body equip...UNEQUIP
                             {
+                                
                                 NativeAnimationAvatar cast = GetCastInProject(body.equipitem);
                                 if (cast != null)
                                 {
@@ -1685,12 +1705,21 @@ namespace UserHandleSpace
                                 }
 
                             }
-                        });
+                        }
                         //---For equipping
-                        movedata.equipDestinations.ForEach(body =>
+                        //movedata.equipDestinations.ForEach(body =>
+                        for (int edi = 0; edi < movedata.equipDestinations.Count; edi++)
                         {
-                            tmpfunc_equip(body);
-                        });
+                            var body = movedata.equipDestinations[edi];
+                            if (body.equipflag == 1)
+                            { //---start equip
+                                tmpfunc_equip(body);
+                            }
+                            else if (body.equipflag == -1)
+                            { //---finish unequip
+
+                            }
+                        }
 
                         
                     }
@@ -1705,7 +1734,8 @@ namespace UserHandleSpace
                 //if (options.isBuildDoTween == 0)
                 if (options.isExecuteForDOTween == 1)
                 {
-                    movedata.gravity.list.ForEach(action =>
+                    //movedata.gravity.list.ForEach(action =>
+                    foreach (var action in movedata.gravity.list)
                     {
                         //ovrm.SetGravityPower(action.comment + "," + action.rootBoneName + "," + action.power.ToString());
                         ovrm.SetAnimationGravityPower(action.comment, action.rootBoneName, seq, action.power, frame.duration);
@@ -1715,7 +1745,7 @@ namespace UserHandleSpace
                         {
                             ovrm.SetGravityDir(action.comment, action.rootBoneName, action.dir.x, action.dir.y, action.dir.z);
                         }, false));
-                    });
+                    }
                 }
             }
             //---Changing properties for VRM IK 
@@ -2792,7 +2822,10 @@ namespace UserHandleSpace
                     },false);
                     ole.oldGenre = movedata.effectGenre;
                     ole.oldEffectName = movedata.effectName;
-                    
+                    if (movedata.animPlaying == UserAnimationState.PlayWithLoop)
+                    {
+
+                    }
                 }
             }
 

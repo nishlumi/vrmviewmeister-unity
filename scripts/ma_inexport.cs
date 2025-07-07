@@ -18,6 +18,9 @@ namespace UserHandleSpace
         [DllImport("__Internal")]
         private static extern void IntervalLoadingProject(float val);
 
+        [DllImport("__Internal")]
+        private static extern void sendBackupTransform(byte[] thumbnail, int size, string info);
+
         private float[] TryParseFloatArray(string[] lst, int start, int size)
         {
             float[] vec3 = new float[size];
@@ -773,8 +776,8 @@ namespace UserHandleSpace
                     {
                         string lste = lst[lst_i];
                         string[] equipItem = lste.Split(CST_SEPSTR_PROP);
-                        int ival = int.TryParse(equipItem[0], out ival) ? ival : 0;
-                        if (ival != 0)
+                        int ival = int.TryParse(equipItem[0], out ival) ? ival : -1;
+                        if (ival > -1)
                         {
                             AvatarEquipSaveClass aes = new AvatarEquipSaveClass();
 
@@ -2331,7 +2334,7 @@ namespace UserHandleSpace
         {
             NewProject(baseDuration);
         }
-        public void NewProject(float baseDuration = 0f)
+        public void NewProject(float baseDuration = 0.1f)
         {
             string ret = "";
             //try
@@ -3472,8 +3475,10 @@ namespace UserHandleSpace
                 ret = JsonUtility.ToJson(asm);
 
             }
+            byte[] img = Camera.main.GetComponent<ScreenShot>().CaptureThumbnail(1, naf.avatar.avatar);
 #if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveStringVal(ret);
+            //ReceiveStringVal(ret);
+            sendBackupTransform(img, img.Length, ret);
 #endif
             return ret;
         }

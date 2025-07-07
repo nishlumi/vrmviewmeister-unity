@@ -46,6 +46,11 @@ namespace UserHandleSpace
             OwnLight = GetComponent<Light>();
             OwnFlare = GetComponent<LensFlare>();
             SetFlare(0);
+
+            if (gameObject.name == "Directional Light")
+            {
+                OwnLight.shadowStrength = 1.0f;
+            }
             
 
             targetType = AF_TARGETTYPE.Light;

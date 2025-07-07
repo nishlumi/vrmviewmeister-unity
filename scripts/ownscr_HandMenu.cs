@@ -4,6 +4,7 @@ using UnityEngine;
 using WebXR;
 using TMPro;
 using UnityEngine.TestTools;
+using static UnityEngine.Rendering.DebugUI;
 
 namespace UserHandleSpace
 {
@@ -70,6 +71,12 @@ namespace UserHandleSpace
         }
 
         //### Left ########################
+
+        /// <summary>
+        /// Change select previous of current avatar
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
         public string TurnPreviousObject(string name = "")
         {
             string ret = name;
@@ -123,6 +130,11 @@ namespace UserHandleSpace
             
             return ret;
         }
+        /// <summary>
+        /// Change select next of current avatar
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
         public string TurnNextObject(string name = "")
         {
             string ret = name;
@@ -263,7 +275,7 @@ namespace UserHandleSpace
             return index;
 
         }
-        public void RegisterKeyFrame()
+        public void RegisterKeyFrame(List<BasicStringIntList> bslst = null)
         {
             NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
 
@@ -273,6 +285,7 @@ namespace UserHandleSpace
             aro.index = AnimationMan.oldPreviewMarker;
             aro.duration = -1f;
             aro.registerMoveTypes = new List<int>() { (int)AF_MOVETYPE.Translate, (int)AF_MOVETYPE.NormalTransform, (int)AF_MOVETYPE.AllProperties };
+            aro.registerExpressions = bslst;
             for (int i = 0; i < 17; i++)
             {
                 aro.registerBoneTypes.Add(i);
@@ -332,6 +345,10 @@ namespace UserHandleSpace
         public string GetMoveTarget()
         {
             return sv_targettype;
+        }
+        public string GetMoveOperationType()
+        {
+            return sv_movetype;
         }
         public void ChangeMoveOperationType(string movetype)
         {
@@ -564,6 +581,8 @@ namespace UserHandleSpace
                     {
                         if (sv_targettype == "o")
                         {
+                            nav.avatar.GetComponent<OperateLoadedVRM>().relatedTrueIKParent.GetComponent<Rigidbody>().velocity = Vector3.zero;
+                            nav.avatar.GetComponent<OperateLoadedVRM>().relatedTrueIKParent.GetComponent<Rigidbody>().angularVelocity = Vector3.zero;
                             nav.avatar.GetComponent<OperateLoadedVRM>().relatedTrueIKParent.GetComponent<Rigidbody>().isKinematic = true;
                             nav.avatar.GetComponent<OperateLoadedVRM>().relatedTrueIKParent.GetComponent<OtherObjectDummyIK>().LoadDefaultTransform(ismove, isrotate);
                             yield return null;
@@ -571,6 +590,8 @@ namespace UserHandleSpace
                         }
                         else if (sv_targettype == "b")
                         {
+                            SelectBoneObj.GetComponent<Rigidbody>().velocity = Vector3.zero;
+                            SelectBoneObj.GetComponent<Rigidbody>().angularVelocity = Vector3.zero;
                             SelectBoneObj.GetComponent<Rigidbody>().isKinematic = true;
                             SelectBoneObj.GetComponent<UserHandleOperation>().LoadDefaultTransform(ismove, isrotate);
                             yield return null;
@@ -615,6 +636,331 @@ namespace UserHandleSpace
             }
             yield return null;
             
+        }
+
+        //### VRM other functions ###########################################################################################
+        public void ResetAllBones()
+        {
+            OperateActiveVRM oavrm = AnimationMan.ikArea.GetComponent<OperateActiveVRM>();
+            if (oavrm != null)
+            {
+                oavrm.ResetAllHandle();
+            }
+        }
+        public List<string> GetVRMExpression()
+        {
+            List <string> ret = new List<string>();
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                OperateLoadedVRM ovrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                if (ovrm != null)
+                {
+                    ret = ovrm.ListBackupAvatarBlendShape();
+                }
+            }
+            return ret;
+        }
+        public void SetVRMExpression(string name , float value)
+        {
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                OperateLoadedVRM ovrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                if (ovrm != null)
+                {
+                    ovrm.changeProxyBlendShapeByNameValue(name, value);
+                }
+            }
+        }
+        public List<string> GetVRMHand()
+        {
+            List<string> ret = new List<string>();
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                OperateLoadedVRM ovrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                if (ovrm != null)
+                {
+                    ret.Add("left," + ovrm.LeftCurrentHand.ToString() + "," + ovrm.LeftHandValue.ToString());
+                    ret.Add("right," + ovrm.RightCurrentHand.ToString() + "," + ovrm.RightHandValue.ToString());
+                }
+            }
+            return ret;
+        }
+        public void SetVRMHand(string handtype, int posetype, float value)
+        {
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                OperateLoadedVRM ovrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                if (ovrm != null)
+                {
+                    ovrm.PosingHand(handtype, posetype, value);
+                }
+            }
+        }
+
+        //### VRM & OtherObject
+        public List<string> GetAnimationClips()
+        {
+            List<string> ret = new List<string>();
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                if (nav.type == AF_TARGETTYPE.VRM)
+                {
+                    OperateLoadedVRM olvrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                    ret = olvrm.ListAnimationClips();
+                }
+                else if (nav.type == AF_TARGETTYPE.OtherObject)
+                {
+                    OperateLoadedOther oloth = nav.avatar.GetComponent<OperateLoadedOther>();
+                    ret = oloth.ListAnimationClips();
+                }
+            }
+            return ret;
+        }
+        public string GetTargetClip()
+        {
+            string ret = "";
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                if (nav.type == AF_TARGETTYPE.VRM)
+                {
+                    OperateLoadedVRM olvrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                    ret = olvrm.GetTargetClip();
+                }
+                else if (nav.type == AF_TARGETTYPE.OtherObject)
+                {
+                    OperateLoadedOther oloth = nav.avatar.GetComponent<OperateLoadedOther>();
+                    ret = oloth.GetTargetClip();
+                }
+            }
+            return ret;
+        }
+        public void SetAnimationClip(string motionname)
+        {
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                if (nav.type == AF_TARGETTYPE.VRM)
+                {
+                    OperateLoadedVRM olvrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                    olvrm.SetVRMAnimation(motionname);
+                }
+                else if (nav.type == AF_TARGETTYPE.OtherObject)
+                {
+                    OperateLoadedOther oloth = nav.avatar.GetComponent<OperateLoadedOther>();
+                    oloth.SetTargetClip(motionname);
+                }
+            }
+        }
+        public void StateChangeAnimationClip(int playflag)
+        {
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                if (nav.type == AF_TARGETTYPE.VRM)
+                {
+                    OperateLoadedVRM olvrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                    switch (playflag)
+                    {
+                        case 0:
+                            olvrm.PlayAnimation();
+                            break;
+                        case 1:
+                            olvrm.PauseAnimation();
+                            break;
+                        case 2:
+                            olvrm.StopAnimation();
+                            break;
+                    }
+                }
+                else if (nav.type == AF_TARGETTYPE.OtherObject)
+                {
+                    OperateLoadedOther oloth = nav.avatar.GetComponent<OperateLoadedOther>();
+                    switch (playflag)
+                    {
+                        case 0:
+                            oloth.PlayAnimation();
+                            break;
+                        case 1:
+                            oloth.PauseAnimation();
+                            break;
+                        case 2:
+                            oloth.StopAnimation();
+                            break;
+                    }
+                }
+            }
+        }
+        public void SeekAnimationClip(float value)
+        {
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                if (nav.type == AF_TARGETTYPE.VRM)
+                {
+                    OperateLoadedVRM olvrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                    olvrm.SeekPlayAnimation(value);
+                }
+                else if (nav.type == AF_TARGETTYPE.OtherObject)
+                {
+                    OperateLoadedOther oloth = nav.avatar.GetComponent<OperateLoadedOther>();
+                    oloth.SeekPlayAnimation(value);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get Animation clip's seek position and max length
+        /// </summary>
+        /// <returns>0 - current pos, 1 - max length</returns>
+        public float[] GetSeekPos()
+        {
+            float[] ret = new float[2] {0, 0};
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                if (nav.type == AF_TARGETTYPE.VRM)
+                {
+                    OperateLoadedVRM olvrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                    ret[0] = olvrm.GetSeekPosAnimation();
+                    ret[1] = olvrm.GetMaxPosAnimation();
+                }
+                else if (nav.type == AF_TARGETTYPE.OtherObject)
+                {
+                    OperateLoadedOther oloth = nav.avatar.GetComponent<OperateLoadedOther>();
+                    ret[0] = oloth.GetSeekPosAnimation();
+                    ret[1] = oloth.GetMaxPosAnimation();
+                }
+            }
+            return ret;
+        }
+        public void SetSpeedAnimation(float value)
+        {
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                if (nav.type == AF_TARGETTYPE.VRM)
+                {
+                    OperateLoadedVRM olvrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                    olvrm.SetSpeedAnimation(value);
+                }
+                else if (nav.type == AF_TARGETTYPE.OtherObject)
+                {
+                    OperateLoadedOther oloth = nav.avatar.GetComponent<OperateLoadedOther>();
+                    oloth.SetSpeedAnimation(value);
+                }
+            }
+        }
+        public float GetAnimationSpeed()
+        {
+            float ret = 0;
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                if (nav.type == AF_TARGETTYPE.VRM)
+                {
+                    OperateLoadedVRM olvrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                    ret = olvrm.GetSpeedAnimation();
+                }
+                else if (nav.type == AF_TARGETTYPE.OtherObject)
+                {
+                    OperateLoadedOther oloth = nav.avatar.GetComponent<OperateLoadedOther>();
+                    ret = oloth.GetSpeedAnimation();
+                }
+            }
+            return ret;
+        }
+        public void SetSystemFlagAnimation(int flag)
+        {
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                if (nav.type == AF_TARGETTYPE.VRM)
+                {
+                    OperateLoadedVRM olvrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                    olvrm.SetPlayFlagAnimation((UserAnimationState)flag);
+                }
+                else if (nav.type == AF_TARGETTYPE.OtherObject)
+                {
+                    OperateLoadedOther oloth = nav.avatar.GetComponent<OperateLoadedOther>();
+                    oloth.SetPlayFlagAnimation((UserAnimationState)flag);
+                }
+            }
+        }
+        public int GetSystemFlagAnimation()
+        {
+            int ret = 0;
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                if (nav.type == AF_TARGETTYPE.VRM)
+                {
+                    OperateLoadedVRM olvrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                    ret = (int)olvrm.GetPlayFlagAnimation();
+                }
+                else if (nav.type == AF_TARGETTYPE.OtherObject)
+                {
+                    OperateLoadedOther oloth = nav.avatar.GetComponent<OperateLoadedOther>();
+                    ret = (int)oloth.GetPlayFlagAnimation();
+                }
+            }
+            return ret;
+        }
+        public bool GetAnimationLoop()
+        {
+            bool ret = false;
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                if (nav.type == AF_TARGETTYPE.VRM)
+                {
+                    OperateLoadedVRM olvrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                    if (olvrm.GetWrapMode() == 0)
+                    {
+                        ret = false;
+                    }
+                    else
+                    {
+                        ret = true;
+                    }
+                }
+                else if (nav.type == AF_TARGETTYPE.OtherObject)
+                {
+                    OperateLoadedOther oloth = nav.avatar.GetComponent<OperateLoadedOther>();
+                    if (oloth.GetWrapMode() == 0)
+                    {
+                        ret = false;
+                    }
+                    else
+                    {
+                        ret = true;
+                    }
+                }
+            }
+
+            return ret;
+        }
+        public void SetAnimationLoop(bool loop)
+        {
+            NativeAnimationAvatar nav = AnimationMan.GetCastInProject(AnimationMan.VRARSelectedAvatarName);
+            if (nav != null)
+            {
+                if (nav.type == AF_TARGETTYPE.VRM)
+                {
+                    OperateLoadedVRM olvrm = nav.avatar.GetComponent<OperateLoadedVRM>();
+                    olvrm.SetWrapMode(loop ? 2 : 0);
+                }
+                else if (nav.type == AF_TARGETTYPE.OtherObject)
+                {
+                    OperateLoadedOther oloth = nav.avatar.GetComponent<OperateLoadedOther>();
+                    oloth.SetWrapMode(loop ? 2 : 0);
+                }
+            }
         }
 
     }
@@ -977,6 +1323,10 @@ namespace UserHandleSpace
                 child.GetComponent<ownscr_CrossKey>().MoveTarget = targettype;
             }
             sv_targettype = targettype;
+        }
+        public string GetMoveOperationType()
+        {
+            return sv_movetype;
         }
         public void ChangeMoveOperationType(string movetype)
         {

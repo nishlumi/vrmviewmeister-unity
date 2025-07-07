@@ -91,7 +91,8 @@ namespace UserHandleSpace
         public async Task<Vrm10AnimationInstance> StartLoadVRMAbody(ManagedVRMA mvrma, byte[] data)
         {
             using GltfData gdata = new GlbBinaryParser(data, "test").Parse();
-            using var loader = new VrmAnimationImporter(gdata);
+            var vdata = new VrmAnimationData(gdata);
+            using var loader = new VrmAnimationImporter(vdata);
             var instance = await loader.LoadAsync(new ImmediateCaller());
             
             var vrmaInst = instance.GetComponent<Vrm10AnimationInstance>();

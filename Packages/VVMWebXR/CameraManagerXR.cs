@@ -29,10 +29,16 @@ namespace UserHandleSpace
         public float MoveRate = 0.01f;
         public float RotateRate = 0.1f;
 
+        public string DeviceFlagStr = "n"; //n - normal, m - mobile, v - vr device
+        public bool IsStartTapControl = false;
+        public bool ChangedVRAR = false;
+        public GameObject MobileMovingIKMarker;
+        public MobileUIReceiver1 receiver1;
+
         // Start is called before the first frame update
         void Start()
         {
-
+            MobileMovingIKMarker = null;
         }
 
         // Update is called once per frame
@@ -101,13 +107,16 @@ namespace UserHandleSpace
             ReceiveIntVal(xrman.XRState == WebXRState.AR ? 1 : 0);
 #endif
         }
-        public void ToggleVR(bool flag = true)
+        public IEnumerator ToggleVR(bool flag = true)
         {
             xrman.ToggleVR();
+            yield return new WaitForSeconds(0.05f);
         }
-        public void ToggleAR(bool flag = true)
+        public IEnumerator ToggleAR(bool flag = true)
         {
             xrman.ToggleAR();
+            yield return new WaitForSeconds(0.05f);
+
         }
         public bool isSupportVR()
         {
