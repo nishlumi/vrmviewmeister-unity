@@ -500,6 +500,12 @@ namespace UserUISpace
             ManageAvatarTransform mat = oav.ActiveAvatar.GetComponent<ManageAvatarTransform>();
             //mat.GetIKTransformAll_body();
 
+            //---2023/02/12
+            VVMMotionRecorder vmrec = oav.ActiveAvatar.GetComponent<VVMMotionRecorder>();
+            //Debug.Log(vmrec.GenerateAnimationCurve());
+            vmrec.ExportVRMA("hgoe");
+            return;
+
             var cast = manim.GetCastByAvatar(oav.ActiveAvatar.name);
             string param = cast.roleName + "," + ((int)cast.type).ToString() + ",0";
             manim.SaveSingleMotion(param);
@@ -509,11 +515,6 @@ namespace UserUISpace
             manim.NewProject();
             return;
 
-            //---2023/02/12
-            VVMMotionRecorder vmrec = oav.ActiveAvatar.GetComponent<VVMMotionRecorder>();
-            //Debug.Log(vmrec.GenerateAnimationCurve());
-            vmrec.ExportVRMA("hgoe");
-            return;
 
             //---2024/01/20
             OperateLoadedOther olo = oav.ActiveAvatar.GetComponent<OperateLoadedOther>();

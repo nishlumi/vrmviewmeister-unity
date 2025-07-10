@@ -831,6 +831,8 @@ namespace UserHandleSpace
 
             //exportingGltfExporter.Prepare(tmpobj);
             customVrmaDataStore.pointerObject = tmpobj;
+            customVrmaDataStore.runtimeExpression = vinst.Runtime.Expression;
+            customVrmaDataStore.operateLoadedVRM = GetComponent<OperateLoadedVRM>();
             //customExporter.Prepare(tmpobj);
 
             //
@@ -846,6 +848,9 @@ namespace UserHandleSpace
                 {
                     continue;
                 }
+                //
+                if ((bone == HumanBodyBones.LeftEye) || (bone == HumanBodyBones.RightEye)) continue;
+
                 var t = anim.GetBoneTransform(bone);
                 if (t == null)
                 {
@@ -868,19 +873,23 @@ namespace UserHandleSpace
             var lookatmap = new Dictionary<HumanBodyBones, Transform>();
             if (vinst.Humanoid.LeftEye != null)
             {
-                lookatmap[HumanBodyBones.LeftEye] = vinst.Humanoid.LeftEye.transform;
+                customVrmaDataStore.m_lookats[HumanBodyBones.LeftEye] = vinst.Runtime.ControlRig.GetBoneTransform(HumanBodyBones.LeftEye); // vinst.Humanoid.LeftEye.transform;
+                
             }
             if (vinst.Humanoid.RightEye != null)
             {
-                lookatmap[HumanBodyBones.RightEye] = vinst.Humanoid.RightEye.transform;
+                customVrmaDataStore.m_lookats[HumanBodyBones.RightEye] = vinst.Runtime.ControlRig.GetBoneTransform(HumanBodyBones.RightEye); //vinst.Humanoid.RightEye.transform;
             }
-            
+            /*
             foreach (var kv in lookatmap) {
                 var vrmBone = Vrm10HumanoidBoneSpecification.ConvertFromUnityBone(kv.Key);
                 var parent = GetParentBone(lookatmap, vrmBone) ?? transform;
                 customVrmaDataStore.AddRotationLookAtBone(kv.Key, kv.Value, parent);
-            }
+            }*/
             
+            customVrmaDataStore.SetupExpressions(vinst);
+
+            customVrmaDataStore.SetupLookAt(vinst);
             
         }
         public void ExportVRMA(string param)

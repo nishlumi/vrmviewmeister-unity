@@ -1284,7 +1284,7 @@ namespace UserHandleSpace
             uholeftlowerarm.SaveDefaultTransform();
             uholeftlowerarm.RootTransform = ikparent.transform;
 
-            GameObject copylefthand = (GameObject)Resources.Load("IKHandleSphereLeft");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            GameObject copylefthand = (GameObject)Resources.Load("IKHandleHandLeft");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject lefthand = Instantiate(copylefthand, copylefthand.transform.position, Quaternion.identity, ikparent.transform);
             UserHandleOperation uholefthand = lefthand.GetComponent<UserHandleOperation>();
             lefthand.name = "LeftHand";// + avatar.name;
@@ -1375,7 +1375,7 @@ namespace UserHandleSpace
             uhorightlowerarm.SaveDefaultTransform();
             uhorightlowerarm.RootTransform = ikparent.transform;
 
-            GameObject copyrighthand = (GameObject)Resources.Load("IKHandleSphereRight");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            GameObject copyrighthand = (GameObject)Resources.Load("IKHandleHandRight");  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             GameObject righthand = Instantiate(copyrighthand, copyrighthand.transform.position, Quaternion.identity, ikparent.transform);
             UserHandleOperation uhorighthand = righthand.GetComponent<UserHandleOperation>();
             righthand.name = "RightHand";// + avatar.name;

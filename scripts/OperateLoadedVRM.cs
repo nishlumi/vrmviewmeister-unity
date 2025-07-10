@@ -20,6 +20,8 @@ using TriLibCore.Dae.Schema;
 using RootMotion.Demos;
 using static RootMotion.FinalIK.RagdollUtility;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.UI;
+using System.IO.Enumeration;
 
 namespace UserHandleSpace
 {
@@ -64,6 +66,8 @@ namespace UserHandleSpace
         public bool IsGoalRotationNatural;
 
         private Vrm10Instance vrminstance;
+        public Vrm10Instance Vrm10Instance { get { return vrminstance; } }
+
         private UniVRM10.VRM10Viewer.VRM10Blinker blink;
         public MaterialProperties userSharedProperties;
         public Animator vrmanimator;
@@ -88,6 +92,21 @@ namespace UserHandleSpace
 
         private float lastEnabledPelvisHipsDiff = 0;
 
+        //---VRMAnimation
+        public class VRMAnimationState
+        {
+            public float remainTime;
+            public bool triggerOnFinished;
+            public string fileName;
+            public string clipName;
+            public VRMAnimationState (float rtime, bool tfinished, string filename, string clipname)
+            {
+                remainTime = rtime;
+                triggerOnFinished = tfinished;
+                fileName = filename;
+                clipName = clipname;
+            }
+        }
         //NOT USE private OperateVRMExporter ovrmex;
         private Vrm10AnimationInstance vrmaInst;
         private Animation VrmaNativeAnimation;
@@ -97,6 +116,8 @@ namespace UserHandleSpace
         protected bool triggerCurrentAnimOnFinished;
         private string VrmaFileName;
         private string animationClipName;
+        public VRMAnimationState curstate_vrma;
+        public VRMAnimationState prevstate_vrma;
 
         //---stocked sequence for auto blendshape
         Coroutine m_coroutine;
@@ -160,6 +181,8 @@ namespace UserHandleSpace
             //ovrmex = new OperateVRMExporter();
 
             triggerCurrentAnimOnFinished = false;
+            curstate_vrma = new VRMAnimationState(0, false, "", "");
+            prevstate_vrma = new VRMAnimationState(0, false, "", "");
             isIKMode = true;
         }
 
@@ -1506,7 +1529,7 @@ namespace UserHandleSpace
             string jsclip = string.Join('=', animclips);
             int pflag = IsPlayingAnimation();
             int playflag = (int)animationStartFlag;
-            float seek = animationRemainTime;
+            float seek = curstate_vrma.remainTime; // animationRemainTime;
 
             // 1st sep ... \t
             // 2nd sep ... =
@@ -1556,7 +1579,7 @@ namespace UserHandleSpace
                 GetWrapMode().ToString(),
                 jsclip,
                 GetTargetClip(),
-                VrmaFileName,
+                curstate_vrma.fileName,
                 IsEnableVRMA() ? "1" : "0",
             };
             ret = string.Join(SEPSTR, retarr);
@@ -3415,15 +3438,15 @@ namespace UserHandleSpace
         }
         public string GetVRMAFileName()
         {
-            return VrmaFileName;
+            return curstate_vrma.fileName;
         }
         public void SetVRMAFileName(string param)
         {
-            VrmaFileName = param;
+            curstate_vrma.fileName = param;
         }
         public void SetVRMAnimation(string param)
         {
-            if (param == VrmaFileName) return;
+            if (param == curstate_vrma.fileName) return;
 
             //Debug.Log("SetVRMA: begin ClearVRMA");
             ClearVRMA();
@@ -3434,7 +3457,7 @@ namespace UserHandleSpace
             var vrma = manim.MexAnim.GetVRMA(param);
             if (vrma != null )
             {
-                VrmaFileName = param;
+                curstate_vrma.fileName = param;
                 //Debug.Log("SetVRMA: begin vrminstance.Runtime.VrmAnimation");
                 vrminstance.Runtime.VrmAnimation = vrma;
                 //Debug.Log("SetVRMA: begin VrmaNativeAnimation");
@@ -3469,12 +3492,12 @@ namespace UserHandleSpace
         }
         public void SetVRMAContinuously(string param)
         {
-            if (param == VrmaFileName) return;
+            if (param == curstate_vrma.fileName) return;
             //---ManageExternalAnimation
             var vrma = manim.MexAnim.GetVRMA(param);
             if (vrma != null)
             {
-                VrmaFileName = param;
+                curstate_vrma.fileName = param;
                 vrminstance.Runtime.VrmAnimation = vrma;
                 VrmaNativeAnimation = vrma.GetComponent<Animation>();
 
@@ -3544,29 +3567,37 @@ namespace UserHandleSpace
 
             return vrmaInst;
         }
+        public IEnumerable ClearVRMATask()
+        {
+            relatedHandleParent.transform.position = gameObject.transform.position;
+            relatedHandleParent.transform.rotation = gameObject.transform.rotation;
+
+            yield return null;
+            gameObject.transform.position = Vector3.zero;
+            gameObject.transform.rotation = Quaternion.Euler(0, 0, 0);
+
+
+            var oodik = relatedTrueIKParent.GetComponent<OtherObjectDummyIK>();
+            oodik.relatedAvatar = relatedHandleParent;
+            
+        }
         public void ClearVRMA(int is_recover_pose = 0)
         {
             if (IsEnableVRMA())
             {
                 if (is_recover_pose == 1) StartCoroutine("ApplyBoneTransformToIKTransform");
 
-                manim.MexAnim.CountDownVRMAReference(VrmaFileName);
+                manim.MexAnim.CountDownVRMAReference(curstate_vrma.fileName);
 
                 //VrmaNativeAnimation = null;
                 vrminstance.Runtime.VrmAnimation = null;
-                VrmaFileName = "";
+                curstate_vrma.fileName = "";
                 //vrmaInst.Dispose();
                 //vrmaInst = null;
 
-                //---change target of trueik
-                // VRM own transform -> handle ikparent, 
-                relatedHandleParent.transform.position = gameObject.transform.position;
-                relatedHandleParent.transform.rotation = gameObject.transform.rotation;
-                gameObject.transform.position = Vector3.zero;
-                gameObject.transform.rotation = Quaternion.Euler(0, 0, 0);
+                StartCoroutine("ClearVRMATask");
 
-                var oodik = relatedTrueIKParent.GetComponent<OtherObjectDummyIK>();
-                oodik.relatedAvatar = relatedHandleParent;
+                
             }
         }
 
@@ -3616,13 +3647,14 @@ namespace UserHandleSpace
             {
                 if (!VrmaNativeAnimation.clip.isLooping)
                 { //---manually finish flag is OFF
-                    triggerCurrentAnimOnFinished = false;
+                    //triggerCurrentAnimOnFinished = false;
+                    curstate_vrma.triggerOnFinished = false;
                 }
                 foreach (AnimationState state in VrmaNativeAnimation)
                 {
                     if (VrmaNativeAnimation.clip.name == state.clip.name)
                     {
-                        state.time = animationRemainTime;
+                        state.time = curstate_vrma.remainTime; // animationRemainTime;
                     }
 
                 }
@@ -3641,7 +3673,7 @@ namespace UserHandleSpace
                     {
                         if (VrmaNativeAnimation.clip.name == state.clip.name)
                         {
-                            animationRemainTime = state.time;
+                            curstate_vrma.remainTime = state.time;
                         }
                     }
                     VrmaNativeAnimation.Stop();
@@ -3652,7 +3684,7 @@ namespace UserHandleSpace
                     {
                         if (VrmaNativeAnimation.clip.name == state.clip.name)
                         {
-                            state.time = animationRemainTime;
+                            state.time = curstate_vrma.remainTime;
                         }
                     }
                     VrmaNativeAnimation.Play();
@@ -3665,7 +3697,7 @@ namespace UserHandleSpace
         {
             PauseAnimation();
 #if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveFloatVal(animationRemainTime);
+            ReceiveFloatVal(curstate_vrma.remainTime);
 #endif
         }
         public void StopAnimation()
@@ -3673,9 +3705,10 @@ namespace UserHandleSpace
             if (IsEnableVRMA())
             {
                 VrmaNativeAnimation.Stop();
-                animationRemainTime = 0f;
+                curstate_vrma.remainTime = 0f;
             }
         }
+        
         //----------------------------------------------------------------------------
         public List<string> ListAnimationClips()
         {
@@ -3846,18 +3879,18 @@ namespace UserHandleSpace
         }
         public float GetSeekPosAnimation()
         {
-            return animationRemainTime;
+            return curstate_vrma.remainTime;
         }
         public void GetSeekPosAnimationFromOuter()
         {
             float pos = GetSeekPosAnimation();
 #if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveFloatVal(animationRemainTime);
+            ReceiveFloatVal(curstate_vrma.remainTime);
 #endif
         }
         public void SetSeekPosAnimation(float pos)
         {
-            animationRemainTime = pos;
+            curstate_vrma.remainTime = pos;
         }
         public virtual void SeekPlayAnimation(float value = -1f)
         {
@@ -3866,9 +3899,9 @@ namespace UserHandleSpace
             {
                 if (value > -1f)
                 {
-                    animationRemainTime = value;
+                    curstate_vrma.remainTime = value;
                     //if (VrmaNativeAnimation.clip != null)
-                        VrmaNativeAnimation.clip.SampleAnimation(VrmaNativeAnimation.gameObject, animationRemainTime);
+                        VrmaNativeAnimation.clip.SampleAnimation(VrmaNativeAnimation.gameObject, curstate_vrma.remainTime);
                 }
 
             }
