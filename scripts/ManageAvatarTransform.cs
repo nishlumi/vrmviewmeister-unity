@@ -8,6 +8,7 @@ using UniVRM10;
 using DG.Tweening;
 using RootMotion.FinalIK;
 using UnityEngine.TextCore.LowLevel;
+using UnityEditor.Rendering;
 
 namespace UserHandleSpace
 {
@@ -168,13 +169,13 @@ namespace UserHandleSpace
         /// <param name="left"></param>
         /// <param name="right"></param>
         /// <returns></returns>
-        public static Vector3 DecideAimPlateDirection(Vector3 BasePos, Vector3 left, Vector3 right)
+        public static Vector3 DecideAimPlateDirection(Vector3 BasePos, Vector3 left, Vector3 right, float keisu)
         {
             Vector3 ret = BasePos;
 
             Vector3 lrdist = Quaternion.LookRotation(left, right).eulerAngles;
-            float zsa = lrdist.normalized.z * 100 / 90f;
-            float xsa = lrdist.normalized.x * 100 / 90f;
+            float zsa = lrdist.normalized.z * (100 / keisu);
+            float xsa = lrdist.normalized.x * (100 / keisu);
 
             if (right.x < left.x)
             { //---front
@@ -201,6 +202,7 @@ namespace UserHandleSpace
                 }
                 ret = ret + Vector3.forward * zsa;
             }
+            
             return ret;
         }
         public void ChangeFullIKType(bool useFullIK)
@@ -891,6 +893,42 @@ namespace UserHandleSpace
 
             return ret;
         }
+        public Transform GetChildIKTransform(GameObject relatedHandleParent, string name)
+        {
+            Transform ret = null;
+            Transform[] children = relatedHandleParent.transform.GetComponentsInChildren<Transform>();
+            foreach (var child in children)
+            {
+                if (child.name == name)
+                {
+                    ret = child;
+                    break;
+                }
+            }
+            return ret;
+        }
+
+
+        /// <summary>
+        /// Block 1: MediaPipe座標系の正しい変換（Z軸重要）
+        /// </summary>
+        private Vector3 ConvertMediaPipeToUnityFixed(Vector3 mediaPipePos)
+        {
+            return new Vector3(
+                mediaPipePos.x,        // X軸反転（左右）
+                mediaPipePos.y,         // Y軸そのまま（上下）
+                mediaPipePos.z         // Z軸反転（前後）← これが重要！
+            );
+        }
+        public static Vector3 ConvertMediaPipeToUnityPos(Vector3 mediaPipePos)
+        {
+            // MediaPipeの正規化座標をUnity座標に変換
+            float x = (mediaPipePos.x - 0.5f) * 2.0f; // -1 to 1
+            float y = -(mediaPipePos.y - 0.5f) * 2.0f; // Y軸反転して-1 to 1  
+            float z = mediaPipePos.z; // 深度情報
+
+            return new Vector3(x, y, z);
+        }
 
         /// <summary>
         /// Analyze and apply pose data from MediaPipe-format
@@ -925,8 +963,8 @@ namespace UserHandleSpace
             //---common using
             Vector3 chestcenter = Vector3.Lerp(aai.list[12].position, aai.list[11].position, 0.5f);
 
-            Vector3 lhipplus = aai.list[23].position;
-            Vector3 rhipplus = aai.list[24].position;
+            Vector3 lhipplus = ConvertMediaPipeToUnityFixed(aai.list[23].position);
+            Vector3 rhipplus = ConvertMediaPipeToUnityFixed(aai.list[24].position);
             Vector3 hipcenter = Vector3.Lerp(rhipplus, lhipplus, 0.5f);
 
             Vector3 eyerot = GetTwoPointAngleDirection(aai.list[2].position, aai.list[5].position, Vector3.right);
@@ -935,16 +973,20 @@ namespace UserHandleSpace
             Vector3 hipXrot = GetTwoPointAngleDirection(hipcenter, chestcenter, Vector3.up);
 
             //---new code for center of 2-pos
-            Vector3 lshoul = new Vector3(aai.list[11].position.x, Mathf.Abs(aai.list[11].position.y), aai.list[11].position.z);
-            Vector3 rshoul = new Vector3(aai.list[12].position.x, Mathf.Abs(aai.list[12].position.y), aai.list[12].position.z);
+            Vector3 lshoul = ConvertMediaPipeToUnityFixed(aai.list[11].position);// new Vector3(aai.list[11].position.x, Mathf.Abs(aai.list[11].position.y), aai.list[11].position.z);
+            Vector3 rshoul = ConvertMediaPipeToUnityFixed(aai.list[12].position); // new Vector3(aai.list[12].position.x, Mathf.Abs(aai.list[12].position.y), aai.list[12].position.z);
 
             Vector3 shoulder_rot = GetTwoPointAngleDirection(lshoul, rshoul, Vector3.up);
             Vector3 shouldercenter = Vector3.Lerp(lshoul, rshoul, 0.5f);
 
+            // 体幹方向ベクトル（腰→肩）
+            Vector3 spineDirection = (shouldercenter - hipcenter).normalized;
 
             //---Pelvis
             Transform pelvis = ovrm.relatedHandleParent.transform.Find("Pelvis");
+            if (pelvis != null)
             {
+                //Debug.Log(pelvis.name);
                 Vector3 tmppos = TranslateDummyPoint(tmpobj.transform, hiprot, aai.list[23].position, aai.list[24].position, t_pelvis);
                 //Quaternion tmprot = TranslateDummyRotate(hiprot);
                 yield return null;
@@ -954,94 +996,67 @@ namespace UserHandleSpace
                 tmppos.x = tmppos.x + t_pelvis.x;
                 tmppos.y = Mathf.Abs(tmppos.y) + t_pelvis.y;
 
+                //---new code 2025
+                Vector3 hipDir = (aai.list[24].position - aai.list[23].position).normalized;
+                Quaternion hipTargetRot = Quaternion.LookRotation(hipDir);
+                //hipTargetRot = new Quaternion(hipTargetRot.x, -hipTargetRot.y, -hipTargetRot.z, hipTargetRot.w);
                 
                 pelvis.localPosition = tmppos; // new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tmpobj.transform.position.z);
-                pelvis.localRotation = Quaternion.Euler(hiprot.x, hiprot.y-180f, 0);
+                pelvis.localRotation = hipTargetRot; // Quaternion.Euler(hiprot.x, hiprot.y-180f, 0);
+                pelvis.Rotate(Vector3.up, -90f);
                 
                 
             }
             yield return null;
 
-
-
-            //---Aim
-            Transform aim = ovrm.relatedHandleParent.transform.Find("Aim");
-            aimrot.z = Mathf.Abs(aimrot.z);
-            {
-                //Vector3 aimcenter = Vector3.Leap(aai.list[11].position, aai.list[24].position, 0.5f);
-
-                Vector2 aimcenter = Vector3.Lerp(shouldercenter, hipcenter, 0.5f);
-
-                Vector3 aimdir = hipcenter - shouldercenter;
-                aimdir.Normalize();
-
-                /*
-                Vector3 tmppos = CalcFromTwoPointToObjectDirection(shouldercenter, hipcenter, 0.5f);
-                //Debug.Log("aim tmppos 1=" + tmppos.ToString());
-                //tmppos.x = (Mathf.Abs(tmppos.x) + t_pelvis.x);
-
-                ////tmppos.z = (Mathf.Abs(tmppos.z) + t_pelvis.z);
-                //Debug.Log("aim tmppos 2=" + tmppos.ToString());
-
-                tmppos = DecideAimPlateDirection(shouldercenter, lshoul, rshoul);
-                tmppos.y = (Mathf.Abs(tmppos.y) + t_pelvis.y);
-
-                //---肩中心とケツのz位置の関係性から、態勢を決める（前かがみ・のけぞり）
-                float sa = Mathf.Abs(hipcenter.z - shouldercenter.z);
-                if (rshoul.x < lshoul.x)
-                { //---front
-                    if (shouldercenter.z < hipcenter.z)
-                    { //mae kagami
-                        tmppos.y = tmppos.y - sa;
-                    }
-                    else if (shouldercenter.z > hipcenter.z)
-                    { //noke zori
-                        tmppos.y = tmppos.y + sa;
-                    }
-                }
-                else if (rshoul.x > lshoul.x)
-                { //---back
-                    if (shouldercenter.z < hipcenter.z)
-                    { //mae kagami
-                        tmppos.y = tmppos.y - sa;
-                    }
-                    else if (shouldercenter.z > hipcenter.z)
-                    { //noke zori
-                        tmppos.y = tmppos.y + sa;
-                    }
-                }
-                
-                
-
-                */
-                //Vector3 shoulder_hip_center = Vector3.Lerp(shouldercenter, hipcenter, 0.5f);
-
-                //Quaternion to_tmppos_rot = Quaternion.LookRotation(shoulder_hip_center, tmppos);
-
-
-                yield return null;
-                //tmppos.z += Vector3.back.z;
-                //aim.localPosition = tmppos; // new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tmpobj.transform.position.z);
-                aim.localPosition = aimcenter;
-                aim.forward = aimdir;
-                                
-            }
-            yield return null;
 
             //---Chest
-            Transform chest = ovrm.relatedHandleParent.transform.Find("Chest");
-            {
+            Transform chest = GetChildIKTransform(ovrm.relatedHandleParent, "Chest");
+            if (chest != null){
                 Vector3 chestpos = new Vector3(chestcenter.x, chestcenter.y, chestcenter.z);
                 chestpos.y = t_pelvis.y + Mathf.Abs(chestpos.y);
                 //chestcenter.x = chestcenter.x + chest.localPosition.x;
                 //Vector3 distance = chest.localPosition - chestcenter;
                 Vector3 chestrot = chest.localRotation.eulerAngles;
 
-                Quaternion chestlookat_aim = Quaternion.LookRotation(chestcenter - aim.position);
+                //Quaternion chestlookat_aim = Quaternion.LookRotation(chestcenter - aim.position);
                 
 
                 chest.localPosition = chestpos;
-                chest.localRotation = chestlookat_aim; // Quaternion.Euler(shoulder_rot); //chestrot.x, aimrot.y, aimrot.z);
+                chest.localRotation = Quaternion.identity; // chestlookat_aim; // Quaternion.Euler(shoulder_rot); //chestrot.x, aimrot.y, aimrot.z);
+
+
+            }
+            yield return null;
+
+
+            //---Aim
+            Transform aim = GetChildIKTransform(ovrm.relatedHandleParent, "Aim");
+            
+            if (aim != null) {
+                //Debug.Log(aim.name);
+                aimrot.z = Mathf.Abs(aimrot.z);
+                //Vector3 aimcenter = Vector3.Leap(aai.list[11].position, aai.list[24].position, 0.5f);
+
+                Vector2 aimcenter = Vector3.Lerp(shouldercenter, hipcenter, 0.5f);
+
+                Vector3 shoulderLine = rshoul - lshoul;
+                Vector3 hipLine = rhipplus - lhipplus;
+
+                Vector3 aimdir = (shouldercenter - hipcenter);
+                
+                Vector3 bodyForward = Vector3.Cross(shoulderLine, aimcenter).normalized;
+                bodyForward.y = bodyForward.y * -1;
+
+                //---肩中心とケツのz位置の関係性から、態勢を決める（前かがみ・のけぞり）
+                
+
+                yield return null;
+                //tmppos.z += Vector3.back.z;
+                aimcenter.y += pelvis.localPosition.y;
+                //aim.localPosition = tmppos; // new Vector3(tmpobj.transform.position.x, tmpobj.transform.position.y, tmpobj.transform.position.z);
+                aim.localPosition = aimcenter;
+                aim.localRotation = Quaternion.LookRotation(bodyForward);
 
 
             }
@@ -1049,8 +1064,9 @@ namespace UserHandleSpace
 
 
             //---LookAt
-            Transform lookat = ovrm.relatedHandleParent.transform.Find("LookAt");
-            {
+            Transform lookat = GetChildIKTransform(ovrm.relatedHandleParent, "LookAt");
+            if (lookat != null){
+                //Debug.Log(lookat.name);
                 //Vector3 tmppos = GetTwoPointAngleDirection(aai.list[2].position, aai.list[5].position, Vector3.right);
                 //lookat.localPosition = new Vector3(aai.list[0].position.x, t_pelvis.y + MathF.Abs(aai.list[0].position.y), tpose[3].z);
                 //tmpobj.transform.position = lookat.position;
@@ -1059,13 +1075,21 @@ namespace UserHandleSpace
                 Vector3 leye = new Vector3(aai.list[2].position.x, Mathf.Abs(aai.list[2].position.y), aai.list[2].position.z);
                 Vector3 reye = new Vector3(aai.list[5].position.x, Mathf.Abs(aai.list[5].position.y), aai.list[5].position.z);
 
+                Vector3 eyeLine = aai.list[5].position - aai.list[2].position;
+                Vector3 mouseLine = aai.list[10].position - aai.list[9].position;
+                Vector3 facedir = eyeLine - mouseLine;
+                Vector3 facecenter = Vector3.Lerp(eyeLine, mouseLine, 0.5f);
+                Vector3 faceForward = Vector3.Cross(eyeLine, facecenter).normalized;
+                faceForward.y = faceForward.y * -1f;
+
                 Vector3 eyecenter_lr = Vector3.Lerp(leye, reye, 0.5f);
 
                 Vector3 tmppos = CalcFromTwoPointToObjectDirection(reye, leye, 0.5f);
                 //tmppos.x = (Mathf.Abs(tmppos.x) + t_pelvis.x);
                 //tmppos.y = (Mathf.Abs(tmppos.y) + t_pelvis.y);
                 //tmppos.z = (Mathf.Abs(tmppos.z) + t_pelvis.z);
-                tmppos = DecideAimPlateDirection(eyecenter_lr, leye, reye);
+                //tmppos = DecideAimPlateDirection(eyecenter_lr, leye, reye, 70f);
+                tmppos -= Vector3.forward;
                 tmppos.y = (Mathf.Abs(tmppos.y) + t_pelvis.y);
 
                 //Quaternion to_tmppos_rot = Quaternion.LookRotation(eyecenter_lr, tmppos);
@@ -1080,8 +1104,9 @@ namespace UserHandleSpace
             yield return null;
 
             //---EyeViewHandle
-            Transform eye = ovrm.relatedHandleParent.transform.Find("EyeViewHandle");
-            {
+            Transform eye = GetChildIKTransform(ovrm.relatedHandleParent, "EyeViewHandle");
+            if (eye != null){
+                //Debug.Log(eye.name);
                 //Vector3 tmppos = Vector3.Lerp(aai.list[2].position, aai.list[5].position, 0.5f);
                 //tmpobj.transform.position = new Vector3(tmppos.x, tmppos.y + t_pelvis.y, tmppos.z);
                 //tmpobj.transform.localRotation = Quaternion.Euler(eyerot);
@@ -1095,7 +1120,8 @@ namespace UserHandleSpace
                 //tmppos.x = (Mathf.Abs(tmppos.x) + t_pelvis.x);
                 //tmppos.y = (Mathf.Abs(tmppos.y) + t_pelvis.y);
                 //tmppos.z = (Mathf.Abs(tmppos.z) + t_pelvis.z);
-                tmppos = DecideAimPlateDirection(eyecenter_lr, leye, reye);
+                //tmppos = DecideAimPlateDirection(eyecenter_lr, leye, reye, 90f);
+                tmppos -= Vector3.forward;
                 tmppos.y = (Mathf.Abs(tmppos.y) + t_pelvis.y);
 
                 //Quaternion to_tmppos_rot = Quaternion.LookRotation(eyecenter_lr, tmppos);
@@ -1111,8 +1137,9 @@ namespace UserHandleSpace
             yield return null;
 
             //---Head
-            Transform head = ovrm.relatedHandleParent.transform.Find("Head");
-            {
+            Transform head = GetChildIKTransform(ovrm.relatedHandleParent, "Head");
+            if (head != null){
+                //Debug.Log(head.name);
                 head.localPosition = new Vector3(aai.list[0].position.x, t_pelvis.y + Mathf.Abs(aai.list[0].position.y), aai.list[0].position.z);
                 //head.localRotation = Quaternion.Euler(eyerot.x, head.localRotation.eulerAngles.y, head.localRotation.eulerAngles.z);
             }
@@ -1121,41 +1148,103 @@ namespace UserHandleSpace
 
             //---left hand
             Transform lefthand = ovrm.relatedHandleParent.transform.Find("LeftHand");
-            {
+            if ((lefthand != null) && (aai.list[15].visibility > 0.7f)){
+                Debug.Log(lefthand.name);
                 //te no hira
-                Vector3 handrot = GetTwoPointAngleDirection(aai.list[21].position, aai.list[17].position, Vector3.up);
+                Vector3 handrot = GetTwoPointAngleDirection(aai.list[19].position, aai.list[17].position, Vector3.up);
                 //te kara ude
-                Vector3 handbrarot = GetTwoPointAngleDirection(aai.list[19].position, aai.list[15].position, Vector3.right);
+                Vector3 handbrarot = GetTwoPointAngleDirection(aai.list[21].position, aai.list[15].position, Vector3.right);
+
+                Vector3 yubiLine = aai.list[19].position - aai.list[17].position;
+                Vector3 kouLine = (aai.list[21].position - aai.list[15].position);
+                Vector3 normal = Vector3.Cross(yubiLine, aai.list[15].position).normalized;
 
                 Vector3 lh = aai.list[15].position;
-                lh.y = Mathf.Abs(lh.y);
+                lh.y = -lh.y; // Mathf.Abs(lh.y);
+
+                Quaternion qnormal = Quaternion.LookRotation(normal).normalized;
+
+                //---new code
+                Vector3 wrist = ConvertMediaPipeToUnityPos(aai.list[15].position);
+                Vector3 thumb = ConvertMediaPipeToUnityPos(aai.list[21].position);
+                Vector3 index = ConvertMediaPipeToUnityPos(aai.list[19].position);
+                Vector3 pinky = ConvertMediaPipeToUnityPos(aai.list[17].position);
+                // ステップ1: Z軸（手首から指先方向）
+                Vector3 fingerMidpoint = (index + pinky) / 2f;
+                Vector3 handZAxis = (fingerMidpoint - wrist).normalized;
+
+                // ステップ2: Y軸（手のひらの法線方向）
+                Vector3 vecToIndex = index - wrist;
+                Vector3 vecToPinky = pinky - wrist;
+                Vector3 handYAxis = Vector3.Cross(vecToPinky, vecToIndex).normalized;
+
+
+                // ステップ3: X軸（親指方向）
+                Vector3 handXAxis = Vector3.Cross(handYAxis, handZAxis).normalized;
+
+                // ステップ4: 回転の計算
+                qnormal = Quaternion.LookRotation(handZAxis, handYAxis);
+
 
                 lefthand.localPosition = lh + t_pelvis; // new Vector3(aai.list[15].position.x, Mathf.Abs(aai.list[15].position.y) + t_pelvis.y, aai.list[15].position.z);
-                lefthand.localRotation = Quaternion.Euler(handrot.x, lefthand.localRotation.eulerAngles.y, handbrarot.z+180f); //aai.list[15].rotation.x, aai.list[15].rotation.y + 180f, aai.list[15].rotation.z);
+                lefthand.rotation = (qnormal); // Quaternion.Euler(handrot.x, lefthand.localRotation.eulerAngles.y, handbrarot.z+180f); //aai.list[15].rotation.x, aai.list[15].rotation.y + 180f, aai.list[15].rotation.z);
+                //lefthand.forward = normal;
             }
             yield return null;
 
             //---right hand
             Transform righthand = ovrm.relatedHandleParent.transform.Find("RightHand");
+            if ((righthand != null) && (aai.list[16].visibility > 0.7f)) 
             {
+                Debug.Log(righthand.name);
                 //te no hira
-                Vector3 handrot = GetTwoPointAngleDirection(aai.list[22].position, aai.list[18].position, Vector3.up);
+                Vector3 handrot = GetTwoPointAngleDirection(aai.list[20].position, aai.list[18].position, Vector3.up);
                 //te kara ude
-                Vector3 handbrarot = GetTwoPointAngleDirection(aai.list[20].position, aai.list[16].position, Vector3.right);
+                Vector3 handbrarot = GetTwoPointAngleDirection(aai.list[22].position, aai.list[16].position, Vector3.right);
+
+                Vector3 yubiLine = aai.list[20].position - aai.list[18].position;
+                Vector3 kouLine = (aai.list[22].position - aai.list[16].position);
+                Vector3 normal = Vector3.Cross(yubiLine, aai.list[16].position).normalized;
 
                 Vector3 rh = aai.list[16].position;
-                rh.y = Mathf.Abs(rh.y);
+                rh.y = -rh.y; // Mathf.Abs(rh.y);
+                Quaternion qnormal = Quaternion.LookRotation(normal).normalized;
 
-                righthand.localPosition = rh + t_pelvis; //  new Vector3(aai.list[16].position.x+t_pelvis.x, aai.list[16].position.y + t_pelvis.y, aai.list[16].position.z);
-                righthand.localRotation = Quaternion.Euler(handrot.x, righthand.localRotation.eulerAngles.y, handbrarot.z+180f); //aai.list[16].rotation.x, aai.list[16].rotation.y + 180f, aai.list[16].rotation.z);
+                //---new code
+                Vector3 wrist = ConvertMediaPipeToUnityPos(aai.list[16].position);
+                Vector3 thumb = ConvertMediaPipeToUnityPos(aai.list[22].position);
+                Vector3 index = ConvertMediaPipeToUnityPos(aai.list[20].position);
+                Vector3 pinky = ConvertMediaPipeToUnityPos(aai.list[18].position);
+                // ステップ1: Z軸（手首から指先方向）
+                Vector3 fingerMidpoint = (index + pinky) / 2f;
+                Vector3 handZAxis = (fingerMidpoint - wrist).normalized;
+
+
+                // ステップ2: Y軸（手のひらの法線方向）
+                Vector3 vecToIndex = index - wrist;
+                Vector3 vecToPinky = pinky - wrist;
+                Vector3 handYAxis = Vector3.Cross(vecToPinky, vecToIndex).normalized;
+                handYAxis = -handYAxis;
+
+
+                // ステップ3: X軸（親指方向）
+                Vector3 handXAxis = Vector3.Cross(handYAxis, handZAxis).normalized;
+
+                // ステップ4: 回転の計算
+                qnormal = Quaternion.LookRotation(handZAxis, handYAxis);
+
+                righthand.position = rh + t_pelvis; //  new Vector3(aai.list[16].position.x+t_pelvis.x, aai.list[16].position.y + t_pelvis.y, aai.list[16].position.z);
+                righthand.rotation = qnormal; //Quaternion.Euler(handrot.x, righthand.localRotation.eulerAngles.y, handbrarot.z+180f); //aai.list[16].rotation.x, aai.list[16].rotation.y + 180f, aai.list[16].rotation.z);
+                //righthand.forward = normal;
             }
             yield return null;
 
             //---left lower arm
             Transform leftlowerarm = ovrm.relatedHandleParent.transform.Find("LeftLowerArm");
+            if ((leftlowerarm != null) && (aai.list[13].visibility > 0.7f))
             {
                 Vector3 lh = aai.list[13].position;
-                lh.y = Mathf.Abs(lh.y);
+                lh.y = -lh.y; // Mathf.Abs(lh.y);
 
                 leftlowerarm.localPosition = lh + t_pelvis; //new Vector3(aai.list[13].position.x, Mathf.Abs(aai.list[13].position.y) + t_pelvis.y, aai.list[13].position.z);
             }
@@ -1163,9 +1252,10 @@ namespace UserHandleSpace
 
             //---right lower arm
             Transform rightlowerarm = ovrm.relatedHandleParent.transform.Find("RightLowerArm");
+            if ((rightlowerarm != null) && (aai.list[14].visibility > 0.8f))
             {
                 Vector3 rh = aai.list[14].position;
-                rh.y = Mathf.Abs(rh.y);
+                rh.y = -rh.y; // Mathf.Abs(rh.y);
 
                 rightlowerarm.localPosition = rh + t_pelvis; //new Vector3(aai.list[14].position.x, Mathf.Abs(aai.list[14].position.y) + t_pelvis.y, aai.list[14].position.z);
             }
@@ -1174,6 +1264,7 @@ namespace UserHandleSpace
 
             //---left lower leg
             Transform leftlowerleg = ovrm.relatedHandleParent.transform.Find("LeftLowerLeg");
+            if ((leftlowerleg != null) && (aai.list[25].visibility > 0.7f))
             {
                 Vector3 lll = t_pelvis - aai.list[25].position;
                 lll.x = aai.list[25].position.x;
@@ -1184,6 +1275,7 @@ namespace UserHandleSpace
 
             //---right lower leg
             Transform rightlowerleg = ovrm.relatedHandleParent.transform.Find("RightLowerLeg");
+            if ((rightlowerleg != null) && (aai.list[26].visibility > 0.7f))
             {
                 Vector3 rll = t_pelvis - aai.list[26].position;
                 rll.x = aai.list[26].position.x;
@@ -1195,6 +1287,7 @@ namespace UserHandleSpace
             //---left foot
             Transform leftfoot = ovrm.relatedHandleParent.transform.Find("LeftLeg");
             //Vector3 leftfootrot = GetTwoPointAngleDirection(aai.list[29].position, aai.list[31].position, Vector3.forward);
+            if ((leftfoot != null) && (aai.list[27].visibility > 0.7f))
             {
                 Vector3 indexheel = Vector3.Lerp(aai.list[31].position, aai.list[29].position, 0.5f);
                 Vector3 rot_ankle = GetTwoPointAngleDirection(aai.list[27].position, indexheel, Vector3.up);
@@ -1212,6 +1305,7 @@ namespace UserHandleSpace
             //---right foot
             Transform rightfoot = ovrm.relatedHandleParent.transform.Find("RightLeg");
             //Vector3 rightfootrot = GetTwoPointAngleDirection(aai.list[30].position, aai.list[32].position, Vector3.forward);
+            if ((rightfoot != null) && (aai.list[28].visibility > 0.7f))
             {
                 Vector3 indexheel = Vector3.Lerp(aai.list[32].position, aai.list[30].position, 0.5f);
                 Vector3 rot_ankle = GetTwoPointAngleDirection(aai.list[28].position, indexheel, Vector3.up);

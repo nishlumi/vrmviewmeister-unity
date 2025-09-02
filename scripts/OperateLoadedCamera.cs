@@ -296,13 +296,13 @@ namespace UserHandleSpace
             int x = int.TryParse(prm[0], out x) ? x : 100;
             int y = int.TryParse(prm[1], out y) ? y : 100;
 
-            RenderSize.x = (float)x;
-            RenderSize.y = (float)y;
+            SetRenderTexture(new Vector2((float)x, (float)y));
 
         }
         public void SetRenderTexture(Vector2 val)
         {
             RenderSize = val;
+            //ApplyRenderTexture();
         }
         public void ApplyRenderTexture()
         {
@@ -316,6 +316,13 @@ namespace UserHandleSpace
 
             DestroyRenderTexture();
             availableRenderTexture = rt;
+        }
+        public void DisableRenderTexture()
+        {
+            Camera lt = transform.gameObject.GetComponent<Camera>();
+            lt.targetTexture = null;
+
+            DestroyRenderTexture();
         }
         public void DestroyRenderTexture()
         {

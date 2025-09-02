@@ -334,7 +334,8 @@ namespace UserHandleSpace
         public int useGravity;
         public float drag;
         public float anglarDrag;
-        public AvatarSingleIKTransform(string name, Vector3 pos, Vector3 rot, int usecol, int usegra, float dra, float andra)
+        public float visibility;
+        public AvatarSingleIKTransform(string name, Vector3 pos, Vector3 rot, int usecol, int usegra, float dra, float andra, float visib = 1f)
         {
             ikname = name;
             position = new Vector3(pos.x.Round(5), pos.y.Round(5), pos.z.Round(5));
@@ -343,6 +344,7 @@ namespace UserHandleSpace
             useGravity = usegra;
             drag = dra;
             anglarDrag = andra;
+            visibility = visib;
         }
     }
     [Serializable]

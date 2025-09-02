@@ -206,6 +206,7 @@ public class CtrlOperateCamera : MonoBehaviour
         if (context.interaction is PressInteraction)
         {
             camoperator.ChangeOperateTarget(UserHandleSpace.KeyOperationMode.MoveCamera);
+            keyOperationMode = manim.keyOperationMode;
         }
     }
 
@@ -220,6 +221,7 @@ public class CtrlOperateCamera : MonoBehaviour
         if (context.interaction is PressInteraction)
         {
             camoperator.ChangeOperateTarget(UserHandleSpace.KeyOperationMode.MoveAvatar);
+            keyOperationMode = manim.keyOperationMode;
         }
     }
 

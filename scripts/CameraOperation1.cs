@@ -129,7 +129,7 @@ public class CameraOperation1 : MonoBehaviour
         //---special shortcut key---
         if (manim.keyOperationMode == KeyOperationMode.MoveCamera)
         {
-            /*
+            /* ---Move to vvm_actions map (future DELETE)
             if (Input.GetKey(KeyCode.W))
             {
                 
@@ -242,7 +242,7 @@ public class CameraOperation1 : MonoBehaviour
         }
         if (Input.GetKeyDown(KeyCode.M))
         {
-            /*
+            /* ---Move to vvm_actions map (future DELETE)
             if (manim.keyOperationMode == KeyOperationMode.MoveCamera)
             {
                 manim.keyOperationMode = KeyOperationMode.MoveAvatar;
