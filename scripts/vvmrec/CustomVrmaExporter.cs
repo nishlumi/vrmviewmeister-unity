@@ -13,6 +13,7 @@ namespace UserHandleSpace
 {
     public class CustomVrmaDataStore
     {
+        private Transform m_parentvrm;
         public GameObject pointerObject;
         public PositionExporter m_position;
         public Dictionary<HumanBodyBones, Transform> m_bones;
@@ -20,16 +21,18 @@ namespace UserHandleSpace
         public Dictionary<HumanBodyBones, Transform> m_lookats;
         public Dictionary<HumanBodyBones, Transform> m_lookatsParent;
         public List<ExportFrame> m_frames;
-        // •\îŠÖ˜A‚ÌƒtƒB[ƒ‹ƒh’Ç‰Á
+        // è¡¨æƒ…é–¢é€£ã®ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰è¿½åŠ 
         public Vrm10RuntimeExpression runtimeExpression;
         public OperateLoadedVRM operateLoadedVRM;
         public Dictionary<string, Transform> m_expressions;
         public Dictionary<ExpressionKey, float> m_vrm10Expressions;
         public Dictionary<ExpressionKey, int> m_expressionNodeIndices;
-        // ‹ü§ŒäŠÖ˜A‚ÌƒtƒB[ƒ‹ƒh
+        // è¦–ç·šåˆ¶å¾¡é–¢é€£ã®ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰
         public Transform m_lookAtTarget;
         public Transform m_lookAtNode;
         public int m_lookAtNodeIndex;
+
+        private Vrm10Instance m_vinst;
 
         //===============================================================================================
         // child class
@@ -43,7 +46,7 @@ namespace UserHandleSpace
             public Vector3 position;
             public Dictionary<HumanBodyBones, RotationExporter> rotations;
             public Dictionary<HumanBodyBones, RotationExporter> lookats;
-            public Dictionary<string, ExpressionData> expressions; // ’Ç‰Á
+            public Dictionary<string, ExpressionData> expressions; // è¿½åŠ 
             //---lookat
             public LookAtData lookAt;
 
@@ -55,7 +58,7 @@ namespace UserHandleSpace
                 position = Vector3.zero;
                 rotations = new Dictionary<HumanBodyBones, RotationExporter>();
                 lookats = new Dictionary<HumanBodyBones, RotationExporter>();
-                expressions = new Dictionary<string, ExpressionData>(); // ’Ç‰Á
+                expressions = new Dictionary<string, ExpressionData>(); // è¿½åŠ 
                 lookAt = null;
             }
 
@@ -138,13 +141,15 @@ namespace UserHandleSpace
             public int nodeIndex;
             public Transform lookAtNode;
             public Quaternion rotation;
+            public Vector3 position; // å„ãƒ•ãƒ¬ãƒ¼ãƒ ã®åº§æ¨™ã‚’ä¿å­˜
 
-            public LookAtData(Vector3 dir, int nodeIdx, Transform node, Quaternion rotation)
+            public LookAtData(Vector3 dir, int nodeIdx, Transform node, Quaternion rotation, Vector3 pos)
             {
                 direction = dir;
                 nodeIndex = nodeIdx;
                 lookAtNode = node;
                 this.rotation = rotation;
+                this.position = pos;
             }
         }
 
@@ -152,8 +157,9 @@ namespace UserHandleSpace
         // constructor
         //===============================================================================================
 
-        public CustomVrmaDataStore()
+        public CustomVrmaDataStore(Transform parentvrm)
         {
+            m_parentvrm = parentvrm;
             m_bones = new Dictionary<HumanBodyBones, Transform>();
             m_bonesParent = new Dictionary<HumanBodyBones, Transform>();
             m_lookats = new Dictionary<HumanBodyBones, Transform>();
@@ -212,6 +218,9 @@ namespace UserHandleSpace
             if (vrmInstance == null || vrmInstance.Runtime?.Expression == null)
                 return;
 
+            GameObject virtualParent = new GameObject("VirtualParent");
+            virtualParent.transform.SetParent(m_parentvrm);
+
             m_expressions = new Dictionary<string, Transform>();
             m_vrm10Expressions = new Dictionary<ExpressionKey, float>();
             m_expressionNodeIndices = new Dictionary<ExpressionKey, int>();
@@ -219,7 +228,7 @@ namespace UserHandleSpace
             var expressionProxy = vrmInstance.Runtime.Expression;
             var allExpressions = expressionProxy.ExpressionKeys;
 
-            int nodeIndex = 0; // •\îƒm[ƒh‚ÌŠJnƒCƒ“ƒfƒbƒNƒX
+            int nodeIndex = 0; // è¡¨æƒ…ãƒãƒ¼ãƒ‰ã®é–‹å§‹ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹
 
             foreach (var expressionKey in allExpressions)
             {
@@ -229,26 +238,27 @@ namespace UserHandleSpace
                     m_vrm10Expressions[expressionKey] = expressionProxy.GetWeight(expressionKey);
                     m_expressionNodeIndices[expressionKey] = nodeIndex++;
 
-                    // ‰¼‘zƒm[ƒh‚ÌTransform‚ğì¬
+                    // ä»®æƒ³ãƒãƒ¼ãƒ‰ã®Transformã‚’ä½œæˆ
                     GameObject virtualNode = new GameObject($"{expressionKey.Name}");
+                    virtualNode.transform.SetParent(virtualParent.transform);
                     m_expressions[expressionKey.Name] = virtualNode.transform;
                 }
             }
         }
 
         public void CaptureExpressionWeights(ExportFrame frame)
-        {
+        {            
             operateLoadedVRM.Vrm10Instance.Runtime.Process();
             foreach (var kv in m_vrm10Expressions)
             {
                 string expName = kv.Key.Name;
                 var expression = kv.Value;
 
-                // Œ»İ‚ÌƒEƒFƒCƒg’l‚ğæ“¾
+                // ç¾åœ¨ã®ã‚¦ã‚§ã‚¤ãƒˆå€¤ã‚’å–å¾—
                 //float currentWeight = operateLoadedVRM.getProxyBlendShape(expName); // GetCurrentExpressionWeight(expName, ovrm);
                 float currentWeight = operateLoadedVRM.Vrm10Instance.Runtime.Expression.GetWeight(kv.Key);
 
-                // ExpressionData‚ğì¬
+                // ExpressionDataã‚’ä½œæˆ
                 var expData = new ExpressionData(expName, currentWeight, m_expressionNodeIndices[kv.Key]);
                 frame.expressions[expName] = expData;
             }
@@ -264,13 +274,14 @@ namespace UserHandleSpace
                 return;
 
             var lookAtComponent = vrmInstance.Runtime.LookAt;
+            m_vinst = vrmInstance;
 
-            // ‹ü§Œä—p‚Ì‰¼‘zƒm[ƒh‚ğì¬
+            // è¦–ç·šåˆ¶å¾¡ç”¨ã®ä»®æƒ³ãƒãƒ¼ãƒ‰ã‚’ä½œæˆ
             GameObject lookAtNodeObject = new GameObject("LookAt");
             m_lookAtNode = lookAtNodeObject.transform;
-            m_lookAtNodeIndex = 2000; // ‹ü§Œäƒm[ƒh‚ÌƒCƒ“ƒfƒbƒNƒX
+            m_lookAtNodeIndex = 2000; // è¦–ç·šåˆ¶å¾¡ãƒãƒ¼ãƒ‰ã®ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹
 
-            // ‹ü‚Ìƒ^[ƒQƒbƒg‚ğİ’èi•K—v‚É‰‚¶‚Äj
+            // è¦–ç·šã®ã‚¿ãƒ¼ã‚²ãƒƒãƒˆã‚’è¨­å®šï¼ˆå¿…è¦ã«å¿œã˜ã¦ï¼‰
             if (vrmInstance.LookAtTarget != null)
             {
                 m_lookAtTarget = vrmInstance.LookAtTarget;
@@ -281,22 +292,30 @@ namespace UserHandleSpace
         {
             if (m_lookAtNode == null) return;
 
-            // Œ»İ‚Ì‹ü•ûŒü‚ğŒvZ
+            // ç¾åœ¨ã®è¦–ç·šæ–¹å‘ã‚’è¨ˆç®—
             Vector3 lookDirection = CalculateLookDirection();
 
-            // ‹ü•ûŒü‚ğƒm[ƒh‚Ì‰ñ“]‚Æ‚µ‚Äİ’è
+            // è¦–ç·šæ–¹å‘ã‚’ãƒãƒ¼ãƒ‰ã®å›è»¢ã¨ã—ã¦è¨­å®š
             //Quaternion.LookRotation(lookDirection);
             Quaternion eyerot = m_lookats[HumanBodyBones.LeftEye].rotation;
-            m_lookAtNode.position = m_lookAtTarget.position;
+            //---add 2026.05.14
+            Quaternion eyerot_a = Quaternion.Euler(m_vinst.Runtime.LookAt.Pitch, m_vinst.Runtime.LookAt.Yaw, 0);
+            
+            Vector3 currentTargetPos = Vector3.zero;
+            if (m_lookAtTarget != null)
+            {
+                currentTargetPos = m_lookAtTarget.position;
+                m_lookAtNode.position = currentTargetPos;
+            }
 
-            // LookAtData‚ğì¬
-            frame.lookAt = new LookAtData(lookDirection, m_lookAtNodeIndex, m_lookAtNode, eyerot);
+            // LookAtDataã‚’ä½œæˆï¼ˆãã®ç¬é–“ã®ãƒ¯ãƒ¼ãƒ«ãƒ‰åº§æ¨™ currentTargetPos ã‚’æ¸¡ã™ï¼‰
+            frame.lookAt = new LookAtData(lookDirection, m_lookAtNodeIndex, m_lookAtNode, eyerot_a, currentTargetPos);
         }
 
         private Vector3 CalculateLookDirection()
         {
-            // ÀÛ‚Ì‹ü•ûŒü‚ğŒvZ‚·‚éˆ—
-            // VRM‚Ì–Ú‚ÌŒü‚«‚âƒ^[ƒQƒbƒg‚©‚çŒvZ
+            // å®Ÿéš›ã®è¦–ç·šæ–¹å‘ã‚’è¨ˆç®—ã™ã‚‹å‡¦ç†
+            // VRMã®ç›®ã®å‘ãã‚„ã‚¿ãƒ¼ã‚²ãƒƒãƒˆã‹ã‚‰è¨ˆç®—
             if (m_lookAtTarget != null)
             {
                 Vector3 headPosition = m_bones[HumanBodyBones.Head].position;
@@ -304,7 +323,7 @@ namespace UserHandleSpace
                 return (targetPosition - headPosition).normalized;
             }
 
-            // ƒfƒtƒHƒ‹ƒg‚Í³–Ê•ûŒü
+            // ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆã¯æ­£é¢æ–¹å‘
             return Vector3.forward;
         }
 
@@ -832,7 +851,7 @@ namespace UserHandleSpace
             var names = Nodes.Select(x => x.name).ToList();
             int nodeidx = nodeNextCount;
 
-            // Še•\î‚ÌƒAƒjƒ[ƒVƒ‡ƒ“‚ğo—Í
+            // å„è¡¨æƒ…ã®ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ã‚’å‡ºåŠ›
             // expression[frame, frame, frame] data struct !
             foreach (var expName in datastore.m_vrm10Expressions.Keys)
             {
@@ -849,7 +868,7 @@ namespace UserHandleSpace
                     interpolation = "LINEAR",
                 });
 
-                // •\î—p‚Ì‰¼‘zƒm[ƒh‚ğ’Ç‰Á
+                // è¡¨æƒ…ç”¨ã®ä»®æƒ³ãƒãƒ¼ãƒ‰ã‚’è¿½åŠ 
                 int nodeIndex = AddVirtualExpressionNode(expName.Name, datastore);
 
                 gltfAnimation.channels.Add(new glTFAnimationChannel
@@ -888,13 +907,13 @@ namespace UserHandleSpace
 
         private int AddVirtualExpressionNode(string expressionName, CustomVrmaDataStore datastore)
         {
-            // ‰¼‘zƒm[ƒh‚ğglTFƒm[ƒhƒŠƒXƒg‚É’Ç‰Á
+            // ä»®æƒ³ãƒãƒ¼ãƒ‰ã‚’glTFãƒãƒ¼ãƒ‰ãƒªã‚¹ãƒˆã«è¿½åŠ 
             var virtualNode = new glTFNode
             {
                 name = $"{expressionName}",
-                //translation = new float[] { 1, 0, 0 },
-                //rotation = new float[] { 0, 0, 0, 0 },
-                //scale = new float[] { 0, 0, 0 }
+                translation = new float[] { 1, 0, 0 },
+                rotation = new float[] { 0, 0, 0, 0 },
+                scale = new float[] { 0, 0, 0 }
             };
 
             _data.Gltf.nodes.Add(virtualNode);
@@ -914,7 +933,7 @@ namespace UserHandleSpace
             if (datastore.m_lookAtNode == null) return -1;
 
             var lookAtRotations = GenerateLookAtRotations(frames);
-            var lookAtTranslations = GenerateLookAtTranslation(frames);
+            var lookAtTranslations = GenerateLookAtTranslation(datastore.m_position.m_root, frames);
             var output = _data.ExtendBufferAndGetAccessorIndex(lookAtRotations.ToArray());
             var output2 = _data.ExtendBufferAndGetAccessorIndex(lookAtTranslations.ToArray());
             var sampler = gltfAnimation.samplers.Count;
@@ -927,7 +946,7 @@ namespace UserHandleSpace
                 interpolation = "LINEAR",
             });
 
-            // ‹ü§Œäƒm[ƒh‚ğ’Ç‰Á
+            // è¦–ç·šåˆ¶å¾¡ãƒãƒ¼ãƒ‰ã‚’è¿½åŠ 
             int nodeIndex = AddLookAtNode(datastore);
 
             gltfAnimation.channels.Add(new glTFAnimationChannel
@@ -961,7 +980,7 @@ namespace UserHandleSpace
 
             return rotations;
         }
-        private List<Vector3> GenerateLookAtTranslation(List<CustomVrmaDataStore.ExportFrame> frames)
+        private List<Vector3> GenerateLookAtTranslation(Transform root, List<CustomVrmaDataStore.ExportFrame> frames)
         {
             List<Vector3> translations = new List<Vector3>();
 
@@ -969,7 +988,10 @@ namespace UserHandleSpace
             {
                 if (frame.lookAt != null)
                 {
-                    translations.Add(frame.lookAt.lookAtNode.position);
+                    // VRMãƒ«ãƒ¼ãƒˆï¼ˆè¶³å…ƒï¼‰åŸºæº–ã®ãƒ­ãƒ¼ã‚«ãƒ«åº§æ¨™ã«å¤‰æ›ï¼ˆä¿å­˜ã•ã‚ŒãŸå„ãƒ•ãƒ¬ãƒ¼ãƒ ã®åº§æ¨™ position ã‚’ä½¿ç”¨ï¼‰
+                    Vector3 p = root.worldToLocalMatrix.MultiplyPoint(frame.lookAt.position);
+                    // glTFã®å³æ‰‹ç³»ã«åˆã‚ã›ã¦Xã‚’åè»¢
+                    translations.Add(new Vector3(-p.x, p.y, p.z));
                 }
                 else
                 {
@@ -982,6 +1004,13 @@ namespace UserHandleSpace
 
         private int AddLookAtNode(CustomVrmaDataStore datastore)
         {
+            // è¦–ç·šåˆ¶å¾¡ç”¨ã®ä»®æƒ³Transformã‚’ä½œæˆï¼ˆå­˜åœ¨ã—ãªã„å ´åˆï¼‰
+            if (datastore.m_lookAtNode == null)
+            {
+                GameObject lookAtNodeObject = new GameObject("LookAtNode_Virtual");
+                datastore.m_lookAtNode = lookAtNodeObject.transform;
+            }
+
             var lookAtNode = new glTFNode
             {
                 name = "LookAt",
@@ -991,7 +1020,7 @@ namespace UserHandleSpace
             };
 
             _data.Gltf.nodes.Add(lookAtNode);
-            Nodes.Add(datastore.m_lookAtTarget);
+            Nodes.Add(datastore.m_lookAtNode); // Unityå´ã®Transformã‚‚ãƒªã‚¹ãƒˆã«åŠ ãˆã‚‹
 
             return _data.Gltf.nodes.Count - 1;
         }
@@ -1025,8 +1054,8 @@ namespace UserHandleSpace
             _data.Gltf.animations.Clear();
             _data.Gltf.animations.Add(gltfAnimation);
 
-            // this.Nodes ‚É‚Í ‰Eè¶è•ÏŠ·Œã‚ÌƒRƒs[‚ª“ü‚Á‚Ä‚¢‚é
-            // ‘ã‘Ö‚Æ‚µ‚Ä–¼‘O‚Å‹tˆø‚«‚·‚é
+            // this.Nodes ã«ã¯ å³æ‰‹å·¦æ‰‹å¤‰æ›å¾Œã®ã‚³ãƒ”ãƒ¼ãŒå…¥ã£ã¦ã„ã‚‹
+            // ä»£æ›¿ã¨ã—ã¦åå‰ã§é€†å¼•ãã™ã‚‹
             var names = Nodes.Select(x => x.name).ToList();
             for (int i = 0; i < names.Count; i++)
             {
@@ -1112,7 +1141,7 @@ namespace UserHandleSpace
                     //Extras = new glTFExtensionExport()
                 };
 
-                // ƒvƒŠƒZƒbƒg•\î‚©ƒJƒXƒ^ƒ€•\î‚©‚ğ”»’è
+                // ãƒ—ãƒªã‚»ãƒƒãƒˆè¡¨æƒ…ã‹ã‚«ã‚¹ã‚¿ãƒ è¡¨æƒ…ã‹ã‚’åˆ¤å®š
                 switch (expNode.Key.Name.ToLower())
                 {
                     case "aa": vrmAnimation.Expressions.Preset.Aa = expression; break;

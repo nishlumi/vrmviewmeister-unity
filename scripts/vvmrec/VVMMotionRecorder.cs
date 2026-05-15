@@ -390,7 +390,7 @@ namespace UserHandleSpace
             //exportingGltfData = new ExportingGltfData();
             //exportingGltfExporter = new VrmAnimationExporter(exportingGltfData, new GltfExportSettings());
 
-            customVrmaDataStore = new CustomVrmaDataStore();
+            customVrmaDataStore = new CustomVrmaDataStore(transform);
             //customExporter = new CustomVrmaExporter(exportingGltfData, new GltfExportSettings());
 
         }

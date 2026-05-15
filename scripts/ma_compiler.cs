@@ -3075,25 +3075,29 @@ namespace UserHandleSpace
 
                 if (options.isExecuteForDOTween == 1)
                 {
-                    seq.Join(DOVirtual.DelayedCall(frame.duration, () => cam.SetClearFlag(movedata.skyType), false));
-
-                    if (movedata.skyType == CameraClearFlags.Skybox)
+                    if (options.isBuildDoTween == 1)
                     {
-                        seq.Join(DOVirtual.DelayedCall(frame.duration, () => cam.SetSkyShader(movedata.skyShaderName), false));
+                        seq.Join(DOVirtual.DelayedCall(frame.duration, () => cam.SetClearFlag(movedata.skyType), false));
 
-                        movedata.skyShaderFloat.ForEach(item =>
+                        if (movedata.skyType == CameraClearFlags.Skybox)
                         {
-                            seq.Join(cam.skyboxMaterial.DOFloat(item.value, item.text, frame.duration));
-                        });
-                        movedata.skyShaderColor.ForEach(item =>
+                            seq.Join(DOVirtual.DelayedCall(frame.duration, () => cam.SetSkyShader(movedata.skyShaderName), false));
+
+                            movedata.skyShaderFloat.ForEach(item =>
+                            {
+                                seq.Join(cam.skyboxMaterial.DOFloat(item.value, item.text, frame.duration));
+                            });
+                            movedata.skyShaderColor.ForEach(item =>
+                            {
+                                seq.Join(cam.skyboxMaterial.DOColor(item.value, item.text, frame.duration));
+                            });
+                        }
+                        else if (movedata.skyType == CameraClearFlags.Color)
                         {
-                            seq.Join(cam.skyboxMaterial.DOColor(item.value, item.text, frame.duration));
-                        });
+                            seq = cam.SetSkyColorTween(seq, movedata.skyColor, frame.duration);
+                        }
                     }
-                    else if (movedata.skyType == CameraClearFlags.Color)
-                    {
-                        seq = cam.SetSkyColorTween(seq, movedata.skyColor, frame.duration);
-                    }
+                    
                 }
                 else
                 {

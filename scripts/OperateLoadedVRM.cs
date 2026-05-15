@@ -187,7 +187,7 @@ namespace UserHandleSpace
         }
 
         // Update is called once per frame
-        void Update()
+        override protected void Update()
         {
             //--if move ik handle parent, move CapsuleCollider of active avatar to same position.
             //GameObject ikhp = GameObject.Find("IKHandleParent");
@@ -209,7 +209,19 @@ namespace UserHandleSpace
             //}
             if (vrminstance != null)
             {
-                //vrminstance.Runtime.Process();
+                if (IsEnableVRMA())
+                {
+                    vrminstance.Runtime.Process();
+                    // 現在のランタイムが保持している視線角度を表示
+                    var lookAt = vrminstance.Runtime.LookAt;
+                    Debug.Log($"VRMA Gaze -> Yaw: {lookAt.Yaw}, Pitch: {lookAt.Pitch}");
+                    /*vrminstance.Runtime.LookAt.SetYawPitchManually(
+                        vrminstance.Runtime.VrmAnimation.LookAt.Value.YawPitch.Value.Yaw,
+                        vrminstance.Runtime.VrmAnimation.LookAt.Value.YawPitch.Value.Pitch
+                    );*/
+                    vrminstance.Runtime.LookAt.LookAtInput = vrminstance.Runtime.VrmAnimation.LookAt.Value;
+                }
+
                 //BSMeshs.ForEach(action => actio);
                 //vrminstance.Runtime.ReconstructSpringBone();
             }
@@ -275,6 +287,93 @@ namespace UserHandleSpace
                 }
             }
         }
+        /// <summary>
+        /// To pack all properties for HTML-UI
+        /// </summary>
+        public void GetIndicatedPropertyFromOuter()
+        {
+            const string SEPSTR = "\t";
+            string ret = "";
+
+            LeftHandPoseController ctl = LeftHandCtrl;
+            RightHandPoseController ctr = RightHandCtrl;
+
+            List<string> matlist = ListUserMaterial();
+            string matjs = string.Join("\r\n", matlist.ToArray());
+
+            List<string> lst = ListBackupAvatarBlendShape();
+            string blendshape = string.Join(",", lst.ToArray());
+            int eflag = GetEquipFlag();
+            string equipjs = JsonUtility.ToJson(equipDestinations);
+            string gravityjs = JsonUtility.ToJson(gravityList);
+
+            string movemode = (isMoveMode == true) ? "1" : "0";
+            string ikmode = (isIKMode == true) ? "1" : "0";
+
+            List<string> animclips = ListAnimationClips();
+            string jsclip = string.Join('=', animclips);
+            int pflag = IsPlayingAnimation();
+            int playflag = (int)animationStartFlag;
+            float seek = curstate_vrma.remainTime; // animationRemainTime;
+
+            // 1st sep ... \t
+            // 2nd sep ... =
+            //             ,
+            // blendshape
+            //             ,
+            //            name=value
+            /*
+            ret = "l," + LeftCurrentHand.ToString() + "," + LeftHandValue.ToString()
+                    + "=" +
+                    "r," + RightCurrentHand.ToString() + "," + RightHandValue.ToString()
+                + SEPSTR + 
+                blendshape
+                + SEPSTR + 
+                eflag.ToString()
+                + SEPSTR + 
+                equipjs
+                + SEPSTR + 
+                gravityjs
+                + SEPSTR +
+                GetHeadLock().ToString() 
+                + SEPSTR +
+                matjs
+                + SEPSTR +
+                movemode
+
+            ;
+            */
+            string[] retarr =
+            {
+                "l," + LeftCurrentHand.ToString() + "," + LeftHandValue.ToString()
+                    + "=" +
+                    "r," + RightCurrentHand.ToString() + "," + RightHandValue.ToString(),
+                blendshape,
+                eflag.ToString(),
+                equipjs,
+                gravityjs,
+                GetHeadLock().ToString(),
+                matjs,
+                movemode,
+                //---VRMAnimation
+                pflag.ToString(),
+                playflag.ToString(),
+                seek.ToString(),
+                GetSpeedAnimation().ToString(),
+                GetMaxPosAnimation().ToString(),
+                GetWrapMode().ToString(),
+                jsclip,
+                GetTargetClip(),
+                curstate_vrma.fileName,
+                IsEnableVRMA() ? "1" : "0",
+            };
+            ret = string.Join(SEPSTR, retarr);
+
+#if !UNITY_EDITOR && UNITY_WEBGL
+            ReceiveStringVal(ret);
+#endif
+        }
+
         /*
         public VRMImporterContext GetContext()
         {
@@ -1224,6 +1323,7 @@ namespace UserHandleSpace
                 gravityList.list.Add(vgi);
             }
             */
+            
             //1.x
             List<Vrm10InstanceSpringBone.Spring> springs = vrminstance.SpringBone.Springs;
             for (int spi = 0; spi < springs.Count; spi++)
@@ -1502,92 +1602,6 @@ namespace UserHandleSpace
             }
         }
 
-        /// <summary>
-        /// To pack all properties for HTML-UI
-        /// </summary>
-        public void GetIndicatedPropertyFromOuter()
-        {
-            const string SEPSTR = "\t";
-            string ret = "";
-
-            LeftHandPoseController ctl = LeftHandCtrl;
-            RightHandPoseController ctr = RightHandCtrl;
-
-            List<string> matlist = ListUserMaterial();
-            string matjs = string.Join("\r\n", matlist.ToArray());
-
-            List<string> lst = ListBackupAvatarBlendShape();
-            string blendshape = string.Join(",", lst.ToArray());
-            int eflag = GetEquipFlag();
-            string equipjs = JsonUtility.ToJson(equipDestinations);
-            string gravityjs = JsonUtility.ToJson(gravityList);
-
-            string movemode = (isMoveMode == true) ? "1" : "0";
-            string ikmode = (isIKMode == true) ? "1" : "0";
-
-            List<string> animclips = ListAnimationClips();            
-            string jsclip = string.Join('=', animclips);
-            int pflag = IsPlayingAnimation();
-            int playflag = (int)animationStartFlag;
-            float seek = curstate_vrma.remainTime; // animationRemainTime;
-
-            // 1st sep ... \t
-            // 2nd sep ... =
-            //             ,
-            // blendshape
-            //             ,
-            //            name=value
-            /*
-            ret = "l," + LeftCurrentHand.ToString() + "," + LeftHandValue.ToString()
-                    + "=" +
-                    "r," + RightCurrentHand.ToString() + "," + RightHandValue.ToString()
-                + SEPSTR + 
-                blendshape
-                + SEPSTR + 
-                eflag.ToString()
-                + SEPSTR + 
-                equipjs
-                + SEPSTR + 
-                gravityjs
-                + SEPSTR +
-                GetHeadLock().ToString() 
-                + SEPSTR +
-                matjs
-                + SEPSTR +
-                movemode
-
-            ;
-            */
-            string[] retarr =
-            {
-                "l," + LeftCurrentHand.ToString() + "," + LeftHandValue.ToString()
-                    + "=" +
-                    "r," + RightCurrentHand.ToString() + "," + RightHandValue.ToString(),
-                blendshape,
-                eflag.ToString(),
-                equipjs,
-                gravityjs,
-                GetHeadLock().ToString(),
-                matjs,
-                movemode,
-                //---VRMAnimation
-                pflag.ToString(),
-                playflag.ToString(),
-                seek.ToString(),
-                GetSpeedAnimation().ToString(),
-                GetMaxPosAnimation().ToString(),
-                GetWrapMode().ToString(),
-                jsclip,
-                GetTargetClip(),
-                curstate_vrma.fileName,
-                IsEnableVRMA() ? "1" : "0",
-            };
-            ret = string.Join(SEPSTR, retarr);
-
-#if !UNITY_EDITOR && UNITY_WEBGL
-            ReceiveStringVal(ret);
-#endif
-        }
         //===============================================================================================================***
         //  Hand Pose
         public string ListHandPose()
@@ -3459,7 +3473,12 @@ namespace UserHandleSpace
             {
                 curstate_vrma.fileName = param;
                 //Debug.Log("SetVRMA: begin vrminstance.Runtime.VrmAnimation");
+                vrminstance.LookAtTargetType = VRM10ObjectLookAt.LookAtTargetTypes.YawPitchValue;
+                GetComponent<VvmIk>().lookAtWeight = 0;
+                vrminstance.LookAtTarget = null;
                 vrminstance.Runtime.VrmAnimation = vrma;
+
+
                 //Debug.Log("SetVRMA: begin VrmaNativeAnimation");
                 VrmaNativeAnimation = vrma.GetComponent<Animation>();
                 VrmaNativeAnimation.wrapMode = WrapMode.Default;
@@ -3498,7 +3517,12 @@ namespace UserHandleSpace
             if (vrma != null)
             {
                 curstate_vrma.fileName = param;
+
+                vrminstance.LookAtTargetType = VRM10ObjectLookAt.LookAtTargetTypes.YawPitchValue;
+                vrminstance.LookAtTarget = null;
+                GetComponent<VvmIk>().lookAtWeight = 0;
                 vrminstance.Runtime.VrmAnimation = vrma;
+
                 VrmaNativeAnimation = vrma.GetComponent<Animation>();
 
                 manim.MexAnim.CountAddVRMAReference(param);
@@ -3594,6 +3618,9 @@ namespace UserHandleSpace
                 curstate_vrma.fileName = "";
                 //vrmaInst.Dispose();
                 //vrmaInst = null;
+                vrminstance.LookAtTargetType = VRM10ObjectLookAt.LookAtTargetTypes.SpecifiedTransform;
+                vrminstance.LookAtTarget = relatedHandleParent.transform.Find("EyeViewHandle");
+                GetComponent<VvmIk>().lookAtWeight = 1f;
 
                 StartCoroutine("ClearVRMATask");
 
@@ -3608,6 +3635,9 @@ namespace UserHandleSpace
         {
             //if (IsEnableVRMA())
             {
+                vrminstance.LookAtTargetType = VRM10ObjectLookAt.LookAtTargetTypes.YawPitchValue;
+                vrminstance.LookAtTarget = null;
+                GetComponent<VvmIk>().lookAtWeight = 0;
                 vrminstance.Runtime.VrmAnimation = vrmaInst;
 
                 //---change target of trueik
@@ -3634,6 +3664,8 @@ namespace UserHandleSpace
                 relatedHandleParent.transform.rotation = gameObject.transform.rotation;
                 gameObject.transform.position = Vector3.zero;
                 gameObject.transform.rotation = Quaternion.Euler(0, 0, 0);
+                vrminstance.LookAtTargetType = VRM10ObjectLookAt.LookAtTargetTypes.SpecifiedTransform;
+                GetComponent<VvmIk>().lookAtWeight = 1f;
 
                 var oodik = relatedTrueIKParent.GetComponent<OtherObjectDummyIK>();
                 oodik.relatedAvatar = relatedHandleParent;

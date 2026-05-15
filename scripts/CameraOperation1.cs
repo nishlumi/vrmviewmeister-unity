@@ -961,10 +961,10 @@ public class CameraOperation1 : MonoBehaviour
         if (camxr.isActiveNormal())
         {
             List<NativeAnimationAvatar> list = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
-            list.ForEach(item =>
+            for (int i = 0; i < list.Count; i++)
             {
-                item.avatar.GetComponent<Camera>().backgroundColor = param;
-            });
+                list[i].avatar.GetComponent<Camera>().backgroundColor = param;
+            }
         }
         
 
@@ -991,7 +991,7 @@ public class CameraOperation1 : MonoBehaviour
             List<NativeAnimationAvatar> list = manim.GetCastsByRoleType(AF_TARGETTYPE.Camera);
             for (int i = 0; i < list.Count; i++)
             {
-                list[i].avatar.GetComponent<Camera>().backgroundColor = param;
+                seq.Join(list[i].avatar.GetComponent<Camera>().DOColor(param, duration));
             }
         }
         
